@@ -1007,3 +1007,8 @@
         display: none;
       }
     }
+.login-logo{display:block;width:150px;height:150px;object-fit:contain;margin:0 auto 18px;border-radius:50%;box-shadow:0 8px 24px rgba(0,0,0,.15);animation:pop .5s ease;}
+@keyframes pop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+.password-wrap{position:relative}
+.password-wrap input{padding-right:48px}
+.toggle-pass{position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:none;font-size:20px;cursor:pointer}
