@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Kaptan Nili Bulut POS</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="KNPOS">
+</head>
+
+<body>
+
+  <section id="loginScreen">
+    <div class="login-card">
+      <div class="login-title">KAPTAN NİLİ<br>BULUT POS</div>
+      <div class="login-version">v1.5.0 • TEST</div>
+
+      <label for="loginUser">Kullanıcı</label>
+      <select id="loginUser">
+        <option value="">Kullanıcı seçiniz</option>
+        <option value="denizmazlumoglu@gmail.com">Deniz Mazlumoğlu — Yetkili</option>
+        <option value="nilaymazlumoglu@gmail.com">Nilay Mazlumoğlu — Garson</option>
+      </select>
+
+      <div style="height:15px;"></div>
+
+      <label for="loginPassword">Şifre</label>
+      <input
+        id="loginPassword"
+        type="password"
+        autocomplete="current-password"
+        placeholder="Şifrenizi giriniz"
+      >
+
+      <button
+        id="loginButton"
+        class="main-button login-submit"
+        type="button"
+      >
+        GİRİŞ YAP
+      </button>
+
+      <div id="loginMessage" class="message"></div>
+    </div>
+  </section>
+
+  <div id="appShell">
+
+<div class="header">
+  <div>
+    <div>KAPTAN NİLİ BULUT POS</div>
+    <div style="font-size:14px;margin-top:6px;font-weight:normal;">
+      v1.5.0 • TEST
+    </div>
+  </div>
+
+  <div class="header-user">
+    <div>
+      <div id="currentUserName">-</div>
+      <div id="currentUserRole">-</div>
+    </div>
+
+    <button id="logoutButton" class="logout-button" type="button">
+      ÇIKIŞ
+    </button>
+  </div>
+</div>
+
+  <div class="nav">
+    <button id="navTables" class="active-nav" onclick="showPage('tables')">
+      SATIŞ / MASALAR
+    </button>
+
+    <button id="navHome" onclick="showPage('home')">
+      ANA MENÜ
+    </button>
+
+    <button id="navProducts" onclick="showPage('products')">
+      ÜRÜNLER
+    </button>
+
+    <button id="navCash" onclick="showPage('cash')">
+      KASA
+    </button>
+
+    <button id="navSales" onclick="showPage('sales')">SATIŞLAR</button>
+    <button id="navReports" onclick="showPage('reports')">RAPORLAR</button>
+  </div>
+
+  <div id="cashWarning" class="cash-warning">Kasa kapalı. Satış yapabilmek için önce kasayı açınız.</div>
+
+  <div class="container">
+
+    <!-- SATIŞ / MASALAR -->
+    <section id="pageTables" class="page active-page">
+      <div class="card">
+        <h2>Satış Masaları</h2>
+        <div class="tables-grid" id="tablesGrid"></div>
+      </div>
+    </section>
+
+    <!-- ANA MENÜ -->
+    <section id="pageHome" class="page">
+
+      <div class="card">
+        <div class="home-title">
+          İşlem Seçiniz
+        </div>
+
+        <div class="home-grid">
+
+          <button
+            id="homeProductsButton" class="home-button home-products"
+            onclick="showPage('products')"
+          >
+            📦 ÜRÜNLER
+          </button>
+
+          <button
+            class="home-button home-cash"
+            onclick="showPage('cash')"
+          >
+            💰 KASA AÇ / KAPAT
+          </button>
+
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ÜRÜNLER -->
+    <section id="pageProducts" class="page">
+
+      <div class="card">
+
+        <h2 id="productFormTitle">Yeni Ürün Ekle</h2>
+
+        <div id="editingBanner" class="editing-banner">
+          Ürün düzenleme modundasınız.
+        </div>
+
+        <div class="form-grid">
+
+          <div>
+            <label>Ürün Kodu</label>
+
+            <input
+              type="text"
+              value="Otomatik verilecek"
+              disabled
+            >
+          </div>
+
+          <div>
+            <label for="name">Ürün Adı</label>
+
+            <input
+              id="name"
+              type="text"
+              placeholder="Örnek: Profiterol 500 gr"
+              autocomplete="off"
+            >
+          </div>
+
+          <div>
+            <label for="category">Kategori</label>
+
+            <select id="category">
+              <option value="">Kategori seçiniz</option>
+              <option value="Profiterol">Profiterol</option>
+              <option value="Ekler">Ekler</option>
+              <option value="Dondurma">Dondurma</option>
+              <option value="İçecekler">İçecekler</option>
+              <option value="Kurabiye">Kurabiye</option>
+              <option value="Brownie">Brownie</option>
+              <option value="Diğer">Diğer</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="price">Satış Fiyatı</label>
+
+            <input
+              id="price"
+              type="number"
+              min="0"
+              step="0.01"
+              inputmode="decimal"
+              placeholder="0,00"
+            >
+          </div>
+
+
+          <div class="photo-field">
+            <label for="productImage">Ürün Fotoğrafı</label>
+
+            <div class="photo-picker">
+              <div id="photoPreview" class="photo-preview">
+                Fotoğraf seçilmedi
+              </div>
+
+              <div>
+                <input
+                  id="productImage"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                >
+
+                <div class="photo-help">
+                  JPG, PNG veya WEBP seçebilirsiniz. Yeni fotoğraf seçmezseniz mevcut fotoğraf korunur.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="checkbox-row">
+
+            <input
+              id="active"
+              type="checkbox"
+              checked
+            >
+
+            <label for="active">
+              Ürün aktif
+            </label>
+
+          </div>
+
+        </div>
+
+        <button
+          id="saveButton"
+          class="main-button save-button"
+          type="button"
+        >
+          ÜRÜNÜ KAYDET
+        </button>
+
+        <button
+          id="cancelEditButton"
+          class="main-button cancel-button"
+          type="button"
+        >
+          DÜZENLEMEYİ İPTAL ET
+        </button>
+
+        <div
+          id="productMessage"
+          class="message"
+        ></div>
+
+      </div>
+
+      <div class="card">
+
+        <h2>Ürünler</h2>
+
+        <button
+          id="refreshProductsButton"
+          class="refresh-button"
+          type="button"
+        >
+          LİSTEYİ YENİLE
+        </button>
+
+        <div class="product product-header">
+          <div>Kod</div>
+          <div>Ürün</div>
+          <div>Kategori</div>
+          <div>Fiyat</div>
+          <div>Durum</div>
+          <div>İşlem</div>
+        </div>
+
+        <div id="productList" class="loading">
+          Ürünler yükleniyor...
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- KASA -->
+    <section id="pageCash" class="page">
+
+      <div class="card">
+
+        <h2>Kasa Durumu</h2>
+
+        <div id="cashStatus" class="loading">
+          Kasa durumu kontrol ediliyor...
+        </div>
+
+        <div id="openCashPanel" style="display:none;">
+
+          <h3>Kasayı Aç</h3>
+
+          <label for="openingAmount">
+            Açılış Nakit Tutarı
+          </label>
+
+          <input
+            id="openingAmount"
+            type="number"
+            min="0"
+            step="0.01"
+            inputmode="decimal"
+            placeholder="0,00"
+          >
+
+          <button
+            id="openCashButton"
+            class="main-button open-button"
+            type="button"
+          >
+            KASAYI AÇ
+          </button>
+
+        </div>
+
+        <div id="closeCashPanel" style="display:none;">
+
+          <h3>Kasayı Kapat</h3>
+
+          <label for="closingAmount">
+            Kasada Sayılan Nakit
+          </label>
+
+          <input
+            id="closingAmount"
+            type="number"
+            min="0"
+            step="0.01"
+            inputmode="decimal"
+            placeholder="0,00"
+          >
+
+          <button
+            id="closeCashButton"
+            class="main-button close-button"
+            type="button"
+          >
+            KASAYI KAPAT
+          </button>
+
+        </div>
+
+        <div
+          id="cashMessage"
+          class="message"
+        ></div>
+
+      </div>
+
+      <div class="card">
+
+        <h2>Son Kasa İşlemleri</h2>
+
+        <button
+          id="refreshCashButton"
+          class="refresh-button"
+          type="button"
+        >
+          LİSTEYİ YENİLE
+        </button>
+
+        <div class="cash-history-row cash-history-header">
+          <div>Açılış</div>
+          <div>Açılış Tutarı</div>
+          <div>Kapanış</div>
+          <div>Kapanış Tutarı</div>
+          <div>Durum</div>
+        </div>
+
+        <div id="cashHistory" class="loading">
+          Kasa hareketleri yükleniyor...
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- SATIŞLAR -->
+    <section id="pageSales" class="page">
+      <div class="card">
+        <h2>Satışlar</h2>
+        <div class="report-filters">
+          <button class="report-filter-button active-filter" data-range="today">Bugün</button>
+          <button class="report-filter-button" data-range="yesterday">Dün</button>
+          <button class="report-filter-button" data-range="week">Bu Hafta</button>
+          <button class="report-filter-button" data-range="month">Bu Ay</button>
+          <button class="report-filter-button" data-range="all">Tümü</button>
+        </div>
+        <div class="sales-row sales-header">
+          <div>Tarih / Saat</div><div>Satış No</div><div>Masa</div><div>Tutar</div><div>Ödeme</div>
+        </div>
+        <div id="salesList" class="loading">Henüz satış yok.</div>
+      </div>
+    </section>
+
+    <!-- RAPORLAR -->
+    <section id="pageReports" class="page">
+      <div class="card">
+        <h2>Günlük Rapor</h2>
+        <div class="report-cards">
+          <div class="report-card"><div class="report-card-title">Bugünkü Ciro</div><div id="reportTurnover" class="report-card-value">0,00 TL</div></div>
+          <div class="report-card"><div class="report-card-title">Satış Sayısı</div><div id="reportCount" class="report-card-value">0</div></div>
+          <div class="report-card"><div class="report-card-title">Ortalama Sepet</div><div id="reportAverage" class="report-card-value">0,00 TL</div></div>
+        </div>
+        <h3>Ödeme Türlerine Göre</h3>
+        <div id="paymentReport" class="loading">Henüz ödeme kaydı yok.</div>
+        <h3 style="margin-top:24px;">En Çok Satan Ürünler</h3>
+        <div id="productReport" class="loading">Henüz ürün satışı yok.</div>
+      </div>
+    </section>
+
+  </div>
+
+
+  <div id="tableModal" class="modal-overlay">
+    <div class="modal-card" style="max-width:1200px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:0;background:white;z-index:5;padding-bottom:12px;">
+        <h2 id="modalTableName" style="margin:0;">Masa</h2>
+        <button id="topClosePanelButton" class="modal-button modal-cancel" type="button" style="min-width:120px;">
+          KAPAT
+        </button>
+      </div>
+
+      <div id="modalClosedView">
+        <div id="modalTableInfo" class="receipt-preview">
+          Sipariş eklemek için masayı açınız.
+        </div>
+
+        <div class="modal-actions">
+          <button id="openTableButton" class="modal-button modal-open" type="button">
+            SİPARİŞ EKLE
+          </button>
+
+          <button id="cancelTableButtonClosed" class="modal-button modal-cancel" type="button">
+            KAPAT
+          </button>
+        </div>
+      </div>
+
+      <div id="modalOpenView" style="display:none;">
+        <div class="sales-layout">
+          <div class="sales-panel">
+            <input
+              id="productSearch"
+              class="search-input"
+              type="text"
+              placeholder="Ürün ara..."
+              autocomplete="off"
+            >
+
+            <div id="categoryStrip" class="category-strip"></div>
+            <div id="saleProductsGrid" class="products-grid"></div>
+          </div>
+
+          <div class="sales-panel">
+            <h3 style="margin-top:0;">Sipariş</h3>
+
+            <div id="cartList" class="cart-list"></div>
+
+            <div class="cart-total">
+              <span>TOPLAM</span>
+              <span id="cartTotal">0,00 TL</span>
+            </div>
+
+            <div class="modal-actions">
+              <button id="printReceiptButton" class="modal-button modal-print" type="button">
+                ADİSYON YAZDIR
+              </button>
+
+              <button id="closeTableButton" class="modal-button modal-close" type="button">
+                MASAYI KAPAT
+              </button>
+
+              <button id="cancelTableButton" class="modal-button modal-cancel" type="button">
+                PANELİ KAPAT
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="paymentModal" class="modal-overlay"><div class="payment-modal-card"><h2 style="margin-top:0;">Parçalı Tahsilat</h2><div id="paymentTotalTitle" class="receipt-preview"></div>
+  <div style="margin-top:16px;">
+  <div class="payment-row"><label>Nakit</label><input id="payCash" class="payment-input" type="number" min="0" step="0.01" value="0"></div>
+  <div class="payment-row"><label>Kredi Kartı</label><input id="payCard" class="payment-input" type="number" min="0" step="0.01" value="0"></div>
+  <div class="payment-row"><label>Yemeksepeti</label><input id="payYemeksepeti" class="payment-input" type="number" min="0" step="0.01" value="0"></div>
+  <div class="payment-row"><label>Getir</label><input id="payGetir" class="payment-input" type="number" min="0" step="0.01" value="0"></div>
+  <div class="payment-row"><label>Trendyol</label><input id="payTrendyol" class="payment-input" type="number" min="0" step="0.01" value="0"></div>
+  <div class="payment-row"><label>KaptanNili.com</label><input id="payKaptanNili" class="payment-input" type="number" min="0" step="0.01" value="0"></div></div>
+  <div class="quick-payments"><button id="allCashButton" class="quick-button">Tümünü Nakit</button><button id="allCardButton" class="quick-button">Tümünü Kart</button></div>
+  <div class="payment-summary"><div class="payment-summary-row"><span>Toplanan</span><strong id="collectedAmount">0,00 TL</strong></div><div class="payment-summary-row"><span>Kalan</span><strong id="remainingAmount" class="remaining-bad">0,00 TL</strong></div><div class="payment-summary-row"><span>Para Üstü</span><strong id="changeAmount">0,00 TL</strong></div></div>
+  <label class="checkbox-print"><input id="printAfterPayment" type="checkbox">Adisyon Yazdır</label><div class="modal-actions"><button id="completePaymentButton" class="modal-button modal-open" disabled>TAHSİLATI TAMAMLA</button><button id="cancelPaymentButton" class="modal-button modal-cancel">VAZGEÇ</button></div></div></div>
+
+  <div id="printReceipt"></div>
+
+  </div><!-- /appShell -->
+
+  <script src="js/app.js"></script>
+
+</body>
+</html>
