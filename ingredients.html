@@ -53,7 +53,20 @@ function openNewModal(){ingredientForm.reset();ingredientId.value="";ingredientA
 function closeModal(){ingredientModal.classList.remove("show")}
 function editIngredient(id){const i=allIngredients.find(x=>Number(x.id)===Number(id));if(!i)return;ingredientId.value=i.id;ingredientCode.value=i.code||"";ingredientName.value=i.name||"";ingredientGroup.value=i.group_name||"";ingredientUnit.value=i.unit||"";currentStock.value=i.current_stock??0;minimumStock.value=i.minimum_stock??0;unitCost.value=i.unit_cost??0;ingredientNotes.value=i.notes||"";ingredientActive.checked=i.active!==false;modalTitle.textContent="Malzemeyi Düzenle";ingredientModal.classList.add("show")}
 async function nextCode(){const nums=allIngredients.map(x=>Number(String(x.code||"").replace(/\D/g,""))).filter(Number.isFinite);return "MLZ-"+String((nums.length?Math.max(...nums):0)+1).padStart(3,"0")}
-async function saveIngredient(e){e.preventDefault();const id=ingredientId.value;const payload={code:(ingredientCode.value.trim()||await nextCode()).toUpperCase(),name:ingredientName.value.trim(),group_name:ingredientGroup.value,unit:ingredientUnit.value,current_stock:Number(currentStock.value||0),minimum_stock:Number(minimumStock.value||0),unit_cost:Number(unitCost.value||0),notes:ingredientNotes.value.trim()||null,active:ingredientActive.checked,updated_at:new Date().toISOString()};if(!payload.name||!payload.group_name||!payload.unit)return showToast("Ad, grup ve birim zorunludur.","error");try{setLoading(true);let q=id?db.from("ingredients").update(payload).eq("id",id):db.from("ingredients").insert(payload);const{error}=await q;if(error)throw error;showToast(id?"Malzeme güncellendi.":"Yeni malzeme eklendi.","success");closeModal();await loadIngredients()}catch(e){showToast("Kaydedilemedi: "+e.message,"error",8000)}finally{setLoading(false)}}
+async function saveIngredient(e){e.preventDefault();const id=ingredientId.value;const payload={code:(ingredientCode.value.trim()||await nextCode()).toUpperCase(),name:ingredientName.value.trim(),group_name:ingredientGroup.value,unit:ingredientUnit.value,current_stock:Number(currentStock.value||0),minimum_stock:Number(minimumStock.value||0),unit_cost:Number(unitCost.value||0),notes:ingredientNotes.value.trim()||null,active:ingredientActive.checked,updated_at:new Date().toISOString()};if(!payload.name||!payload.group_name||!payload.unit)return showToast("Ad, grup ve birim zorunludur.","error");try{setLoading(true);let q=id?db.from("ingredients").update(payload).eq("id",id):db.from("ingredients").insert(payload);const{error}=await q;if(error)throw error;showToast(id?"Malzeme güncellendi.":"Yeni malzeme eklendi.","success");closeModal();await loadIngredients()}catch(e){
+  if(e?.code==="23505"){
+    showToast("Bu malzeme zaten kayıtlı.","error",6000);
+  }else{
+    showToast(
+      "Kaydedilemedi: "+(e?.message||"Bilinmeyen hata"),
+      "error",
+      8000
+    );
+    console.error(e);
+  }
+}finally{
+  setLoading(false)
+}}
 async function toggleStatus(id){const i=allIngredients.find(x=>Number(x.id)===Number(id));if(!i||!confirm(`"${i.name}" ${i.active?'pasife alınsın mı?':'aktif yapılsın mı?'}`))return;try{setLoading(true);const{error}=await db.from("ingredients").update({active:!i.active,updated_at:new Date().toISOString()}).eq("id",id);if(error)throw error;await loadIngredients();showToast("Durum güncellendi.","success")}catch(e){showToast(e.message,"error")}finally{setLoading(false)}}
 function exportExcel(){const rows=allIngredients.map(i=>({Kod:i.code,"Malzeme Adı":i.name,Grup:i.group_name,Birim:i.unit,"Mevcut Stok":Number(i.current_stock||0),"Minimum Stok":Number(i.minimum_stock||0),"Birim Maliyeti TL":Number(i.unit_cost||0),Aktif:i.active?"Evet":"Hayır",Not:i.notes||""}));const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Malzemeler");XLSX.writeFile(wb,`KaptanNili_Malzemeler_${new Date().toISOString().slice(0,10)}.xlsx`)}
 function downloadTemplate(){const rows=[{Kod:"MLZ-001","Malzeme Adı":"Pataşu Normal",Grup:"Pataşu",Birim:"adet","Mevcut Stok":0,"Minimum Stok":0,"Birim Maliyeti TL":0,Aktif:"Evet",Not:""}];const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Malzemeler");XLSX.writeFile(wb,"KaptanNili_Malzeme_Sablonu.xlsx")}
