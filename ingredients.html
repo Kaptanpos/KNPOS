@@ -46,13 +46,20 @@ async function logout(){if(confirm("Oturumu kapatmak istediğine emin misin?")){
 function fillSelects(){ingredientGroup.innerHTML='<option value="">Grup seç</option>'+GROUPS.map(x=>`<option>${x}</option>`).join("");ingredientUnit.innerHTML='<option value="">Birim seç</option>'+UNITS.map(x=>`<option>${x}</option>`).join("");groupFilter.innerHTML='<option value="">Tüm gruplar</option>'+GROUPS.map(x=>`<option>${x}</option>`).join("")}
 async function loadIngredients(){try{setLoading(true);const{data,error}=await db.from("ingredients").select("*").order("id",{ascending:true});if(error)throw error;allIngredients=data||[];updateSummary();filterIngredients()}catch(e){showToast("Malzemeler yüklenemedi. Önce database-ingredients.sql dosyasını Supabase SQL Editor'de çalıştırmalısın. Hata: "+e.message,"error",10000)}finally{setLoading(false)}}
 function filterIngredients(){const q=searchInput.value.trim().toLocaleLowerCase("tr-TR"),g=groupFilter.value;const rows=allIngredients.filter(i=>(!q||[i.code,i.name,i.group_name].some(v=>String(v||"").toLocaleLowerCase("tr-TR").includes(q)))&&(!g||i.group_name===g));renderTable(rows);renderMobile(rows)}
-function renderTable(rows){tableBody.innerHTML="";desktopEmpty.classList.toggle("hidden",rows.length>0);rows.forEach(i=>{const critical=Number(i.current_stock)<=Number(i.minimum_stock)&&Number(i.minimum_stock)>0;const tr=document.createElement("tr");tr.className="border-t border-slate-700 hover:bg-slate-800/60";tr.innerHTML=`<td class="p-4 font-bold text-sky-300">${esc(i.code||"-")}</td><td class="p-4 font-black">${esc(i.name)}</td><td class="p-4">${esc(i.group_name)}</td><td class="p-4">${esc(i.unit)}</td><td class="p-4 font-black ${critical?'text-rose-300':''}">${fmt(i.current_stock)}</td><td class="p-4">${fmt(i.minimum_stock)}</td><td class="p-4">${money(i.unit_cost)}</td><td class="p-4">${i.active?'<span class="status-badge status-active">Aktif</span>':'<span class="status-badge status-passive">Pasif</span>'}</td><td class="p-4"><div class="flex justify-end gap-2"><button onclick="editIngredient(${i.id})" class="touch-button px-4 rounded-xl bg-amber-600 font-bold">✏️ Düzenle</button><button onclick="toggleStatus(${i.id})" class="touch-button px-4 rounded-xl ${i.active?'bg-rose-700':'bg-emerald-700'} font-bold">${i.active?'Pasife Al':'Aktif Yap'}</button></div></td>`;tableBody.appendChild(tr)})}
-function renderMobile(rows){mobileList.innerHTML="";mobileEmpty.classList.toggle("hidden",rows.length>0);rows.forEach(i=>{const critical=Number(i.current_stock)<=Number(i.minimum_stock)&&Number(i.minimum_stock)>0;const c=document.createElement("article");c.className="glass rounded-2xl p-5";c.innerHTML=`<div class="flex justify-between gap-3"><div><div class="text-sky-300 font-bold">${esc(i.code||"-")}</div><div class="text-xl font-black mt-1">${esc(i.name)}</div><div class="text-slate-400">${esc(i.group_name)} • ${esc(i.unit)}</div></div>${i.active?'<span class="status-badge status-active">Aktif</span>':'<span class="status-badge status-passive">Pasif</span>'}</div><div class="grid grid-cols-3 gap-2 mt-4"><div class="bg-slate-900 rounded-xl p-3"><div class="text-xs text-slate-500">Stok</div><div class="font-black ${critical?'text-rose-300':''}">${fmt(i.current_stock)}</div></div><div class="bg-slate-900 rounded-xl p-3"><div class="text-xs text-slate-500">Minimum</div><div class="font-black">${fmt(i.minimum_stock)}</div></div><div class="bg-slate-900 rounded-xl p-3"><div class="text-xs text-slate-500">Maliyet</div><div class="font-black">${money(i.unit_cost)}</div></div></div><div class="grid grid-cols-2 gap-3 mt-4"><button onclick="editIngredient(${i.id})" class="touch-button rounded-xl bg-amber-600 font-black">✏️ Düzenle</button><button onclick="toggleStatus(${i.id})" class="touch-button rounded-xl ${i.active?'bg-rose-700':'bg-emerald-700'} font-black">${i.active?'Pasife Al':'Aktif Yap'}</button></div>`;mobileList.appendChild(c)})}
+function renderTable(rows){tableBody.innerHTML="";desktopEmpty.classList.toggle("hidden",rows.length>0);rows.forEach(i=>{const critical=Number(i.current_stock)<=Number(i.minimum_stock)&&Number(i.minimum_stock)>0;const tr=document.createElement("tr");tr.className="border-t border-slate-700 hover:bg-slate-800/60";tr.innerHTML=`<td class="p-4 font-bold text-sky-300">${esc(i.code||"-")}</td><td class="p-4 font-black">${esc(i.name)}</td><td class="p-4">${esc(i.group_name)}</td><td class="p-4">${esc(i.unit)}</td><td class="p-4 font-black ${critical?'text-rose-300':''}">${fmt(i.current_stock)}</td><td class="p-4">${fmt(i.minimum_stock)}</td><td class="p-4">${money(i.unit_cost)}</td><td class="p-4">${i.active?'<span class="status-badge status-active">Aktif</span>':'<span class="status-badge status-passive">Pasif</span>'}</td><td class="p-4"><div class="flex justify-end gap-2"><button onclick="editIngredient(${i.id})" class="touch-button px-4 rounded-xl bg-amber-600 font-bold">✏️ Düzenle</button><button onclick="toggleStatus(${i.id})" class="touch-button px-4 rounded-xl ${i.active?'bg-rose-700':'bg-emerald-700'} font-bold">${i.active?'Pasife Al':'Aktif Yap'}</button><button onclick="deleteIngredient(${i.id})" class="touch-button px-4 rounded-xl bg-red-900 hover:bg-red-800 font-bold">🗑️ Sil</button></div></td>`;tableBody.appendChild(tr)})}
+
+function renderMobile(rows){mobileList.innerHTML="";mobileEmpty.classList.toggle("hidden",rows.length>0);rows.forEach(i=>{const critical=Number(i.current_stock)<=Number(i.minimum_stock)&&Number(i.minimum_stock)>0;const c=document.createElement("article");c.className="glass rounded-2xl p-5";c.innerHTML=`<div class="flex justify-between gap-3"><div><div class="text-sky-300 font-bold">${esc(i.code||"-")}</div><div class="text-xl font-black mt-1">${esc(i.name)}</div><div class="text-slate-400">${esc(i.group_name)} • ${esc(i.unit)}</div></div>${i.active?'<span class="status-badge status-active">Aktif</span>':'<span class="status-badge status-passive">Pasif</span>'}</div><div class="grid grid-cols-3 gap-2 mt-4"><div class="bg-slate-900 rounded-xl p-3"><div class="text-xs text-slate-500">Stok</div><div class="font-black ${critical?'text-rose-300':''}">${fmt(i.current_stock)}</div></div><div class="bg-slate-900 rounded-xl p-3"><div class="text-xs text-slate-500">Minimum</div><div class="font-black">${fmt(i.minimum_stock)}</div></div><div class="bg-slate-900 rounded-xl p-3"><div class="text-xs text-slate-500">Maliyet</div><div class="font-black">${money(i.unit_cost)}</div></div></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4"><button onclick="editIngredient(${i.id})" class="touch-button rounded-xl bg-amber-600 font-black">✏️ Düzenle</button><button onclick="toggleStatus(${i.id})" class="touch-button rounded-xl ${i.active?'bg-rose-700':'bg-emerald-700'} font-black">${i.active?'Pasife Al':'Aktif Yap'}</button><button onclick="deleteIngredient(${i.id})" class="touch-button rounded-xl bg-red-900 hover:bg-red-800 font-black">🗑️ Sil</button></div>`;mobileList.appendChild(c)})}
+
 function updateSummary(){totalCount.textContent=allIngredients.length;activeCount.textContent=allIngredients.filter(x=>x.active).length;criticalCount.textContent=allIngredients.filter(x=>x.active&&Number(x.minimum_stock)>0&&Number(x.current_stock)<=Number(x.minimum_stock)).length}
+
 function openNewModal(){ingredientForm.reset();ingredientId.value="";ingredientActive.checked=true;currentStock.value=0;minimumStock.value=0;unitCost.value=0;modalTitle.textContent="Yeni Malzeme";ingredientModal.classList.add("show");setTimeout(()=>ingredientName.focus(),100)}
+
 function closeModal(){ingredientModal.classList.remove("show")}
+
 function editIngredient(id){const i=allIngredients.find(x=>Number(x.id)===Number(id));if(!i)return;ingredientId.value=i.id;ingredientCode.value=i.code||"";ingredientName.value=i.name||"";ingredientGroup.value=i.group_name||"";ingredientUnit.value=i.unit||"";currentStock.value=i.current_stock??0;minimumStock.value=i.minimum_stock??0;unitCost.value=i.unit_cost??0;ingredientNotes.value=i.notes||"";ingredientActive.checked=i.active!==false;modalTitle.textContent="Malzemeyi Düzenle";ingredientModal.classList.add("show")}
+
 async function nextCode(){const nums=allIngredients.map(x=>Number(String(x.code||"").replace(/\D/g,""))).filter(Number.isFinite);return "MLZ-"+String((nums.length?Math.max(...nums):0)+1).padStart(3,"0")}
+
 async function saveIngredient(e){e.preventDefault();const id=ingredientId.value;const payload={code:(ingredientCode.value.trim()||await nextCode()).toUpperCase(),name:ingredientName.value.trim(),group_name:ingredientGroup.value,unit:ingredientUnit.value,current_stock:Number(currentStock.value||0),minimum_stock:Number(minimumStock.value||0),unit_cost:Number(unitCost.value||0),notes:ingredientNotes.value.trim()||null,active:ingredientActive.checked,updated_at:new Date().toISOString()};if(!payload.name||!payload.group_name||!payload.unit)return showToast("Ad, grup ve birim zorunludur.","error");try{setLoading(true);let q=id?db.from("ingredients").update(payload).eq("id",id):db.from("ingredients").insert(payload);const{error}=await q;if(error)throw error;showToast(id?"Malzeme güncellendi.":"Yeni malzeme eklendi.","success");closeModal();await loadIngredients()}catch(e){
   if(e?.code==="23505"){
     showToast("Bu malzeme zaten kayıtlı.","error",6000);
@@ -67,11 +74,65 @@ async function saveIngredient(e){e.preventDefault();const id=ingredientId.value;
 }finally{
   setLoading(false)
 }}
+
 async function toggleStatus(id){const i=allIngredients.find(x=>Number(x.id)===Number(id));if(!i||!confirm(`"${i.name}" ${i.active?'pasife alınsın mı?':'aktif yapılsın mı?'}`))return;try{setLoading(true);const{error}=await db.from("ingredients").update({active:!i.active,updated_at:new Date().toISOString()}).eq("id",id);if(error)throw error;await loadIngredients();showToast("Durum güncellendi.","success")}catch(e){showToast(e.message,"error")}finally{setLoading(false)}}
+
+async function deleteIngredient(id){
+  const i=allIngredients.find(x=>Number(x.id)===Number(id));
+  if(!i)return;
+
+  const ok=confirm(
+    `"${i.name}" malzemesi kalıcı olarak silinsin mi?\n\nBu işlem geri alınamaz.`
+  );
+  if(!ok)return;
+
+  try{
+    setLoading(true);
+    const{error}=await db.from("ingredients").delete().eq("id",id);
+    if(error)throw error;
+
+    await loadIngredients();
+    showToast("Malzeme silindi.","success");
+  }catch(e){
+    if(e?.code==="23503"){
+      showToast(
+        "Bu malzeme başka kayıtlarda kullanıldığı için silinemez. Pasife alabilirsin.",
+        "error",
+        8000
+      );
+    }else{
+      showToast(
+        "Malzeme silinemedi: "+(e?.message||"Bilinmeyen hata"),
+        "error",
+        8000
+      );
+      console.error(e);
+    }
+  }finally{
+    setLoading(false);
+  }
+}
 function exportExcel(){const rows=allIngredients.map(i=>({Kod:i.code,"Malzeme Adı":i.name,Grup:i.group_name,Birim:i.unit,"Mevcut Stok":Number(i.current_stock||0),"Minimum Stok":Number(i.minimum_stock||0),"Birim Maliyeti TL":Number(i.unit_cost||0),Aktif:i.active?"Evet":"Hayır",Not:i.notes||""}));const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Malzemeler");XLSX.writeFile(wb,`KaptanNili_Malzemeler_${new Date().toISOString().slice(0,10)}.xlsx`)}
+
 function downloadTemplate(){const rows=[{Kod:"MLZ-001","Malzeme Adı":"Pataşu Normal",Grup:"Pataşu",Birim:"adet","Mevcut Stok":0,"Minimum Stok":0,"Birim Maliyeti TL":0,Aktif:"Evet",Not:""}];const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Malzemeler");XLSX.writeFile(wb,"KaptanNili_Malzeme_Sablonu.xlsx")}
+
 async function importExcel(ev){const file=ev.target.files?.[0];ev.target.value="";if(!file)return;try{setLoading(true);const data=await file.arrayBuffer(),wb=XLSX.read(data),rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""});if(!rows.length)throw new Error("Excel boş.");const payload=[];for(const r of rows){const name=String(r["Malzeme Adı"]||r["Malzeme Adi"]||r["Malzeme"]||"").trim();if(!name)continue;payload.push({code:String(r["Kod"]||await nextCode()).trim().toUpperCase(),name,group_name:String(r["Grup"]||"Diğer").trim(),unit:normalizeUnit(r["Birim"]||"kg"),current_stock:num(r["Mevcut Stok"]),minimum_stock:num(r["Minimum Stok"]),unit_cost:num(r["Birim Maliyeti TL"]||r["Maliyet"]),active:yes(r["Aktif"]),notes:String(r["Not"]||"").trim()||null,updated_at:new Date().toISOString()})}if(!payload.length)throw new Error("Geçerli satır bulunamadı.");const{error}=await db.from("ingredients").upsert(payload,{onConflict:"code"});if(error)throw error;showToast(`${payload.length} malzeme içe aktarıldı/güncellendi.`,"success",6000);await loadIngredients()}catch(e){showToast("Excel içe aktarılamadı: "+e.message,"error",9000)}finally{setLoading(false)}}
+
 function normalizeUnit(v){const s=String(v??"kg").trim().toLocaleLowerCase("tr-TR");const map={"kilogram":"kg","kilo":"kg","gram":"gr","litre":"lt","liter":"lt","mililitre":"ml","mililiter":"ml"};return map[s]||s}
-function num(v){const n=Number(String(v??0).replace(",","."));return Number.isFinite(n)?n:0}function yes(v){const s=String(v??"Evet").toLocaleLowerCase("tr-TR");return !["hayır","hayir","0","false","pasif"].includes(s)}function fmt(v){return new Intl.NumberFormat("tr-TR",{maximumFractionDigits:3}).format(Number(v||0))}function money(v){return new Intl.NumberFormat("tr-TR",{style:"currency",currency:"TRY",maximumFractionDigits:4}).format(Number(v||0))}function esc(v){return String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]))}function setLoading(x){loading.classList.toggle("show",x)}function showToast(m,t="success",d=3500){toast.textContent=m;toast.className=`toast show toast-${t}`;clearTimeout(window.__tt);window.__tt=setTimeout(()=>toast.classList.remove("show"),d)}
+
+function num(v){const n=Number(String(v??0).replace(",","."));return Number.isFinite(n)?n:0}
+
+function yes(v){const s=String(v??"Evet").toLocaleLowerCase("tr-TR");return !["hayır","hayir","0","false","pasif"].includes(s)}
+
+function fmt(v){return new Intl.NumberFormat("tr-TR",{maximumFractionDigits:3}).format(Number(v||0))}
+
+function money(v){return new Intl.NumberFormat("tr-TR",{style:"currency",currency:"TRY",maximumFractionDigits:4}).format(Number(v||0))}
+
+function esc(v){return String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]))}
+
+function setLoading(x){loading.classList.toggle("show",x)}
+
+function showToast(m,t="success",d=3500){toast.textContent=m;toast.className=`toast show toast-${t}`;clearTimeout(window.__tt);window.__tt=setTimeout(()=>toast.classList.remove("show"),d)}
 </script>
-</body></html>
+</body>
+</html>
