@@ -434,7 +434,18 @@ async function saveProduction(event) {
       .eq("id", ingredient.id);
 
     if (error) throw error;
+const { error: movementError } = await db
+  .from("stock_movements")
+  .insert({
+    ingredient_id: ingredient.id,
+    movement_type: "production",
+    quantity: amount,
+    reference_type: "manual_production",
+    reference_id: null,
+    note: note || "Üretim girişi"
+  });
 
+if (movementError) throw movementError;
     ingredient.current_stock = newStock;
 
     saveLocalHistory({
