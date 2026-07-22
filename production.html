@@ -1,1 +1,604 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kaptan Nili Bulut POS - Üretim</title>
 
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family:Arial,Helvetica,sans-serif;
+      background:#07111f;
+      color:white;
+    }
+
+    .glass{
+      background:rgba(15,30,50,.94);
+      border:1px solid rgba(255,255,255,.10);
+      box-shadow:0 15px 45px rgba(0,0,0,.30);
+    }
+
+    .form-input{
+      width:100%;
+      min-height:58px;
+      padding:0 16px;
+      border-radius:14px;
+      border:1px solid #334155;
+      background:#0b1728;
+      color:white;
+      outline:none;
+      font-size:18px;
+    }
+
+    .form-input:focus{
+      border-color:#38bdf8;
+      box-shadow:0 0 0 3px rgba(56,189,248,.18);
+    }
+
+    .touch-button{
+      min-height:58px;
+      transition:transform .12s ease;
+    }
+
+    .touch-button:active{
+      transform:scale(.97);
+    }
+
+    .toast{
+      position:fixed;
+      right:20px;
+      bottom:20px;
+      z-index:500;
+      min-width:280px;
+      max-width:430px;
+      padding:17px 20px;
+      border-radius:14px;
+      font-weight:bold;
+      display:none;
+      box-shadow:0 15px 45px rgba(0,0,0,.40);
+    }
+
+    .toast.show{display:block;}
+    .toast-success{background:#166534;}
+    .toast-error{background:#991b1b;}
+
+    .loading-overlay{
+      position:fixed;
+      inset:0;
+      z-index:600;
+      background:rgba(2,6,23,.82);
+      display:none;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .loading-overlay.show{display:flex;}
+
+    .spinner{
+      width:55px;
+      height:55px;
+      border:6px solid rgba(255,255,255,.18);
+      border-top-color:#38bdf8;
+      border-radius:50%;
+      animation:spin .8s linear infinite;
+    }
+
+    @keyframes spin{
+      to{transform:rotate(360deg);}
+    }
+  </style>
+</head>
+
+<body>
+
+<header class="border-b border-slate-700 bg-slate-950/95 sticky top-0 z-40">
+  <div class="max-w-[1500px] mx-auto px-4 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+
+    <div>
+      <div class="text-2xl lg:text-3xl font-black">
+        ⚓ Kaptan Nili Bulut POS
+      </div>
+      <div class="text-rose-300 italic mt-1">
+        Only With Love ❤️
+      </div>
+    </div>
+
+    <div class="flex flex-col lg:items-end gap-3">
+
+      <div class="flex flex-wrap gap-3 items-center">
+        <div class="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 min-w-[210px]">
+          <div id="pageUserName" class="font-black">
+            Kullanıcı kontrol ediliyor...
+          </div>
+          <div id="pageUserRole" class="text-sm text-slate-400 mt-1">-</div>
+        </div>
+
+        <button
+          onclick="logout()"
+          class="touch-button px-5 rounded-xl bg-rose-700 hover:bg-rose-600 font-bold">
+          🚪 Çıkış
+        </button>
+      </div>
+
+      <div class="flex flex-wrap gap-3">
+        <a href="index.html"
+           class="touch-button px-5 rounded-xl bg-slate-700 hover:bg-slate-600 flex items-center justify-center font-bold">
+          🏠 Ana Menü
+        </a>
+
+        <a href="ingredients.html"
+           class="touch-button px-5 rounded-xl bg-indigo-700 hover:bg-indigo-600 flex items-center justify-center font-bold">
+          🥣 Malzemeler
+        </a>
+      </div>
+
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1500px] mx-auto p-4 lg:p-6">
+
+  <section class="glass rounded-2xl p-5 lg:p-7 mb-5">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-black">🏭 Üretim Merkezi</h1>
+        <p class="text-slate-400 mt-2">
+          Üretilen pataşu, krema ve sos miktarlarını stoğa ekle.
+        </p>
+      </div>
+
+      <div class="rounded-2xl bg-emerald-950/60 border border-emerald-700 px-5 py-4">
+        <div class="text-sm text-emerald-300">Bugünkü işlem</div>
+        <div id="todayCount" class="text-3xl font-black text-emerald-300">0</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid grid-cols-1 xl:grid-cols-[520px_1fr] gap-5">
+
+    <section class="glass rounded-2xl p-5 lg:p-7">
+
+      <h2 class="text-2xl font-black mb-6">Yeni Üretim Girişi</h2>
+
+      <form id="productionForm">
+
+        <label class="block mb-5">
+          <span class="block text-slate-300 font-bold mb-2">Malzeme</span>
+          <select id="ingredientSelect" class="form-input" required>
+            <option value="">Malzeme seçiniz</option>
+          </select>
+        </label>
+
+        <div id="stockInfo"
+             class="hidden mb-5 rounded-2xl bg-slate-950 border border-slate-700 p-4">
+          <div class="text-sm text-slate-400">Mevcut stok</div>
+          <div class="flex items-end gap-2 mt-1">
+            <div id="currentStockText" class="text-3xl font-black">0</div>
+            <div id="currentUnitText" class="text-slate-400 mb-1">-</div>
+          </div>
+        </div>
+
+        <label class="block mb-5">
+          <span class="block text-slate-300 font-bold mb-2">Üretilen miktar</span>
+          <div class="flex gap-3">
+            <input
+              id="productionAmount"
+              type="number"
+              min="0.001"
+              step="0.001"
+              class="form-input"
+              placeholder="Örnek: 10"
+              required>
+
+            <div
+              id="unitBox"
+              class="min-w-[100px] rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center font-black text-lg">
+              -
+            </div>
+          </div>
+        </label>
+
+        <label class="block mb-6">
+          <span class="block text-slate-300 font-bold mb-2">Açıklama</span>
+          <input
+            id="productionNote"
+            class="form-input"
+            placeholder="Örnek: Sabah üretimi">
+        </label>
+
+        <button
+          id="produceButton"
+          type="submit"
+          class="touch-button w-full rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-xl font-black">
+          🏭 ÜRETİMİ KAYDET
+        </button>
+
+      </form>
+    </section>
+
+    <section class="glass rounded-2xl overflow-hidden">
+
+      <div class="p-5 lg:p-7 border-b border-slate-700">
+        <h2 class="text-2xl font-black">📋 Son Üretimler</h2>
+        <p class="text-slate-400 mt-1">Bu cihazda yapılan son üretim girişleri.</p>
+      </div>
+
+      <div id="emptyHistory" class="p-12 text-center text-slate-500">
+        Henüz üretim girişi yapılmadı.
+      </div>
+
+      <div id="historyList" class="divide-y divide-slate-700"></div>
+
+    </section>
+
+  </div>
+</main>
+
+<div id="loading" class="loading-overlay">
+  <div class="text-center">
+    <div class="spinner mx-auto"></div>
+    <div class="mt-4 text-lg font-bold">İşlem yapılıyor...</div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const SUPABASE_URL =
+  "https://stytmmafrrtqaxobihap.supabase.co";
+
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0eXRtbWFmcnJ0cWF4b2JpaGFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4NTA2NDEsImV4cCI6MjA5OTQyNjY0MX0.Y9XqTcm4YDIeZznC7RlXKJuC0eEsJ9oYbIYj3abRrI0";
+
+const db = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+let ingredients = [];
+let currentUser = null;
+let currentProfile = null;
+
+document.addEventListener("DOMContentLoaded", async () => {
+  if (!await protectPage()) return;
+
+  document
+    .getElementById("productionForm")
+    .addEventListener("submit", saveProduction);
+
+  document
+    .getElementById("ingredientSelect")
+    .addEventListener("change", updateSelectedIngredient);
+
+  await loadIngredients();
+  renderHistory();
+});
+
+async function protectPage() {
+  try {
+    setLoading(true);
+
+    const {
+      data: { session }
+    } = await db.auth.getSession();
+
+    if (!session?.user) {
+      location.replace("index.html");
+      return false;
+    }
+
+    currentUser = session.user;
+
+    const { data: profile, error } = await db
+      .from("profiles")
+      .select("full_name,role,active")
+      .eq("id", session.user.id)
+      .single();
+
+    if (error || !profile || profile.active !== true) {
+      await db.auth.signOut();
+      location.replace("index.html");
+      return false;
+    }
+
+    if (profile.role !== "admin") {
+      alert("Üretim ekranı yalnızca yetkili kullanıcıya açıktır.");
+      location.replace("index.html");
+      return false;
+    }
+
+    currentProfile = profile;
+
+    pageUserName.textContent =
+      profile.full_name || session.user.email;
+
+    pageUserRole.textContent = "👑 Yetkili";
+
+    return true;
+
+  } catch (error) {
+    console.error(error);
+    location.replace("index.html");
+    return false;
+
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function loadIngredients() {
+  try {
+    setLoading(true);
+
+    const { data, error } = await db
+      .from("ingredients")
+      .select("id,code,name,group_name,unit,current_stock,active")
+      .eq("active", true)
+      .order("group_name")
+      .order("name");
+
+    if (error) throw error;
+
+    ingredients = data || [];
+
+    ingredientSelect.innerHTML =
+      '<option value="">Malzeme seçiniz</option>' +
+      ingredients.map(item => `
+        <option value="${item.id}">
+          ${escapeHtml(item.name)} — ${escapeHtml(item.group_name || "")}
+        </option>
+      `).join("");
+
+  } catch (error) {
+    showToast(
+      "Malzemeler yüklenemedi: " + error.message,
+      "error",
+      7000
+    );
+
+  } finally {
+    setLoading(false);
+  }
+}
+
+function updateSelectedIngredient() {
+  const ingredient = ingredients.find(
+    item => Number(item.id) === Number(ingredientSelect.value)
+  );
+
+  if (!ingredient) {
+    stockInfo.classList.add("hidden");
+    unitBox.textContent = "-";
+    return;
+  }
+
+  stockInfo.classList.remove("hidden");
+
+  currentStockText.textContent =
+    formatNumber(ingredient.current_stock);
+
+  currentUnitText.textContent = ingredient.unit || "";
+
+  unitBox.textContent = ingredient.unit || "-";
+}
+
+async function saveProduction(event) {
+  event.preventDefault();
+
+  const ingredient = ingredients.find(
+    item => Number(item.id) === Number(ingredientSelect.value)
+  );
+
+  const amount = Number(productionAmount.value);
+  const note = productionNote.value.trim();
+
+  if (!ingredient) {
+    showToast("Malzeme seçmelisin.", "error");
+    return;
+  }
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    showToast("Geçerli bir miktar girmelisin.", "error");
+    return;
+  }
+
+  const oldStock = Number(ingredient.current_stock || 0);
+  const newStock = oldStock + amount;
+
+  const confirmation = confirm(
+    `${ingredient.name}\n\n` +
+    `${formatNumber(oldStock)} ${ingredient.unit}\n` +
+    `+ ${formatNumber(amount)} ${ingredient.unit}\n` +
+    `————————————\n` +
+    `${formatNumber(newStock)} ${ingredient.unit}\n\n` +
+    `Üretim kaydedilsin mi?`
+  );
+
+  if (!confirmation) return;
+
+  try {
+    setLoading(true);
+    produceButton.disabled = true;
+
+    const { error } = await db
+      .from("ingredients")
+      .update({
+        current_stock: newStock,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", ingredient.id);
+
+    if (error) throw error;
+
+    ingredient.current_stock = newStock;
+
+    saveLocalHistory({
+      ingredientId: ingredient.id,
+      ingredientName: ingredient.name,
+      amount,
+      unit: ingredient.unit,
+      oldStock,
+      newStock,
+      note,
+      userName:
+        currentProfile?.full_name ||
+        currentUser?.email ||
+        "Yetkili",
+      createdAt: new Date().toISOString()
+    });
+
+    currentStockText.textContent = formatNumber(newStock);
+
+    productionAmount.value = "";
+    productionNote.value = "";
+
+    renderHistory();
+
+    showToast(
+      `${ingredient.name} stoğuna ${formatNumber(amount)} ${ingredient.unit} eklendi.`,
+      "success",
+      5500
+    );
+
+  } catch (error) {
+    console.error(error);
+
+    showToast(
+      "Üretim kaydedilemedi: " + error.message,
+      "error",
+      8000
+    );
+
+  } finally {
+    produceButton.disabled = false;
+    setLoading(false);
+  }
+}
+
+function saveLocalHistory(record) {
+  const history = getLocalHistory();
+
+  history.unshift(record);
+
+  localStorage.setItem(
+    "knpos_production_history",
+    JSON.stringify(history.slice(0, 50))
+  );
+}
+
+function getLocalHistory() {
+  try {
+    return JSON.parse(
+      localStorage.getItem("knpos_production_history") || "[]"
+    );
+  } catch {
+    return [];
+  }
+}
+
+function renderHistory() {
+  const history = getLocalHistory();
+
+  emptyHistory.classList.toggle(
+    "hidden",
+    history.length > 0
+  );
+
+  historyList.innerHTML = history.map(item => `
+    <article class="p-5 lg:px-7 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+      <div>
+        <div class="text-xl font-black">
+          ${escapeHtml(item.ingredientName)}
+        </div>
+
+        <div class="text-slate-400 mt-1">
+          ${escapeHtml(item.note || "Üretim girişi")}
+        </div>
+
+        <div class="text-xs text-slate-500 mt-2">
+          ${formatDate(item.createdAt)} •
+          ${escapeHtml(item.userName || "-")}
+        </div>
+      </div>
+
+      <div class="text-left md:text-right">
+        <div class="text-2xl font-black text-emerald-300">
+          +${formatNumber(item.amount)} ${escapeHtml(item.unit || "")}
+        </div>
+
+        <div class="text-sm text-slate-400 mt-1">
+          Yeni stok:
+          ${formatNumber(item.newStock)}
+          ${escapeHtml(item.unit || "")}
+        </div>
+      </div>
+
+    </article>
+  `).join("");
+
+  const today = new Date().toDateString();
+
+  todayCount.textContent = history.filter(
+    item => new Date(item.createdAt).toDateString() === today
+  ).length;
+}
+
+async function logout() {
+  if (!confirm("Oturumu kapatmak istediğine emin misin?")) {
+    return;
+  }
+
+  await db.auth.signOut();
+  location.replace("index.html");
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat("tr-TR", {
+    maximumFractionDigits: 3
+  }).format(Number(value || 0));
+}
+
+function formatDate(value) {
+  return new Intl.DateTimeFormat("tr-TR", {
+    dateStyle: "short",
+    timeStyle: "short"
+  }).format(new Date(value));
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(
+    /[&<>'"]/g,
+    character => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "'": "&#39;",
+      '"': "&quot;"
+    }[character])
+  );
+}
+
+function setLoading(show) {
+  loading.classList.toggle("show", show);
+}
+
+function showToast(message, type = "success", duration = 3500) {
+  toast.textContent = message;
+  toast.className = `toast show toast-${type}`;
+
+  clearTimeout(window.productionToastTimer);
+
+  window.productionToastTimer = setTimeout(() => {
+    toast.classList.remove("show");
+  }, duration);
+}
+</script>
+
+</body>
+</html>
