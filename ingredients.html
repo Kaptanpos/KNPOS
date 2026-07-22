@@ -45,8 +45,43 @@ async function protect(){try{setLoading(true);const{data:{session}}=await db.aut
 async function logout(){if(confirm("Oturumu kapatmak istediğine emin misin?")){await db.auth.signOut();location.replace("index.html")}}
 function fillSelects(){ingredientGroup.innerHTML='<option value="">Grup seç</option>'+GROUPS.map(x=>`<option>${x}</option>`).join("");ingredientUnit.innerHTML='<option value="">Birim seç</option>'+UNITS.map(x=>`<option>${x}</option>`).join("");groupFilter.innerHTML='<option value="">Tüm gruplar</option>'+GROUPS.map(x=>`<option>${x}</option>`).join("")}
 async function loadIngredients(){try{setLoading(true);const{data,error}=await db.from("ingredients").select("*").order("id",{ascending:true});if(error)throw error;allIngredients=data||[];updateSummary();filterIngredients()}catch(e){showToast("Malzemeler yüklenemedi. Önce database-ingredients.sql dosyasını Supabase SQL Editor'de çalıştırmalısın. Hata: "+e.message,"error",10000)}finally{setLoading(false)}}
-function filterIngredients(){const q=searchInput.value.trim().toLocaleLowerCase("tr-TR"),g=groupFilter.value;const rows=allIngredients.filter(i=>(!q||[i.code,i.name,i.group_name].some(v=>String(v||"").toLocaleLowerCase("tr-TR").includes(q)))&&(!g||i.group_name===g));renderTable(rows);renderMobile(rows)}
-function getStockState(i){
+function filterIngredients(){
+  const q=searchInput.value.trim().toLocaleLowerCase("tr-TR");
+  const g=groupFilter.value;
+
+  const rows=allIngredients.filter(i=>{
+    const matchesSearch=
+      !q||
+      [i.code,i.name,i.group_name].some(v=>
+        String(v||"").toLocaleLowerCase("tr-TR").includes(q)
+      );
+
+    const matchesGroup=!g||i.group_name===g;
+
+    const isCritical=
+      i.active &&
+      Number(i.minimum_stock)>0 &&
+      Number(i.current_stock)<=Number(i.minimum_stock);
+
+    const matchesCritical=!criticalOnly||isCritical;
+
+    return matchesSearch&&matchesGroup&&matchesCritical;
+  });
+
+  renderTable(rows);
+  renderMobile(rows);
+}
+
+function toggleCriticalFilter(){
+  criticalOnly=!criticalOnly;
+  filterIngredients();
+
+  const card=document.getElementById("criticalCard");
+
+  card.classList.toggle("ring-4",criticalOnly);
+  card.classList.toggle("ring-rose-500",criticalOnly);
+}
+  function getStockState(i){
   const stock = Number(i.current_stock || 0);
   const minimum = Number(i.minimum_stock || 0);
 
