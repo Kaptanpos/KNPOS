@@ -46,10 +46,168 @@ async function logout(){if(confirm("Oturumu kapatmak istediğine emin misin?")){
 function fillSelects(){ingredientGroup.innerHTML='<option value="">Grup seç</option>'+GROUPS.map(x=>`<option>${x}</option>`).join("");ingredientUnit.innerHTML='<option value="">Birim seç</option>'+UNITS.map(x=>`<option>${x}</option>`).join("");groupFilter.innerHTML='<option value="">Tüm gruplar</option>'+GROUPS.map(x=>`<option>${x}</option>`).join("")}
 async function loadIngredients(){try{setLoading(true);const{data,error}=await db.from("ingredients").select("*").order("id",{ascending:true});if(error)throw error;allIngredients=data||[];updateSummary();filterIngredients()}catch(e){showToast("Malzemeler yüklenemedi. Önce database-ingredients.sql dosyasını Supabase SQL Editor'de çalıştırmalısın. Hata: "+e.message,"error",10000)}finally{setLoading(false)}}
 function filterIngredients(){const q=searchInput.value.trim().toLocaleLowerCase("tr-TR"),g=groupFilter.value;const rows=allIngredients.filter(i=>(!q||[i.code,i.name,i.group_name].some(v=>String(v||"").toLocaleLowerCase("tr-TR").includes(q)))&&(!g||i.group_name===g));renderTable(rows);renderMobile(rows)}
-function renderTable(rows){tableBody.innerHTML="";desktopEmpty.classList.toggle("hidden",rows.length>0);rows.forEach(i=>{const critical=Number(i.current_stock)<=Number(i.minimum_stock)&&Number(i.minimum_stock)>0;const tr=document.createElement("tr");tr.className="border-t border-slate-700 hover:bg-slate-800/60";tr.innerHTML=`<td class="p-4 font-bold text-sky-300">${esc(i.code||"-")}</td><td class="p-4 font-black">${esc(i.name)}</td><td class="p-4">${esc(i.group_name)}</td><td class="p-4">${esc(i.unit)}</td><td class="p-4 font-black ${critical?'text-rose-300':''}">${fmt(i.current_stock)}</td><td class="p-4">${fmt(i.minimum_stock)}</td><td class="p-4">${money(i.unit_cost)}</td><td class="p-4">${i.active?'<span class="status-badge status-active">Aktif</span>':'<span class="status-badge status-passive">Pasif</span>'}</td><td class="p-4"><div class="flex justify-end gap-2"><button onclick="editIngredient(${i.id})" class="touch-button px-4 rounded-xl bg-amber-600 font-bold">✏️ Düzenle</button><button onclick="toggleStatus(${i.id})" class="touch-button px-4 rounded-xl ${i.active?'bg-rose-700':'bg-emerald-700'} font-bold">${i.active?'Pasife Al':'Aktif Yap'}</button><button onclick="deleteIngredient(${i.id})" class="touch-button px-4 rounded-xl bg-red-900 hover:bg-red-800 font-bold">🗑️ Sil</button></div></td>`;tableBody.appendChild(tr)})}
+function getStockState(i){
+  const stock = Number(i.current_stock || 0);
+  const minimum = Number(i.minimum_stock || 0);
 
-function renderMobile(rows){mobileList.innerHTML="";mobileEmpty.classList.toggle("hidden",rows.length>0);rows.forEach(i=>{const critical=Number(i.current_stock)<=Number(i.minimum_stock)&&Number(i.minimum_stock)>0;const c=document.createElement("article");c.className="glass rounded-2xl p-5";c.innerHTML=`<div class="flex justify-between gap-3"><div><div class="text-sky-300 font-bold">${esc(i.code||"-")}</div><div class="text-xl font-black mt-1">${esc(i.name)}</div><div class="text-slate-400">${esc(i.group_name)} • ${esc(i.unit)}</div></div>${i.active?'<span class="status-badge status-active">Aktif</span>':'<span class="status-badge status-passive">Pasif</span>'}</div><div class="grid grid-cols-3 gap-2 mt-4"><div class="bg-slate-900 rounded-xl p-3"><div class="text-xs text-slate-500">Stok</div><div class="font-black ${critical?'text-rose-300':''}">${fmt(i.current_stock)}</div></div><div class="bg-slate-900 rounded-xl p-3"><div class="text-xs text-slate-500">Minimum</div><div class="font-black">${fmt(i.minimum_stock)}</div></div><div class="bg-slate-900 rounded-xl p-3"><div class="text-xs text-slate-500">Maliyet</div><div class="font-black">${money(i.unit_cost)}</div></div></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4"><button onclick="editIngredient(${i.id})" class="touch-button rounded-xl bg-amber-600 font-black">✏️ Düzenle</button><button onclick="toggleStatus(${i.id})" class="touch-button rounded-xl ${i.active?'bg-rose-700':'bg-emerald-700'} font-black">${i.active?'Pasife Al':'Aktif Yap'}</button><button onclick="deleteIngredient(${i.id})" class="touch-button rounded-xl bg-red-900 hover:bg-red-800 font-black">🗑️ Sil</button></div>`;mobileList.appendChild(c)})}
+  if(!i.active){
+    return {
+      label: "Pasif",
+      badge: "bg-slate-700 text-slate-300 border border-slate-500",
+      row: ""
+    };
+  }
 
+  if(minimum > 0 && stock <= minimum){
+    return {
+      label: "🔴 Kritik",
+      badge: "bg-rose-900/60 text-rose-200 border border-rose-600",
+      row: "bg-rose-950/30"
+    };
+  }
+
+  if(minimum > 0 && stock <= minimum * 1.5){
+    return {
+      label: "🟡 Azaldı",
+      badge: "bg-amber-900/60 text-amber-200 border border-amber-600",
+      row: "bg-amber-950/20"
+    };
+  }
+
+  return {
+    label: "🟢 Yeterli",
+    badge: "bg-emerald-900/60 text-emerald-200 border border-emerald-600",
+    row: ""
+  };
+}
+
+function renderTable(rows){
+  tableBody.innerHTML = "";
+  desktopEmpty.classList.toggle("hidden", rows.length > 0);
+
+  rows.forEach(i => {
+    const state = getStockState(i);
+    const tr = document.createElement("tr");
+
+    tr.className =
+      `border-t border-slate-700 hover:bg-slate-800/60 ${state.row}`;
+
+    tr.innerHTML = `
+      <td class="p-4 font-bold text-sky-300">${esc(i.code || "-")}</td>
+      <td class="p-4 font-black">${esc(i.name)}</td>
+      <td class="p-4">${esc(i.group_name)}</td>
+      <td class="p-4">${esc(i.unit)}</td>
+
+      <td class="p-4 font-black">
+        ${fmt(i.current_stock)}
+      </td>
+
+      <td class="p-4">${fmt(i.minimum_stock)}</td>
+      <td class="p-4">${money(i.unit_cost)}</td>
+
+      <td class="p-4">
+        <span class="status-badge ${state.badge}">
+          ${state.label}
+        </span>
+      </td>
+
+      <td class="p-4">
+        <div class="flex justify-end gap-2">
+          <button
+            onclick="editIngredient(${i.id})"
+            class="touch-button px-4 rounded-xl bg-amber-600 font-bold">
+            ✏️ Düzenle
+          </button>
+
+          <button
+            onclick="toggleStatus(${i.id})"
+            class="touch-button px-4 rounded-xl ${
+              i.active ? "bg-rose-700" : "bg-emerald-700"
+            } font-bold">
+            ${i.active ? "Pasife Al" : "Aktif Yap"}
+          </button>
+
+          <button
+            onclick="deleteIngredient(${i.id})"
+            class="touch-button px-4 rounded-xl bg-red-900 hover:bg-red-800 font-bold">
+            🗑️ Sil
+          </button>
+        </div>
+      </td>
+    `;
+
+    tableBody.appendChild(tr);
+  });
+}
+
+function renderMobile(rows){
+  mobileList.innerHTML = "";
+  mobileEmpty.classList.toggle("hidden", rows.length > 0);
+
+  rows.forEach(i => {
+    const state = getStockState(i);
+    const c = document.createElement("article");
+
+    c.className = `glass rounded-2xl p-5 ${state.row}`;
+
+    c.innerHTML = `
+      <div class="flex justify-between gap-3">
+        <div>
+          <div class="text-sky-300 font-bold">${esc(i.code || "-")}</div>
+          <div class="text-xl font-black mt-1">${esc(i.name)}</div>
+          <div class="text-slate-400">
+            ${esc(i.group_name)} • ${esc(i.unit)}
+          </div>
+        </div>
+
+        <span class="status-badge ${state.badge}">
+          ${state.label}
+        </span>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2 mt-4">
+        <div class="bg-slate-900 rounded-xl p-3">
+          <div class="text-xs text-slate-500">Stok</div>
+          <div class="font-black">${fmt(i.current_stock)}</div>
+        </div>
+
+        <div class="bg-slate-900 rounded-xl p-3">
+          <div class="text-xs text-slate-500">Minimum</div>
+          <div class="font-black">${fmt(i.minimum_stock)}</div>
+        </div>
+
+        <div class="bg-slate-900 rounded-xl p-3">
+          <div class="text-xs text-slate-500">Maliyet</div>
+          <div class="font-black">${money(i.unit_cost)}</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+        <button
+          onclick="editIngredient(${i.id})"
+          class="touch-button rounded-xl bg-amber-600 font-black">
+          ✏️ Düzenle
+        </button>
+
+        <button
+          onclick="toggleStatus(${i.id})"
+          class="touch-button rounded-xl ${
+            i.active ? "bg-rose-700" : "bg-emerald-700"
+          } font-black">
+          ${i.active ? "Pasife Al" : "Aktif Yap"}
+        </button>
+
+        <button
+          onclick="deleteIngredient(${i.id})"
+          class="touch-button rounded-xl bg-red-900 hover:bg-red-800 font-black">
+          🗑️ Sil
+        </button>
+      </div>
+    `;
+
+    mobileList.appendChild(c);
+  });
+}
 function updateSummary(){totalCount.textContent=allIngredients.length;activeCount.textContent=allIngredients.filter(x=>x.active).length;criticalCount.textContent=allIngredients.filter(x=>x.active&&Number(x.minimum_stock)>0&&Number(x.current_stock)<=Number(x.minimum_stock)).length}
 
 function openNewModal(){ingredientForm.reset();ingredientId.value="";ingredientActive.checked=true;currentStock.value=0;minimumStock.value=0;unitCost.value=0;modalTitle.textContent="Yeni Malzeme";ingredientModal.classList.add("show");setTimeout(()=>ingredientName.focus(),100)}
