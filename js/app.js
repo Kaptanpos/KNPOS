@@ -634,7 +634,106 @@
     function fillSinglePayment(id){const t=getCurrentTable();paymentInputs.forEach(i=>i.value="0");document.getElementById(id).value=Number(t.total||0).toFixed(2);updatePaymentSummary()}
     function updatePaymentSummary(){const t=getCurrentTable();if(!t)return;const p=getPayments(),c=Object.values(p).reduce((a,b)=>a+b,0),total=+t.total||0,rem=Math.max(total-c,0),chg=Math.max(c-total,0);collectedAmount.textContent=formatMoney(c);remainingAmount.textContent=formatMoney(rem);remainingAmount.className=rem<=.009?"remaining-ok":"remaining-bad";changeAmount.textContent=formatMoney(chg);completePaymentButton.disabled=c+.009<total}
     function paymentLabel(k){return({cash:"Nakit",card:"Kredi Kartı",yemeksepeti:"Yemeksepeti",getir:"Getir",trendyol:"Trendyol",kaptannili:"KaptanNili.com"})[k]||k}
-    async function completePayment(){const t=getCurrentTable();if(!t)return;const p=getPayments(),c=Object.values(p).reduce((a,b)=>a+b,0);if(c+.009<t.total){alert("Tahsilat toplamı yetersiz.");return}const sale={id:`KN-${new Date().toISOString().slice(0,10).replaceAll("-","")}-${String(Date.now()).slice(-6)}`,createdAt:new Date().toISOString(),tableName:t.name,total:+t.total,payments:p,items:(t.orders||[]).map(x=>({...x}))};const sales=getSales();sales.unshift(sale);saveSales(sales);if(printAfterPayment.checked)printReceiptForSale(sale);const tables=getTables(),x=tables.find(a=>a.id===selectedTableId);Object.assign(x,{status:"closed",openedAt:null,total:0,orders:[],payment:null});saveTables(tables);paymentModal.classList.remove("show");closeTableModal();renderTables();renderSales();renderReports();alert(`Satış tamamlandı.\n${sale.tableName}\n${formatMoney(sale.total)}`)}
+    async function completePayment() {
+  const t = getCurrentTable();
+
+  if (!t) return;
+
+  const p = getPayments();
+
+  const c = Object.values(p).reduce(
+    (a, b) => a + Number(b || 0),
+    0
+  );
+
+  if (c + 0.009 < Number(t.total)) {
+    alert("Tahsilat toplamı yetersiz.");
+    return;
+  }
+
+  try {
+    const { data: sale, error: saleError } = await client
+      .from("sales")
+      .insert({
+        total_amount: Number(t.total),
+        payment_type: Object.entries(p)
+          .filter(([, value]) => Number(value) > 0)
+          .map(([key]) => paymentLabel(key))
+          .join(" + ")
+      })
+      .select("id")
+      .single();
+
+    if (saleError) throw saleError;
+
+    const saleItems = (t.orders || []).map(item => ({
+      sale_id: sale.id,
+      product_id: item.productId,
+      quantity: Number(item.quantity),
+      unit_price: Number(item.price),
+      line_total:
+        Number(item.quantity) * Number(item.price)
+    }));
+
+    const { error: itemsError } = await client
+      .from("sale_items")
+      .insert(saleItems);
+
+    if (itemsError) throw itemsError;
+
+    const localSale = {
+      id: sale.id,
+      createdAt: new Date().toISOString(),
+      tableName: t.name,
+      total: Number(t.total),
+      payments: p,
+      items: (t.orders || []).map(item => ({ ...item }))
+    };
+
+    const sales = getSales();
+    sales.unshift(localSale);
+    saveSales(sales);
+
+    if (printAfterPayment.checked) {
+      printReceiptForSale(localSale);
+    }
+
+    const tables = getTables();
+
+    const table = tables.find(
+      item => item.id === selectedTableId
+    );
+
+    Object.assign(table, {
+      status: "closed",
+      openedAt: null,
+      total: 0,
+      orders: [],
+      payment: null
+    });
+
+    saveTables(tables);
+
+    paymentModal.classList.remove("show");
+    closeTableModal();
+    renderTables();
+    renderSales();
+    renderReports();
+
+    alert(
+      `Satış başarıyla kaydedildi.\n` +
+      `${localSale.tableName}\n` +
+      `${formatMoney(localSale.total)}`
+    );
+  } catch (error) {
+    console.error(error);
+
+    alert(
+      "Satış kaydedilemedi:\n" +
+      (error.message || "Bilinmeyen hata")
+    );
+  }
+}
     function printReceiptForSale(s){const rows=s.items.map(i=>`<div class="receipt-row"><span>${i.quantity} x ${escapeHtml(i.name)}</span><span>${formatMoney(i.quantity*i.price)}</span></div>`).join("");printReceipt.innerHTML=`<div class="receipt-title">KAPTAN NİLİ</div><div style="text-align:center">ADİSYON</div><div class="receipt-line"></div><div class="receipt-row"><span>Satış No</span><strong>${s.id}</strong></div><div class="receipt-row"><span>Masa</span><strong>${escapeHtml(s.tableName)}</strong></div><div class="receipt-row"><span>Tarih</span><span>${formatDate(s.createdAt)}</span></div><div class="receipt-line"></div>${rows}<div class="receipt-line"></div><div class="receipt-row"><strong>TOPLAM</strong><strong>${formatMoney(s.total)}</strong></div><div class="receipt-line"></div><div style="text-align:center;font-size:12px">KNPOS v1.5.0</div>`;window.print()}
     function inRange(v,r){const d=new Date(v),n=new Date(),t=new Date(n.getFullYear(),n.getMonth(),n.getDate());if(r==="today")return d>=t;if(r==="yesterday"){const y=new Date(t-86400000);return d>=y&&d<t}if(r==="week"){const day=(n.getDay()+6)%7;return d>=new Date(t-day*86400000)}if(r==="month")return d>=new Date(n.getFullYear(),n.getMonth(),1);return true}
     function payText(p){return Object.entries(p||{}).filter(([,v])=>+v>0).map(([k,v])=>`${paymentLabel(k)}: ${formatMoney(v)}`).join(" • ")}
