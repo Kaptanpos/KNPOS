@@ -363,7 +363,13 @@
     /* SATIŞ EKRANI */
     .sales-layout {
       display: grid;
-      grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.9fr);
+      grid-template-columns:
+62%
+38%;
+
+align-items:start;
+
+height:72vh;
       gap: 18px;
       margin-top: 18px;
     }
