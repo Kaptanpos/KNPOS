@@ -488,9 +488,9 @@ flex-direction:column;
     }
 
     .cart-list {
-      max-height: 420px;
-      overflow-y: auto;
-      margin-top: 10px;
+ flex:1;
+    overflow-y:auto;
+    min-height:250px;
     }
 
     .cart-empty {
