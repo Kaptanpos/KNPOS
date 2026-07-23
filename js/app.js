@@ -737,8 +737,315 @@
     function printReceiptForSale(s){const rows=s.items.map(i=>`<div class="receipt-row"><span>${i.quantity} x ${escapeHtml(i.name)}</span><span>${formatMoney(i.quantity*i.price)}</span></div>`).join("");printReceipt.innerHTML=`<div class="receipt-title">KAPTAN NİLİ</div><div style="text-align:center">ADİSYON</div><div class="receipt-line"></div><div class="receipt-row"><span>Satış No</span><strong>${s.id}</strong></div><div class="receipt-row"><span>Masa</span><strong>${escapeHtml(s.tableName)}</strong></div><div class="receipt-row"><span>Tarih</span><span>${formatDate(s.createdAt)}</span></div><div class="receipt-line"></div>${rows}<div class="receipt-line"></div><div class="receipt-row"><strong>TOPLAM</strong><strong>${formatMoney(s.total)}</strong></div><div class="receipt-line"></div><div style="text-align:center;font-size:12px">KNPOS v1.5.0</div>`;window.print()}
     function inRange(v,r){const d=new Date(v),n=new Date(),t=new Date(n.getFullYear(),n.getMonth(),n.getDate());if(r==="today")return d>=t;if(r==="yesterday"){const y=new Date(t-86400000);return d>=y&&d<t}if(r==="week"){const day=(n.getDay()+6)%7;return d>=new Date(t-day*86400000)}if(r==="month")return d>=new Date(n.getFullYear(),n.getMonth(),1);return true}
     function payText(p){return Object.entries(p||{}).filter(([,v])=>+v>0).map(([k,v])=>`${paymentLabel(k)}: ${formatMoney(v)}`).join(" • ")}
-    function renderSales(){const list=document.getElementById("salesList"),s=getSales().filter(x=>inRange(x.createdAt,activeSalesFilter));if(!s.length){list.className="loading";list.textContent="Bu dönemde satış bulunamadı.";return}list.className="";list.innerHTML=s.map(x=>`<div class="sales-row"><div>${formatDate(x.createdAt)}</div><div><strong>${x.id}</strong></div><div>${escapeHtml(x.tableName)}</div><div>${formatMoney(x.total)}</div><div>${escapeHtml(payText(x.payments))}</div></div>`).join("")}
-    function renderReports(){const s=getSales().filter(x=>inRange(x.createdAt,"today")),turn=s.reduce((a,b)=>a+(+b.total||0),0);document.getElementById("reportTurnover").textContent=formatMoney(turn);document.getElementById("reportCount").textContent=s.length;document.getElementById("reportAverage").textContent=formatMoney(s.length?turn/s.length:0);const pt={};s.forEach(x=>Object.entries(x.payments||{}).forEach(([k,v])=>pt[k]=(pt[k]||0)+(+v||0)));paymentReport.innerHTML=Object.entries(pt).filter(([,v])=>v>0).map(([k,v])=>`<div class="sales-row" style="grid-template-columns:1fr 1fr"><div>${paymentLabel(k)}</div><div><strong>${formatMoney(v)}</strong></div></div>`).join("")||'<div class="loading">Henüz ödeme kaydı yok.</div>';const pr={};s.forEach(x=>(x.items||[]).forEach(i=>{pr[i.name]=pr[i.name]||{q:0,a:0};pr[i.name].q+=+i.quantity||0;pr[i.name].a+=(+i.quantity||0)*(+i.price||0)}));productReport.innerHTML=Object.entries(pr).sort((a,b)=>b[1].q-a[1].q).map(([n,v])=>`<div class="sales-row" style="grid-template-columns:2fr 1fr 1fr"><div>${escapeHtml(n)}</div><div>${v.q} adet</div><div><strong>${formatMoney(v.a)}</strong></div></div>`).join("")||'<div class="loading">Henüz ürün satışı yok.</div>'}
+    async function loadCloudSales() {
+  const { data: sales, error: salesError } = await client
+    .from("sales")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (salesError) {
+    throw salesError;
+  }
+
+  const { data: saleItems, error: itemsError } = await client
+    .from("sale_items")
+    .select(`
+      sale_id,
+      product_id,
+      quantity,
+      unit_price,
+      line_total
+    `);
+
+  if (itemsError) {
+    throw itemsError;
+  }
+
+  const { data: products, error: productsError } = await client
+    .from("products")
+    .select("id, name");
+
+  if (productsError) {
+    throw productsError;
+  }
+
+  const productNames = {};
+
+  (products || []).forEach(product => {
+    productNames[product.id] = product.name;
+  });
+
+  return (sales || []).map(sale => {
+    const items = (saleItems || [])
+      .filter(item => item.sale_id === sale.id)
+      .map(item => ({
+        productId: item.product_id,
+        name:
+          productNames[item.product_id] ||
+          "Silinmiş ürün",
+        quantity: Number(item.quantity || 0),
+        price: Number(item.unit_price || 0),
+        lineTotal: Number(
+          item.line_total ||
+          Number(item.quantity || 0) *
+          Number(item.unit_price || 0)
+        )
+      }));
+
+    return {
+      id: sale.id,
+      createdAt: sale.created_at,
+      tableName: "-",
+      total: Number(sale.total_amount || 0),
+      paymentType: sale.payment_type || "-",
+      items
+    };
+  });
+}
+
+
+async function renderSales() {
+  const list =
+    document.getElementById("salesList");
+
+  list.className = "loading";
+  list.textContent =
+    "Satışlar yükleniyor...";
+
+  try {
+    const allSales =
+      await loadCloudSales();
+
+    const filteredSales =
+      allSales.filter(sale =>
+        inRange(
+          sale.createdAt,
+          activeSalesFilter
+        )
+      );
+
+    if (filteredSales.length === 0) {
+      list.className = "loading";
+      list.textContent =
+        "Bu dönemde satış bulunamadı.";
+      return;
+    }
+
+    list.className = "";
+
+    list.innerHTML = filteredSales
+      .map(sale => `
+        <div class="sales-row">
+          <div>
+            ${formatDate(sale.createdAt)}
+          </div>
+
+          <div>
+            <strong>${sale.id}</strong>
+          </div>
+
+          <div>
+            ${escapeHtml(sale.tableName)}
+          </div>
+
+          <div>
+            ${formatMoney(sale.total)}
+          </div>
+
+          <div>
+            ${escapeHtml(sale.paymentType)}
+          </div>
+        </div>
+      `)
+      .join("");
+
+  } catch (error) {
+    console.error(error);
+
+    list.className = "loading";
+    list.textContent =
+      "Satışlar alınamadı: " +
+      (error.message || "Bilinmeyen hata");
+  }
+}
+
+
+async function renderReports() {
+  const turnoverElement =
+    document.getElementById(
+      "reportTurnover"
+    );
+
+  const countElement =
+    document.getElementById(
+      "reportCount"
+    );
+
+  const averageElement =
+    document.getElementById(
+      "reportAverage"
+    );
+
+  const paymentElement =
+    document.getElementById(
+      "paymentReport"
+    );
+
+  const productElement =
+    document.getElementById(
+      "productReport"
+    );
+
+  turnoverElement.textContent = "...";
+  countElement.textContent = "...";
+  averageElement.textContent = "...";
+
+  paymentElement.innerHTML =
+    '<div class="loading">Ödeme raporu yükleniyor...</div>';
+
+  productElement.innerHTML =
+    '<div class="loading">Ürün raporu yükleniyor...</div>';
+
+  try {
+    const allSales =
+      await loadCloudSales();
+
+    const todaySales =
+      allSales.filter(sale =>
+        inRange(
+          sale.createdAt,
+          "today"
+        )
+      );
+
+    const turnover =
+      todaySales.reduce(
+        (sum, sale) =>
+          sum + Number(sale.total || 0),
+        0
+      );
+
+    turnoverElement.textContent =
+      formatMoney(turnover);
+
+    countElement.textContent =
+      todaySales.length;
+
+    averageElement.textContent =
+      formatMoney(
+        todaySales.length
+          ? turnover / todaySales.length
+          : 0
+      );
+
+    const paymentTotals = {};
+
+    todaySales.forEach(sale => {
+      const paymentName =
+        sale.paymentType || "Bilinmiyor";
+
+      paymentTotals[paymentName] =
+        (paymentTotals[paymentName] || 0) +
+        Number(sale.total || 0);
+    });
+
+    paymentElement.innerHTML =
+      Object.entries(paymentTotals)
+        .map(([name, amount]) => `
+          <div
+            class="sales-row"
+            style="grid-template-columns:1fr 1fr"
+          >
+            <div>
+              ${escapeHtml(name)}
+            </div>
+
+            <div>
+              <strong>
+                ${formatMoney(amount)}
+              </strong>
+            </div>
+          </div>
+        `)
+        .join("") ||
+      '<div class="loading">Henüz ödeme kaydı yok.</div>';
+
+    const productTotals = {};
+
+    todaySales.forEach(sale => {
+      sale.items.forEach(item => {
+        const name =
+          item.name || "Silinmiş ürün";
+
+        if (!productTotals[name]) {
+          productTotals[name] = {
+            quantity: 0,
+            amount: 0
+          };
+        }
+
+        productTotals[name].quantity +=
+          Number(item.quantity || 0);
+
+        productTotals[name].amount +=
+          Number(item.lineTotal || 0);
+      });
+    });
+
+    productElement.innerHTML =
+      Object.entries(productTotals)
+        .sort(
+          (a, b) =>
+            b[1].quantity -
+            a[1].quantity
+        )
+        .map(([name, values]) => `
+          <div
+            class="sales-row"
+            style="grid-template-columns:2fr 1fr 1fr"
+          >
+            <div>
+              ${escapeHtml(name)}
+            </div>
+
+            <div>
+              ${values.quantity} adet
+            </div>
+
+            <div>
+              <strong>
+                ${formatMoney(values.amount)}
+              </strong>
+            </div>
+          </div>
+        `)
+        .join("") ||
+      '<div class="loading">Henüz ürün satışı yok.</div>';
+
+  } catch (error) {
+    console.error(error);
+
+    turnoverElement.textContent =
+      "0,00 TL";
+
+    countElement.textContent = "0";
+
+    averageElement.textContent =
+      "0,00 TL";
+
+    paymentElement.innerHTML =
+      '<div class="loading">' +
+      "Rapor alınamadı: " +
+      escapeHtml(
+        error.message ||
+        "Bilinmeyen hata"
+      ) +
+      "</div>";
+
+    productElement.innerHTML =
+      '<div class="loading">Rapor alınamadı.</div>';
+  }
+}
 
     function printSelectedTableReceipt() {
       const table =
