@@ -1020,3 +1020,115 @@ flex-direction:column;
 .password-wrap{position:relative}
 .password-wrap input{padding-right:48px}
 .toggle-pass{position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:none;font-size:20px;cursor:pointer}
+/* ==================================================
+   SATIŞ EKRANI PROFESYONEL YERLEŞİM DÜZELTMESİ
+   ================================================== */
+
+#tableModal .modal-card {
+  width: min(1400px, 100%);
+  max-width: none !important;
+  overflow: hidden;
+}
+
+#modalOpenView {
+  height: calc(100vh - 90px);
+  overflow: hidden;
+}
+
+#modalOpenView .sales-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 62fr) minmax(380px, 38fr);
+  gap: 18px;
+  height: 100%;
+  min-height: 0;
+  align-items: stretch;
+}
+
+#modalOpenView .sales-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#saleProductsGrid {
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 6px;
+}
+
+#cartList {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+#modalOpenView .cart-total {
+  flex: 0 0 auto;
+  margin-top: 12px;
+  padding: 15px 4px 4px;
+  background: #f8fafc;
+}
+
+#modalOpenView .modal-actions {
+  flex: 0 0 auto;
+  margin-top: 14px;
+  padding-top: 12px;
+  background: #f8fafc;
+}
+
+#modalOpenView .cart-row {
+  background: white;
+  border: 1px solid #dbe1e8;
+  border-radius: 13px;
+  padding: 12px;
+  margin-bottom: 9px;
+}
+
+#modalOpenView .cart-name {
+  font-size: 17px;
+}
+
+#modalOpenView .cart-sub {
+  font-size: 15px;
+}
+
+#modalOpenView .qty-button {
+  width: 42px;
+  height: 42px;
+  font-size: 23px;
+}
+
+#modalOpenView .qty-count {
+  min-width: 34px;
+  font-size: 19px;
+}
+
+@media (max-width: 950px) {
+  #tableModal .modal-card {
+    overflow-y: auto;
+  }
+
+  #modalOpenView {
+    height: auto;
+    overflow: visible;
+  }
+
+  #modalOpenView .sales-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  #saleProductsGrid,
+  #cartList {
+    overflow-y: visible;
+  }
+
+  #cartList {
+    max-height: 420px;
+    overflow-y: auto;
+  }
+}
