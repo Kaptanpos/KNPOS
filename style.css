@@ -1,0 +1,2265 @@
+* {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #eef2f7;
+      color: #172033;
+    }
+
+    .header {
+      background: #0f766e;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      font-size: 30px;
+      font-weight: bold;
+    }
+
+    .nav {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      padding: 15px;
+      background: white;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .nav button {
+      min-width: 180px;
+      min-height: 62px;
+      border: none;
+      border-radius: 14px;
+      background: #e2e8f0;
+      color: #172033;
+      font-size: 21px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .nav button.active-nav {
+      background: #0f766e;
+      color: white;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 25px auto;
+      padding: 0 18px;
+    }
+
+    .page {
+      display: none;
+    }
+
+    .page.active-page {
+      display: block;
+    }
+
+    .card {
+      background: white;
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 22px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 27px;
+    }
+
+    h3 {
+      font-size: 23px;
+    }
+
+    .home-title {
+      text-align: center;
+      font-size: 32px;
+      margin-bottom: 25px;
+    }
+
+    .home-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 22px;
+    }
+
+    .home-button {
+      min-height: 150px;
+      border: none;
+      border-radius: 20px;
+      color: white;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .home-products {
+      background: #2563eb;
+    }
+
+    .home-cash {
+      background: #16a34a;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-height: 58px;
+      padding: 12px 14px;
+      font-size: 21px;
+      border: 2px solid #cbd5e1;
+      border-radius: 12px;
+      background: white;
+    }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: #0f766e;
+    }
+
+    input:disabled {
+      background: #e2e8f0;
+      color: #475569;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 58px;
+      margin-top: 30px;
+    }
+
+    .checkbox-row input {
+      width: 30px;
+      height: 30px;
+    }
+
+    .checkbox-row label {
+      margin: 0;
+    }
+
+    button {
+      touch-action: manipulation;
+    }
+
+    .main-button {
+      width: 100%;
+      min-height: 65px;
+      margin-top: 20px;
+      border: none;
+      border-radius: 14px;
+      color: white;
+      font-size: 22px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .save-button {
+      background: #16a34a;
+    }
+
+    .refresh-button {
+      min-height: 58px;
+      margin-bottom: 18px;
+      padding: 10px 22px;
+      border: none;
+      border-radius: 12px;
+      background: #0f766e;
+      color: white;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .open-button {
+      background: #16a34a;
+    }
+
+    .close-button {
+      background: #dc2626;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: wait;
+    }
+
+    .message {
+      display: none;
+      margin-top: 16px;
+      padding: 15px;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .message.success {
+      display: block;
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .message.error {
+      display: block;
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .message.info {
+      display: block;
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .product {
+      display: grid;
+      grid-template-columns: 1fr 2fr 1.5fr 1fr 1fr 1.7fr;
+      gap: 12px;
+      align-items: center;
+      padding: 16px;
+      border-bottom: 1px solid #dbe1e8;
+      font-size: 18px;
+    }
+
+    .product-header {
+      background: #e2e8f0;
+      font-weight: bold;
+      border-radius: 10px;
+    }
+
+    .active {
+      color: #15803d;
+      font-weight: bold;
+    }
+
+    .passive {
+      color: #b91c1c;
+      font-weight: bold;
+    }
+
+    .loading {
+      padding: 18px;
+      font-size: 18px;
+      text-align: center;
+      color: #475569;
+    }
+
+    .cash-status {
+      padding: 22px;
+      border-radius: 16px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .cash-open {
+      background: #dcfce7;
+      border: 2px solid #22c55e;
+    }
+
+    .cash-closed {
+      background: #fee2e2;
+      border: 2px solid #ef4444;
+    }
+
+    .cash-status-title {
+      font-size: 28px;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+
+    .cash-detail {
+      font-size: 20px;
+      margin: 8px 0;
+    }
+
+    .cash-history-row {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr 1.3fr 1fr 1fr;
+      gap: 10px;
+      padding: 14px;
+      border-bottom: 1px solid #dbe1e8;
+      font-size: 17px;
+    }
+
+    .cash-history-header {
+      background: #e2e8f0;
+      font-weight: bold;
+      border-radius: 10px;
+    }
+
+
+    .product-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .action-button {
+      min-height: 42px;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .edit-button {
+      background: #2563eb;
+    }
+
+    .passive-button {
+      background: #dc2626;
+    }
+
+    .activate-button {
+      background: #16a34a;
+    }
+
+    .cancel-button {
+      display: none;
+      background: #64748b;
+      margin-top: 10px;
+    }
+
+    .editing-banner {
+      display: none;
+      margin-bottom: 18px;
+      padding: 14px;
+      border-radius: 12px;
+      background: #dbeafe;
+      color: #1e40af;
+      font-size: 17px;
+      font-weight: bold;
+    }
+
+
+
+    /* SATIŞ EKRANI */
+    .sales-layout {
+      display: grid;
+      grid-template-columns:
+62%
+38%;
+
+align-items:start;
+
+height:72vh;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .sales-panel {
+      background: #f8fafc;
+      border: 1px solid #dbe1e8;
+      border-radius: 16px;
+      padding: 16px;
+      display:flex;
+flex-direction:column;
+    }
+
+    .category-strip {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+
+    .category-button {
+      flex: 0 0 auto;
+      min-height: 48px;
+      padding: 8px 15px;
+      border: none;
+      border-radius: 12px;
+      background: #e2e8f0;
+      color: #172033;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .category-button.active-category {
+      background: #0f766e;
+      color: white;
+    }
+
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(150px, 1fr));
+      gap: 14px;
+    }
+
+    .sale-product-card {
+      position: relative;
+      min-height: 155px;
+      border: none;
+      border-radius: 18px;
+      background: white;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.10);
+      padding: 12px;
+      cursor: pointer;
+      text-align: center;
+      color: #172033;
+    }
+
+    .sale-product-card:active {
+      transform: scale(0.97);
+    }
+
+    .product-image-box {
+      width: 100%;
+      height: 100px;
+      border-radius: 14px;
+      background: #ecfeff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+.product-image-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: white;
+}
+
+    .sale-product-name {
+      font-size: 17px;
+      font-weight: bold;
+      line-height: 1.25;
+      min-height: 42px;
+    }
+
+    .sale-product-price {
+      margin-top: 7px;
+      color: #0f766e;
+      font-size: 17px;
+      font-weight: bold;
+    }
+
+    .quantity-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      min-width: 34px;
+      height: 34px;
+      padding: 0 8px;
+      border-radius: 17px;
+      background: #2563eb;
+      color: white;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: bold;
+      box-shadow: 0 3px 10px rgba(37, 99, 235, 0.35);
+    }
+
+    .quantity-badge.show {
+      display: flex;
+    }
+
+    .cart-list {
+ flex:1;
+    overflow-y:auto;
+    min-height:250px;
+    }
+
+    .cart-empty {
+      padding: 28px 12px;
+      text-align: center;
+      color: #64748b;
+      font-size: 17px;
+    }
+
+    .cart-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #dbe1e8;
+    }
+
+    .cart-name {
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    .cart-sub {
+      margin-top: 4px;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .cart-controls {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .qty-button {
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .qty-minus {
+      background: #dc2626;
+    }
+
+    .qty-plus {
+      background: #16a34a;
+    }
+
+    .qty-count {
+      min-width: 30px;
+      text-align: center;
+      font-size: 17px;
+      font-weight: bold;
+    }
+
+    .cart-total {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 2px solid #0f766e;
+      font-size: 23px;
+      font-weight: bold;
+    }
+
+    .payment-title {
+      margin-top: 18px;
+      margin-bottom: 10px;
+      font-size: 17px;
+      font-weight: bold;
+    }
+
+    .payment-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 9px;
+    }
+
+    .payment-button {
+      min-height: 48px;
+      border: none;
+      border-radius: 11px;
+      background: #334155;
+      color: white;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .payment-button.selected-payment {
+      background: #f59e0b;
+      color: #172033;
+      outline: 3px solid #fcd34d;
+    }
+
+    .search-input {
+      min-height: 48px;
+      font-size: 17px;
+      margin-bottom: 12px;
+    }
+
+    @media (max-width: 950px) {
+      .sales-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .products-grid {
+        grid-template-columns: repeat(2, minmax(140px, 1fr));
+      }
+    }
+
+    @media (max-width: 520px) {
+      .products-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .sale-product-card {
+        min-height: 165px;
+      }
+
+      .product-image-box {
+        height: 78px;
+      }
+    }
+
+
+    .cash-warning{display:none;margin:0 auto 18px;max-width:1100px;padding:14px 18px;border-radius:12px;background:#fee2e2;color:#991b1b;font-size:17px;font-weight:bold;text-align:center}
+    .payment-modal-card{width:100%;max-width:620px;background:white;border-radius:20px;padding:24px;box-shadow:0 20px 55px rgba(0,0,0,.25)}
+    .payment-row{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;align-items:center;margin-bottom:12px}.payment-row input{min-height:50px;font-size:19px}
+    .quick-payments{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px}.quick-button{min-height:50px;border:0;border-radius:11px;background:#0f766e;color:white;font-size:16px;font-weight:bold;cursor:pointer}
+    .payment-summary{margin-top:18px;padding:16px;border-radius:14px;background:#f8fafc;border:1px solid #dbe1e8;font-size:18px}.payment-summary-row{display:flex;justify-content:space-between;gap:12px;margin:7px 0}.remaining-ok{color:#15803d;font-weight:bold}.remaining-bad{color:#b91c1c;font-weight:bold}
+    .checkbox-print{display:flex;align-items:center;gap:10px;margin-top:15px;font-size:17px;font-weight:bold}.checkbox-print input{width:24px;height:24px;min-height:auto}
+    .report-filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}.report-filter-button{min-height:46px;padding:8px 14px;border:0;border-radius:10px;background:#e2e8f0;font-size:16px;font-weight:bold;cursor:pointer}.report-filter-button.active-filter{background:#0f766e;color:white}
+    .sales-row{display:grid;grid-template-columns:1.15fr 1fr 1fr 1fr 1.2fr;gap:10px;padding:13px;border-bottom:1px solid #dbe1e8;font-size:16px;align-items:center}.sales-header{background:#e2e8f0;font-weight:bold;border-radius:10px}
+    .report-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}.report-card{background:#f8fafc;border:1px solid #dbe1e8;border-radius:14px;padding:18px;text-align:center}.report-card-title{color:#64748b;font-size:15px}.report-card-value{margin-top:7px;font-size:25px;font-weight:bold;color:#0f766e}
+    @media(max-width:750px){.payment-row{grid-template-columns:1fr}.quick-payments,.report-cards{grid-template-columns:1fr}.sales-row{grid-template-columns:1fr;border:1px solid #dbe1e8;border-radius:12px;margin-bottom:10px}.sales-header{display:none}}
+
+
+    #paymentModal.modal-overlay.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      overflow: hidden;
+    }
+
+    #paymentModal .payment-modal-card {
+      position: static;
+      width: min(620px, 100%);
+      max-height: calc(100vh - 24px);
+      overflow-y: auto;
+      padding: 20px;
+      border-radius: 18px;
+    }
+
+    #paymentModal .modal-actions {
+      position: sticky;
+      bottom: -20px;
+      background: white;
+      padding-top: 12px;
+      padding-bottom: 20px;
+      z-index: 3;
+    }
+
+    @media (max-height: 760px) {
+      #paymentModal .payment-row {
+        margin-bottom: 7px;
+      }
+      #paymentModal .payment-row input {
+        min-height: 42px;
+      }
+      #paymentModal .payment-summary {
+        padding: 10px;
+        margin-top: 10px;
+      }
+      #paymentModal h2 {
+        font-size: 22px;
+        margin-bottom: 8px;
+      }
+    }
+
+    /* MASALAR */
+    .tables-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .table-card {
+      min-height: 180px;
+      border: none;
+      border-radius: 22px;
+      color: white;
+      cursor: pointer;
+      padding: 22px;
+      text-align: center;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.12);
+    }
+
+    .table-card.closed {
+      background: #dc2626;
+    }
+
+    .table-card.open {
+      background: #16a34a;
+    }
+
+    .table-name {
+      font-size: 30px;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+
+    .table-state {
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .table-time,
+    .table-total {
+      margin-top: 10px;
+      font-size: 18px;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(15, 23, 42, 0.45);
+    }
+
+    .modal-overlay.show {
+      display: block;
+    }
+
+    .modal-card {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: min(760px, 100%);
+      height: 100vh;
+      overflow-y: auto;
+      background: white;
+      border-radius: 0;
+      padding: 24px;
+      box-shadow: -12px 0 35px rgba(0, 0, 0, 0.22);
+    }
+
+    .modal-actions {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .modal-button {
+      min-height: 58px;
+      border: none;
+      border-radius: 13px;
+      color: white;
+      font-size: 19px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .modal-open {
+      background: #16a34a;
+    }
+
+    .modal-close {
+      background: #dc2626;
+    }
+
+    .modal-print {
+      background: #2563eb;
+    }
+
+    .modal-cancel {
+      background: #64748b;
+    }
+
+    .receipt-preview {
+      margin-top: 18px;
+      padding: 18px;
+      border: 2px dashed #94a3b8;
+      border-radius: 14px;
+      background: #f8fafc;
+      font-size: 17px;
+      line-height: 1.6;
+    }
+
+    #printReceipt {
+      display: none;
+    }
+
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+
+      #printReceipt,
+      #printReceipt * {
+        visibility: visible !important;
+      }
+
+      #printReceipt {
+        display: block !important;
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 80mm;
+        padding: 8mm;
+        background: white;
+        color: black;
+        font-family: Arial, sans-serif;
+      }
+
+      .receipt-title {
+        text-align: center;
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 8px;
+      }
+
+      .receipt-line {
+        border-top: 1px dashed #000;
+        margin: 8px 0;
+      }
+
+      .receipt-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 5px 0;
+      }
+    }
+
+
+    .photo-field {
+      grid-column: 1 / -1;
+    }
+
+    .photo-picker {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 18px;
+      align-items: center;
+      padding: 16px;
+      border: 2px dashed #94a3b8;
+      border-radius: 14px;
+      background: #f8fafc;
+    }
+
+    .photo-preview {
+      width: 150px;
+      height: 110px;
+      border-radius: 12px;
+      background: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      color: #64748b;
+      font-size: 15px;
+      text-align: center;
+    }
+
+    .photo-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .photo-help {
+      margin-top: 8px;
+      color: #64748b;
+      font-size: 14px;
+      font-weight: normal;
+    }
+
+    @media (max-width: 600px) {
+      .photo-picker {
+        grid-template-columns: 1fr;
+      }
+
+      .photo-preview {
+        width: 100%;
+        height: 160px;
+      }
+    }
+
+
+    /* GİRİŞ / YETKİ */
+    #loginScreen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: #eef2f7;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 460px;
+      padding: 30px;
+      border-radius: 24px;
+      background: white;
+      box-shadow: 0 18px 55px rgba(15, 23, 42, 0.16);
+    }
+
+    .login-title {
+      text-align: center;
+      color: #0f766e;
+      font-size: 29px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .login-version {
+      margin: 8px 0 26px;
+      text-align: center;
+      color: #64748b;
+      font-size: 15px;
+    }
+
+    .login-submit {
+      background: #0f766e;
+    }
+
+    #appShell {
+      display: none;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      text-align: left;
+    }
+
+    .header-user {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 15px;
+      font-weight: normal;
+      text-align: right;
+    }
+
+    .logout-button {
+      min-height: 44px;
+      padding: 8px 14px;
+      border: 2px solid rgba(255,255,255,.7);
+      border-radius: 11px;
+      background: rgba(255,255,255,.12);
+      color: white;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    @media (max-width: 650px) {
+      .header {
+        align-items: flex-start;
+        padding: 15px;
+      }
+
+      .header-user {
+        gap: 7px;
+        font-size: 12px;
+      }
+
+      .logout-button {
+        min-height: 38px;
+        padding: 6px 9px;
+        font-size: 12px;
+      }
+    }
+
+    @media (max-width: 750px) {
+      .header {
+        font-size: 23px;
+      }
+
+      .nav button {
+        min-width: 130px;
+        flex: 1;
+      }
+
+      .home-grid,
+      .form-grid,
+      .tables-grid,
+      .modal-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .checkbox-row {
+        margin-top: 5px;
+      }
+
+      .product,
+      .cash-history-row {
+        grid-template-columns: 1fr;
+        gap: 5px;
+        margin-bottom: 12px;
+        border: 1px solid #dbe1e8;
+        border-radius: 12px;
+      }
+
+      .product-header,
+      .cash-history-header {
+        display: none;
+      }
+    }
+.login-logo{display:block;width:150px;height:150px;object-fit:contain;margin:0 auto 18px;border-radius:50%;box-shadow:0 8px 24px rgba(0,0,0,.15);animation:pop .5s ease;}
+@keyframes pop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+.password-wrap{position:relative}
+.password-wrap input{padding-right:48px}
+.toggle-pass{position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:none;font-size:20px;cursor:pointer}
+/* ==================================================
+   SATIŞ EKRANI PROFESYONEL YERLEŞİM DÜZELTMESİ
+   ================================================== */
+
+#tableModal .modal-card {
+  width: min(1400px, 100%);
+  max-width: none !important;
+  overflow: hidden;
+}
+
+#modalOpenView {
+  height: calc(100vh - 90px);
+  overflow: hidden;
+}
+
+#modalOpenView .sales-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 62fr) minmax(380px, 38fr);
+  gap: 18px;
+  height: 100%;
+  min-height: 0;
+  align-items: stretch;
+}
+
+#modalOpenView .sales-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#saleProductsGrid {
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 6px;
+}
+
+#cartList {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+#modalOpenView .cart-total {
+  flex: 0 0 auto;
+  margin-top: 12px;
+  padding: 15px 4px 4px;
+  background: #f8fafc;
+}
+
+#modalOpenView .modal-actions {
+  flex: 0 0 auto;
+  margin-top: 14px;
+  padding-top: 12px;
+  background: #f8fafc;
+}
+
+#modalOpenView .cart-row {
+  background: white;
+  border: 1px solid #dbe1e8;
+  border-radius: 13px;
+  padding: 12px;
+  margin-bottom: 9px;
+}
+
+#modalOpenView .cart-name {
+  font-size: 17px;
+}
+
+#modalOpenView .cart-sub {
+  font-size: 15px;
+}
+
+#modalOpenView .qty-button {
+  width: 42px;
+  height: 42px;
+  font-size: 23px;
+}
+
+#modalOpenView .qty-count {
+  min-width: 34px;
+  font-size: 19px;
+}
+
+@media (max-width: 950px) {
+  #tableModal .modal-card {
+    overflow-y: auto;
+  }
+
+  #modalOpenView {
+    height: auto;
+    overflow: visible;
+  }
+
+  #modalOpenView .sales-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  #saleProductsGrid,
+  #cartList {
+    overflow-y: visible;
+  }
+
+  #cartList {
+    max-height: 420px;
+    overflow-y: auto;
+  }
+}
+/* ==================================================
+   RAPOR ÇUBUKLARI
+   ================================================== */
+
+.report-bar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.report-bar-item {
+  padding: 15px;
+  border: 1px solid #dbe1e8;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.report-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 9px;
+  font-size: 17px;
+}
+
+.report-bar-name {
+  font-weight: bold;
+  color: #172033;
+}
+
+.report-bar-total {
+  font-weight: bold;
+  color: #0f766e;
+  white-space: nowrap;
+}
+
+.report-bar-track {
+  width: 100%;
+  height: 22px;
+  overflow: hidden;
+  border-radius: 11px;
+  background: #e2e8f0;
+}
+
+.report-bar-fill {
+  min-width: 5px;
+  height: 100%;
+  border-radius: 11px;
+  background: #0f766e;
+  transition: width 0.35s ease;
+}
+
+.report-bar-sub {
+  margin-top: 7px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+@media (max-width: 600px) {
+  .report-bar-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .report-bar-track {
+    height: 18px;
+  }
+}
+
+/* ==================================================
+   KNPOS v1.6 GERÇEK GRAFİKLER
+   ================================================== */
+.sales-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 18px 0 22px;
+}
+
+.chart-shell {
+  margin: 12px 0 26px;
+  padding: 18px;
+  border: 1px solid #dbe1e8;
+  border-radius: 16px;
+  background: #ffffff;
+  overflow-x: auto;
+}
+
+.column-chart {
+  display: grid;
+  grid-template-columns: 92px minmax(620px, 1fr);
+  gap: 12px;
+  min-height: 300px;
+}
+
+.chart-y-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2px 0 39px;
+  color: #64748b;
+  font-size: 13px;
+  text-align: right;
+}
+
+.chart-plot {
+  position: relative;
+  min-height: 280px;
+}
+
+.chart-grid-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed #cbd5e1;
+  pointer-events: none;
+}
+
+.chart-grid-top { top: 0; }
+.chart-grid-middle { top: 50%; }
+.chart-grid-bottom { bottom: 38px; }
+
+.chart-columns {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+  align-items: end;
+  gap: 10px;
+}
+
+.chart-column-item {
+  height: 100%;
+  display: grid;
+  grid-template-rows: 26px 1fr 36px;
+  align-items: end;
+  min-width: 44px;
+}
+
+.chart-value-label {
+  align-self: end;
+  min-height: 22px;
+  color: #0f766e;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.chart-column-wrap {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.chart-column {
+  width: min(42px, 70%);
+  min-height: 4px;
+  border-radius: 8px 8px 2px 2px;
+  background: linear-gradient(180deg, #15968a 0%, #0f766e 100%);
+  box-shadow: 0 4px 10px rgba(15, 118, 110, 0.18);
+  transition: height 0.35s ease;
+}
+
+.chart-x-label {
+  align-self: start;
+  padding-top: 8px;
+  color: #475569;
+  font-size: 12px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.horizontal-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.horizontal-chart-row {
+  display: grid;
+  gap: 8px;
+}
+
+.horizontal-chart-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  color: #172033;
+  font-size: 16px;
+}
+
+.horizontal-chart-label strong {
+  color: #0f766e;
+  white-space: nowrap;
+}
+
+.horizontal-chart-track {
+  height: 32px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #e2e8f0;
+  border-left: 2px solid #94a3b8;
+  background-image: linear-gradient(to right, rgba(148, 163, 184, 0.28) 1px, transparent 1px);
+  background-size: 25% 100%;
+}
+
+.horizontal-chart-bar {
+  height: 100%;
+  min-width: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 10px;
+  border-radius: 0 8px 8px 0;
+  background: linear-gradient(90deg, #0f766e 0%, #15968a 100%);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  transition: width 0.35s ease;
+}
+
+.horizontal-chart-note {
+  color: #64748b;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .sales-summary-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .column-chart {
+    grid-template-columns: 78px minmax(560px, 1fr);
+  }
+
+  .chart-shell {
+    padding: 14px;
+  }
+}
+
+/* v1.7.0 - Günlük satışlar ve genişletilebilir raporlar */
+.daily-sales-date { margin:-8px 0 18px; color:#64748b; font-weight:700; }
+.daily-sales-head,.daily-sales-row { display:grid; grid-template-columns:1fr 2fr 1fr; gap:16px; align-items:center; }
+.daily-sales-head { padding:14px 18px; background:#dfe7f1; border-radius:14px; font-weight:800; }
+.daily-sales-row { padding:16px 18px; border-bottom:1px solid #e2e8f0; }
+.daily-sales-row > div:last-child,.daily-sales-head > div:last-child { text-align:right; }
+.daily-sales-total { display:flex; justify-content:space-between; align-items:center; margin-top:18px; padding:18px; border-radius:14px; background:#ecfdf5; font-size:20px; }
+.daily-sales-total strong { color:#0f766e; font-size:25px; }
+.report-date-filter { display:flex; flex-wrap:wrap; gap:14px; align-items:end; padding:16px; margin-bottom:20px; border:1px solid #dbe3ec; border-radius:16px; background:#f8fafc; }
+.report-date-filter label { display:flex; flex-direction:column; gap:7px; font-weight:700; color:#334155; }
+.report-date-filter input { min-width:190px; padding:11px 12px; border:1px solid #cbd5e1; border-radius:10px; font:inherit; }
+.report-date-filter .primary-button { min-height:45px; }
+.report-section { margin-top:30px; padding-top:8px; border-top:1px solid #e2e8f0; }
+.report-table-wrap { margin-top:14px; overflow-x:auto; }
+.report-data-table { min-width:620px; }
+.report-data-row { display:grid; grid-template-columns:repeat(var(--report-columns), minmax(140px,1fr)); border-bottom:1px solid #e2e8f0; }
+.report-data-row > div { padding:12px 14px; }
+.report-data-row > div:last-child { text-align:right; }
+.report-data-header { background:#dfe7f1; border-radius:12px 12px 0 0; font-weight:800; }
+.report-data-header > div:last-child { text-align:right; }
+@media (max-width:700px){
+  .daily-sales-head,.daily-sales-row{grid-template-columns:.8fr 1.5fr 1fr;gap:8px;padding-left:10px;padding-right:10px}
+  .report-date-filter{align-items:stretch}.report-date-filter label,.report-date-filter input,.report-date-filter button{width:100%}
+}
+
+/* v1.7.1 - Tek rapor görünümü ve çıktı araçları */
+.report-view-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin: 20px 0 8px;
+  padding: 16px;
+  border: 1px solid #dbe3ec;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+.report-view-toolbar label { font-weight: 700; color: #334155; }
+.report-view-toolbar select {
+  min-width: 310px;
+  min-height: 45px;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  font-weight: 700;
+}
+.report-section[data-report-view] { display: none; }
+.report-section[data-report-view].active-report-section { display: block; }
+.secondary-button {
+  min-height: 45px;
+  padding: 10px 16px;
+  border: 1px solid #0f766e;
+  border-radius: 10px;
+  background: #fff;
+  color: #0f766e;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.secondary-button:hover { background: #ecfdf5; }
+@media (max-width: 700px) {
+  .report-view-toolbar { align-items: stretch; }
+  .report-view-toolbar label, .report-view-toolbar select, .report-view-toolbar button { width: 100%; min-width: 0; }
+}
+
+@media print {
+  body.printing-report #topHeader,
+  body.printing-report .top-nav,
+  body.printing-report #cashWarning,
+  body.printing-report .report-date-filter,
+  body.printing-report .report-view-toolbar,
+  body.printing-report #pageSales,
+  body.printing-report #pageTables,
+  body.printing-report #pageHome,
+  body.printing-report #pageCash,
+  body.printing-report #pageProducts,
+  body.printing-report #pageIngredients { display: none !important; }
+  body.printing-report #pageReports { display: block !important; }
+  body.printing-report .report-page-card { box-shadow: none !important; border: 0 !important; }
+  body.printing-report .report-section[data-report-view] { display: none !important; }
+  body.printing-report[data-print-report-view="date"] .report-section[data-report-view="date"],
+  body.printing-report[data-print-report-view="payment"] .report-section[data-report-view="payment"],
+  body.printing-report[data-print-report-view="category"] .report-section[data-report-view="category"],
+  body.printing-report[data-print-report-view="product"] .report-section[data-report-view="product"] { display: block !important; }
+  body.printing-report .chart-shell { break-inside: avoid; }
+  body.printing-report .report-table-wrap { break-inside: auto; }
+}
+
+
+/* v1.7.3 - Pasta grafikler ve rapor geri dönüşü */
+.report-back-button { margin-left: auto; }
+.pie-report {
+  display: grid;
+  grid-template-columns: minmax(260px, 360px) 1fr;
+  gap: 28px;
+  align-items: center;
+  padding: 20px;
+}
+.pie-chart-wrap { display:flex; justify-content:center; align-items:center; }
+.pie-chart {
+  width: 300px;
+  max-width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .08);
+}
+.pie-chart-center {
+  width: 52%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, .12);
+  padding: 12px;
+}
+.pie-chart-center span { color:#64748b; font-size:14px; }
+.pie-chart-center strong { color:#0f766e; font-size:20px; margin-top:4px; }
+.pie-legend { display:flex; flex-direction:column; gap:8px; }
+.pie-legend-row {
+  display:grid;
+  grid-template-columns:18px minmax(130px,1fr) auto 62px;
+  gap:10px;
+  align-items:center;
+  padding:10px 12px;
+  border-bottom:1px solid #e2e8f0;
+}
+.pie-legend-color { width:14px; height:14px; border-radius:4px; }
+.pie-legend-name { font-weight:700; min-width:0; overflow-wrap:anywhere; }
+.pie-legend-percent { color:#64748b; text-align:right; }
+.pie-legend-row small { grid-column:2 / -1; color:#64748b; }
+@media (max-width: 850px) {
+  .report-back-button { margin-left: 0; }
+  .pie-report { grid-template-columns:1fr; padding:12px 0; }
+  .pie-chart { width:250px; }
+  .pie-legend-row { grid-template-columns:18px minmax(90px,1fr) auto 56px; }
+}
+@media print {
+  body.printing-report .pie-chart { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+}
+
+
+/* ==================================================
+   v1.8.0 TEK OPERASYON EKRANI
+   ================================================== */
+.operations-dashboard { display:flex; flex-direction:column; gap:22px; }
+.dashboard-top-grid { display:grid; grid-template-columns:minmax(280px, 0.32fr) minmax(0, 0.68fr); gap:22px; align-items:start; }
+.dashboard-section-title { font-size:28px; font-weight:800; color:#172033; margin-bottom:18px; }
+.dashboard-cash-card, .dashboard-tables-card, .dashboard-sales-card { margin:0; }
+.dashboard-cash-card input { max-width:240px; }
+.dashboard-cash-card .main-button { width:100%; max-width:240px; margin-top:12px; }
+.dashboard-cash-card h3 { margin:16px 0 10px; }
+.cash-history-details { margin-top:18px; border-top:1px solid #dbe1e8; padding-top:14px; }
+.cash-history-details summary { cursor:pointer; font-weight:700; color:#0f766e; }
+.cash-history-details .cash-history-row { grid-template-columns:1.2fr 1fr 1.2fr 1fr .8fr; font-size:13px; }
+.dashboard-tables-card .tables-grid { display:grid; grid-template-columns:repeat(3, minmax(160px, 1fr)); gap:16px; }
+.dashboard-tables-card .table-card { min-height:170px; padding:22px 16px; }
+.daily-sales-title-row { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; }
+.daily-sales-title-row .dashboard-section-title { margin-bottom:0; }
+.dashboard-sales-card #salesList { max-height:none; overflow:visible; }
+.module-page-heading { font-size:30px; font-weight:800; margin:0 0 18px; color:#172033; }
+.internet-panel-intro { color:#64748b; font-size:17px; }
+.internet-channel-grid { display:grid; grid-template-columns:repeat(3,minmax(180px,1fr)); gap:16px; margin-top:22px; }
+.internet-channel-card { border:1px solid #dbe1e8; border-radius:16px; padding:20px; background:#f8fafc; display:flex; flex-direction:column; gap:8px; }
+.internet-channel-card strong { font-size:19px; }
+.internet-channel-card span { color:#0f766e; font-weight:700; }
+@media (min-width:1500px){ .dashboard-tables-card .tables-grid { grid-template-columns:repeat(3,minmax(190px,1fr)); } }
+@media (max-width:1050px){
+  .dashboard-top-grid { grid-template-columns:1fr; }
+  .dashboard-tables-card .tables-grid { grid-template-columns:repeat(3,minmax(150px,1fr)); }
+  .internet-channel-grid { grid-template-columns:repeat(2,minmax(160px,1fr)); }
+}
+@media (max-width:700px){
+  .dashboard-tables-card .tables-grid { grid-template-columns:repeat(2,minmax(130px,1fr)); }
+  .internet-channel-grid { grid-template-columns:1fr; }
+  .dashboard-section-title { font-size:24px; }
+}
+@media (max-width:430px){ .dashboard-tables-card .tables-grid { grid-template-columns:1fr; } }
+
+
+/* ==================================================
+   v1.8.3 ÜRÜNLER ADI + DİNAMİK MASA YÖNETİMİ
+   ================================================== */
+.tables-title-row { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
+.tables-title-row .dashboard-section-title { margin-bottom:0; }
+.add-table-button { display:none; align-items:center; justify-content:center; min-height:46px; padding:10px 18px; border:0; border-radius:12px; background:#0f766e; color:#fff; font-weight:800; cursor:pointer; }
+.add-table-button:hover { filter:brightness(.95); }
+.dashboard-tables-card .tables-grid { grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); align-items:start; }
+.table-card-wrap { min-width:0; display:flex; flex-direction:column; gap:8px; }
+.table-card-wrap .table-card { width:100%; }
+.table-admin-actions { display:grid; grid-template-columns:1fr auto; gap:8px; }
+.table-mini-button { min-height:34px; border:1px solid #cbd5e1; border-radius:9px; background:#fff; color:#334155; font-size:11px; font-weight:800; cursor:pointer; padding:7px 9px; }
+.table-mini-button.danger { color:#b91c1c; border-color:#fecaca; background:#fff7f7; }
+@media (max-width:700px){
+  .dashboard-tables-card .tables-grid { grid-template-columns:repeat(auto-fit, minmax(145px, 1fr)); }
+  .table-admin-actions { grid-template-columns:1fr; }
+}
+@media (max-width:430px){
+  .dashboard-tables-card .tables-grid { grid-template-columns:1fr; }
+}
+
+/* v1.8.4 - Masa Yönetimi */
+.table-management-card{max-width:920px;width:min(920px,96vw);max-height:88vh;overflow:auto}
+.table-management-header{display:flex;align-items:center;justify-content:space-between;gap:16px;position:sticky;top:0;background:#fff;z-index:3;padding-bottom:14px;border-bottom:1px solid #e5e7eb}
+.table-management-header h2{margin:0}
+.table-add-row{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:12px;margin:18px 0 10px}
+.table-add-row input{width:100%;min-height:52px;border:2px solid #cbd5e1;border-radius:12px;padding:0 14px;font-size:17px}
+.table-management-note{font-size:14px;color:#64748b;margin-bottom:14px}
+.table-management-list{display:grid;gap:10px}
+.table-management-row{display:grid;grid-template-columns:42px minmax(140px,1fr) auto;align-items:center;gap:12px;border:1px solid #dbe3ee;border-radius:14px;padding:12px;background:#fff}
+.table-management-row.inactive{opacity:.62;background:#f8fafc}
+.table-management-order{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#e2e8f0;font-weight:800}
+.table-management-name{display:flex;flex-direction:column;gap:3px}
+.table-management-name strong{font-size:17px}
+.table-management-name span{font-size:13px;color:#64748b}
+.table-management-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+@media(max-width:720px){.table-add-row{grid-template-columns:1fr}.table-management-row{grid-template-columns:36px 1fr}.table-management-actions{grid-column:1/-1;justify-content:stretch}.table-management-actions button{flex:1;min-width:120px}}
+
+/* KNPOS v2.0.0 — One Touch masa akışı */
+.dashboard-top-grid{
+  display:grid !important;
+  grid-template-columns:minmax(320px, 0.34fr) minmax(0, 0.66fr) !important;
+  gap:22px !important;
+  align-items:stretch !important;
+}
+.dashboard-left-column{
+  display:flex;
+  flex-direction:column;
+  gap:22px;
+  min-width:0;
+}
+.dashboard-cash-card{flex:0 0 auto;}
+.dashboard-sales-card{flex:1 1 auto; min-height:0; display:flex; flex-direction:column;}
+.dashboard-sales-card #salesList{max-height:420px; overflow-y:auto; min-height:180px;}
+.dashboard-tables-card{height:100%; min-height:100%; display:flex; flex-direction:column;}
+.dashboard-tables-card .tables-grid{
+  grid-template-columns:repeat(5,minmax(145px,1fr)) !important;
+  align-items:stretch !important;
+}
+.table-card-wrap{height:100%;}
+.dashboard-tables-card .table-card{
+  min-height:178px !important;
+  height:100% !important;
+  display:flex !important;
+  flex-direction:column;
+  justify-content:center;
+}
+.tables-help{
+  margin-top:auto;
+  padding:20px;
+  border:1px solid #bfdbfe;
+  background:#f8fbff;
+  color:#1d4ed8;
+  border-radius:18px;
+  text-align:center;
+  font-size:18px;
+  font-weight:700;
+}
+#tableModal.modal-overlay{
+  padding:0 !important;
+  align-items:stretch !important;
+  justify-content:stretch !important;
+  background:#f1f5f9 !important;
+}
+#tableModal .order-screen-card{
+  width:100vw !important;
+  max-width:none !important;
+  min-height:100vh !important;
+  max-height:100vh !important;
+  border-radius:0 !important;
+  margin:0 !important;
+  padding:22px !important;
+  overflow:auto !important;
+}
+#tableModal .sales-layout{
+  grid-template-columns:minmax(0, 2fr) minmax(360px, .9fr) !important;
+  min-height:calc(100vh - 110px);
+}
+#tableModal .sales-panel{min-height:0;}
+#tableModal .products-grid{max-height:calc(100vh - 255px); overflow-y:auto;}
+#tableModal .cart-list{max-height:calc(100vh - 355px); overflow-y:auto;}
+@media(max-width:1350px){
+  .dashboard-tables-card .tables-grid{grid-template-columns:repeat(3,minmax(145px,1fr)) !important;}
+}
+@media(max-width:950px){
+  .dashboard-top-grid{grid-template-columns:1fr !important;}
+  .dashboard-tables-card .tables-grid{grid-template-columns:repeat(2,minmax(140px,1fr)) !important;}
+  #tableModal .sales-layout{grid-template-columns:1fr !important;}
+}
+
+/* ==================================================
+   v2.0.2 — İlk ekranı kaydırmadan gösteren kompakt ana menü
+   ================================================== */
+@media (min-width: 951px) {
+  #pageTables.active-page {
+    overflow: hidden;
+  }
+
+  #pageTables .operations-dashboard {
+    height: calc(100vh - 285px);
+    min-height: 540px;
+  }
+
+  #pageTables .dashboard-top-grid {
+    height: 100%;
+    min-height: 0;
+    align-items: stretch !important;
+  }
+
+  #pageTables .dashboard-left-column,
+  #pageTables .dashboard-tables-card {
+    min-height: 0;
+  }
+
+  /* Kasa kartını daha kompakt tut */
+  #pageTables .dashboard-cash-card {
+    padding: 22px !important;
+  }
+
+  #pageTables .dashboard-cash-card .dashboard-section-title {
+    margin-bottom: 12px;
+  }
+
+  #pageTables .dashboard-cash-card #cashStatus {
+    padding: 18px 14px !important;
+    min-height: 0 !important;
+  }
+
+  #pageTables .dashboard-cash-card h2,
+  #pageTables .dashboard-cash-card h3 {
+    margin-top: 10px !important;
+    margin-bottom: 8px !important;
+  }
+
+  #pageTables .dashboard-cash-card label {
+    margin-bottom: 5px;
+    font-size: 16px;
+  }
+
+  #pageTables .dashboard-cash-card input {
+    min-height: 48px;
+    font-size: 19px;
+  }
+
+  #pageTables .dashboard-cash-card .main-button {
+    min-height: 50px;
+    margin-top: 10px;
+    font-size: 18px;
+  }
+
+  #pageTables .cash-history-details {
+    margin-top: 10px;
+    padding-top: 10px;
+  }
+
+  /* Anlık satışlar sol sütunda kendi içinde kayar */
+  #pageTables .dashboard-sales-card {
+    flex: 1 1 0;
+    min-height: 150px;
+    padding: 16px 20px !important;
+    overflow: hidden;
+  }
+
+  #pageTables .dashboard-sales-card .dashboard-section-title {
+    font-size: 22px;
+  }
+
+  #pageTables .dashboard-sales-card #salesList {
+    flex: 1 1 auto;
+    min-height: 70px;
+    max-height: none;
+    overflow-y: auto;
+  }
+
+  /* Altı masa ilk ekranda iki sıra hâlinde görünür */
+  #pageTables .dashboard-tables-card {
+    padding: 22px !important;
+    overflow: hidden;
+  }
+
+  #pageTables .tables-title-row {
+    margin-bottom: 12px;
+  }
+
+  #pageTables .dashboard-tables-card .tables-grid {
+    grid-template-columns: repeat(3, minmax(150px, 1fr)) !important;
+    grid-auto-rows: minmax(128px, 1fr);
+    gap: 12px !important;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    align-content: start;
+    padding-right: 3px;
+  }
+
+  #pageTables .table-card-wrap {
+    min-height: 128px;
+    height: auto;
+  }
+
+  #pageTables .dashboard-tables-card .table-card {
+    min-height: 128px !important;
+    height: 100% !important;
+    padding: 13px 10px !important;
+  }
+
+  #pageTables .dashboard-tables-card .table-card h3 {
+    margin: 0 0 6px;
+    font-size: 29px;
+  }
+
+  #pageTables .dashboard-tables-card .table-card p {
+    margin: 3px 0;
+    line-height: 1.14;
+  }
+
+  #pageTables .tables-help {
+    flex: 0 0 auto;
+    margin-top: 10px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 951px) and (max-height: 820px) {
+  #pageTables .operations-dashboard {
+    height: calc(100vh - 250px);
+    min-height: 470px;
+  }
+
+  #pageTables .dashboard-cash-card {
+    padding: 16px !important;
+  }
+
+  #pageTables .dashboard-cash-card #cashStatus {
+    padding: 12px !important;
+  }
+
+  #pageTables .dashboard-tables-card .table-card {
+    min-height: 112px !important;
+  }
+
+  #pageTables .dashboard-tables-card .tables-grid {
+    grid-auto-rows: minmax(112px, 1fr);
+  }
+}
+
+/* ==================================================
+   v2.0.3 — Daha küçük masa kartları / kaymasız ilk ekran
+   ================================================== */
+@media (min-width: 951px) {
+  #pageTables .dashboard-tables-card .tables-grid {
+    grid-template-columns: repeat(3, minmax(135px, 1fr)) !important;
+    grid-auto-rows: 108px !important;
+    gap: 9px !important;
+    align-content: start !important;
+    overflow-y: auto;
+  }
+
+  #pageTables .table-card-wrap {
+    min-height: 108px !important;
+    height: 108px !important;
+  }
+
+  #pageTables .dashboard-tables-card .table-card {
+    min-height: 108px !important;
+    height: 108px !important;
+    padding: 8px 8px !important;
+    border-radius: 18px !important;
+    overflow: hidden;
+  }
+
+  #pageTables .dashboard-tables-card .table-card h3 {
+    margin: 0 0 3px !important;
+    font-size: 24px !important;
+    line-height: 1.05 !important;
+  }
+
+  #pageTables .dashboard-tables-card .table-card p {
+    margin: 1px 0 !important;
+    font-size: 14px !important;
+    line-height: 1.08 !important;
+  }
+
+  #pageTables .dashboard-tables-card .table-card p strong,
+  #pageTables .dashboard-tables-card .table-card .status {
+    font-size: 18px !important;
+  }
+
+  #pageTables .tables-title-row {
+    margin-bottom: 8px !important;
+  }
+
+  #pageTables .add-table-button {
+    min-height: 42px !important;
+    padding: 8px 15px !important;
+    font-size: 15px !important;
+  }
+
+  #pageTables .tables-help {
+    margin-top: 7px !important;
+    padding: 7px 10px !important;
+    font-size: 13px !important;
+  }
+}
+
+@media (min-width: 951px) and (max-height: 820px) {
+  #pageTables .dashboard-tables-card .tables-grid {
+    grid-auto-rows: 96px !important;
+  }
+  #pageTables .table-card-wrap,
+  #pageTables .dashboard-tables-card .table-card {
+    min-height: 96px !important;
+    height: 96px !important;
+  }
+  #pageTables .dashboard-tables-card .table-card h3 {
+    font-size: 22px !important;
+  }
+  #pageTables .dashboard-tables-card .table-card p {
+    font-size: 13px !important;
+  }
+}
+
+/* ==================================================
+   v2.1.0 — POS odaklı tek ekran: sabit masalar, kaydırmalı satış listesi
+   ================================================== */
+@media (min-width: 951px) {
+  html, body { height: 100%; }
+  body { overflow: hidden; }
+
+  /* Üst alanı incelt */
+  .header {
+    min-height: 58px !important;
+    padding: 8px 18px !important;
+    font-size: 21px !important;
+  }
+  .header > div:first-child > div:first-child { font-size: 21px !important; }
+  .header > div:first-child > div:last-child {
+    font-size: 11px !important;
+    margin-top: 2px !important;
+  }
+  .header-user { gap: 10px !important; font-size: 13px !important; }
+  .logout-button {
+    min-height: 34px !important;
+    padding: 6px 13px !important;
+    font-size: 13px !important;
+    border-radius: 9px !important;
+  }
+  .nav {
+    min-height: 46px !important;
+    padding: 5px 14px !important;
+    gap: 7px !important;
+  }
+  .nav button {
+    min-height: 34px !important;
+    padding: 6px 13px !important;
+    font-size: 13px !important;
+    border-radius: 9px !important;
+  }
+  .cash-warning {
+    margin-bottom: 6px !important;
+    padding: 7px 12px !important;
+    font-size: 13px !important;
+  }
+  .container {
+    max-width: none !important;
+    padding: 10px 16px 12px !important;
+  }
+
+  /* Ana ekranda sayfa değil, yalnızca satış listesi kayar */
+  #pageTables.active-page { overflow: hidden !important; }
+  #pageTables .operations-dashboard {
+    height: calc(100vh - 132px) !important;
+    min-height: 0 !important;
+    gap: 10px !important;
+  }
+  #pageTables .dashboard-top-grid {
+    height: 100% !important;
+    min-height: 0 !important;
+    grid-template-columns: minmax(255px, 0.27fr) minmax(0, 0.73fr) !important;
+    gap: 12px !important;
+  }
+  #pageTables .dashboard-left-column {
+    gap: 10px !important;
+    min-height: 0 !important;
+  }
+
+  /* Kasa: küçük bilgi/işlem paneli */
+  #pageTables .dashboard-cash-card {
+    flex: 0 0 auto !important;
+    padding: 10px 12px !important;
+    border-radius: 14px !important;
+  }
+  #pageTables .dashboard-section-title {
+    font-size: 18px !important;
+    line-height: 1.1 !important;
+    margin-bottom: 7px !important;
+  }
+  #pageTables .dashboard-cash-card #cashStatus {
+    padding: 8px 10px !important;
+    font-size: 13px !important;
+    border-radius: 10px !important;
+  }
+  #pageTables .dashboard-cash-card h3 {
+    margin: 6px 0 4px !important;
+    font-size: 15px !important;
+  }
+  #pageTables .dashboard-cash-card label {
+    margin-bottom: 3px !important;
+    font-size: 12px !important;
+  }
+  #pageTables .dashboard-cash-card input {
+    min-height: 34px !important;
+    height: 34px !important;
+    padding: 5px 9px !important;
+    font-size: 15px !important;
+  }
+  #pageTables .dashboard-cash-card .main-button {
+    min-height: 34px !important;
+    height: 34px !important;
+    margin-top: 6px !important;
+    padding: 5px 10px !important;
+    font-size: 13px !important;
+    border-radius: 9px !important;
+  }
+  #pageTables .cash-history-details {
+    margin-top: 6px !important;
+    padding-top: 6px !important;
+    font-size: 12px !important;
+  }
+  #pageTables .cash-history-details[open] {
+    max-height: 130px;
+    overflow-y: auto;
+  }
+
+  /* Günlük satışlar: ana öncelik ve tek kaydırılan alan */
+  #pageTables .dashboard-sales-card {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    padding: 11px 12px !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+  }
+  #pageTables .daily-sales-title-row {
+    flex: 0 0 auto;
+    margin-bottom: 5px !important;
+  }
+  #pageTables .daily-sales-date { font-size: 11px !important; }
+  #pageTables .daily-sales-head {
+    flex: 0 0 auto;
+    padding: 7px 9px !important;
+    border-radius: 9px !important;
+    font-size: 12px !important;
+    gap: 8px !important;
+  }
+  #pageTables .dashboard-sales-card #salesList {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+  #pageTables .daily-sales-row {
+    padding: 7px 9px !important;
+    font-size: 12px !important;
+    gap: 8px !important;
+  }
+  #pageTables .daily-sales-total {
+    flex: 0 0 auto;
+    margin-top: 5px !important;
+    padding: 8px 10px !important;
+    border-radius: 9px !important;
+    font-size: 14px !important;
+  }
+  #pageTables .daily-sales-total strong { font-size: 17px !important; }
+
+  /* Masalar: sabit, kaydırmasız grid */
+  #pageTables .dashboard-tables-card {
+    min-height: 0 !important;
+    height: 100% !important;
+    padding: 11px 12px !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+  }
+  #pageTables .tables-title-row {
+    flex: 0 0 auto;
+    margin-bottom: 7px !important;
+  }
+  #pageTables .add-table-button {
+    min-height: 32px !important;
+    height: 32px !important;
+    padding: 5px 10px !important;
+    font-size: 12px !important;
+    border-radius: 8px !important;
+  }
+  #pageTables .dashboard-tables-card .tables-grid {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    grid-template-columns: repeat(3, minmax(120px, 1fr)) !important;
+    grid-template-rows: repeat(4, minmax(0, 1fr)) !important;
+    grid-auto-rows: minmax(0, 1fr) !important;
+    gap: 7px !important;
+    align-content: stretch !important;
+    padding-right: 0 !important;
+  }
+  #pageTables .table-card-wrap {
+    min-height: 0 !important;
+    height: auto !important;
+  }
+  #pageTables .dashboard-tables-card .table-card {
+    min-height: 0 !important;
+    height: 100% !important;
+    padding: 6px 7px !important;
+    border-radius: 14px !important;
+  }
+  #pageTables .dashboard-tables-card .table-card h3 {
+    margin: 0 0 2px !important;
+    font-size: clamp(17px, 1.45vw, 23px) !important;
+    line-height: 1 !important;
+  }
+  #pageTables .dashboard-tables-card .table-card p {
+    margin: 1px 0 !important;
+    font-size: clamp(10px, .9vw, 13px) !important;
+    line-height: 1.03 !important;
+  }
+  #pageTables .dashboard-tables-card .table-card p strong,
+  #pageTables .dashboard-tables-card .table-card .status {
+    font-size: clamp(13px, 1.1vw, 17px) !important;
+  }
+  #pageTables .tables-help {
+    flex: 0 0 auto;
+    margin-top: 6px !important;
+    padding: 5px 8px !important;
+    font-size: 11px !important;
+    border-radius: 8px !important;
+  }
+}
+
+@media (min-width: 951px) and (max-height: 720px) {
+  .header { min-height: 52px !important; padding-top: 5px !important; padding-bottom: 5px !important; }
+  .nav { min-height: 40px !important; }
+  .nav button { min-height: 30px !important; }
+  #pageTables .operations-dashboard { height: calc(100vh - 116px) !important; }
+  #pageTables .dashboard-tables-card .tables-grid { gap: 5px !important; }
+  #pageTables .tables-help { display: none !important; }
+}
+
+
+/* ==================================================
+   v3.0.0 — Gerçek POS ana ekranı
+   Masalar sabit; yalnızca günlük satış listesi kayar.
+   ================================================== */
+@media (min-width: 951px) {
+  html, body { height: 100%; overflow: hidden; }
+  .header {
+    min-height: 48px !important;
+    padding: 6px 16px !important;
+    font-size: 18px !important;
+  }
+  .header > div:first-child > div:first-child { font-size: 18px !important; }
+  .header > div:first-child > div:last-child { font-size: 10px !important; margin-top: 1px !important; }
+  .header-user { gap: 8px !important; font-size: 12px !important; }
+  .logout-button { min-height: 30px !important; padding: 4px 11px !important; font-size: 12px !important; }
+  .nav { min-height: 38px !important; padding: 4px 12px !important; gap: 6px !important; }
+  .nav button { min-height: 29px !important; padding: 4px 10px !important; font-size: 12px !important; }
+  .cash-warning { margin: 0 !important; padding: 5px 12px !important; font-size: 12px !important; }
+  .container { max-width: none !important; padding: 8px 14px 10px !important; }
+
+  #pageTables.active-page { overflow: hidden !important; }
+  #pageTables .operations-dashboard {
+    height: calc(100vh - 104px) !important;
+    display: grid !important;
+    grid-template-rows: minmax(250px, 45%) minmax(210px, 55%) !important;
+    gap: 9px !important;
+    min-height: 0 !important;
+  }
+  #pageTables .dashboard-top-grid {
+    display: grid !important;
+    grid-template-columns: 230px minmax(0, 1fr) !important;
+    gap: 9px !important;
+    min-height: 0 !important;
+    height: auto !important;
+  }
+  #pageTables .card { border-radius: 12px !important; box-shadow: 0 2px 8px rgba(15,23,42,.08) !important; }
+  #pageTables .dashboard-section-title { font-size: 17px !important; margin: 0 !important; line-height: 1.1 !important; }
+
+  #pageTables .dashboard-cash-card {
+    min-height: 0 !important;
+    height: 100% !important;
+    padding: 10px !important;
+    overflow: hidden !important;
+  }
+  #pageTables .dashboard-cash-card #cashStatus {
+    margin-top: 7px !important;
+    padding: 7px 8px !important;
+    font-size: 12px !important;
+    border-radius: 8px !important;
+  }
+  #pageTables .dashboard-cash-card label { display:block; margin:7px 0 3px !important; font-size:11px !important; }
+  #pageTables .cash-action-row { display:grid; grid-template-columns:minmax(0,1fr) 62px; gap:6px; align-items:center; }
+  #pageTables .dashboard-cash-card input { width:100% !important; min-height:31px !important; height:31px !important; padding:4px 7px !important; font-size:13px !important; }
+  #pageTables .dashboard-cash-card .main-button { width:62px !important; min-height:31px !important; height:31px !important; margin:0 !important; padding:4px 6px !important; font-size:11px !important; border-radius:7px !important; }
+  #pageTables .cash-history-details { margin-top:7px !important; padding-top:6px !important; font-size:11px !important; }
+  #pageTables .cash-history-details[open] { position:absolute; z-index:20; width:520px; max-height:260px; overflow:auto; background:#fff; border:1px solid #cbd5e1; padding:10px !important; border-radius:10px; box-shadow:0 12px 30px rgba(15,23,42,.22); }
+
+  #pageTables .dashboard-tables-card {
+    min-height:0 !important;
+    height:100% !important;
+    padding:9px 10px !important;
+    overflow:hidden !important;
+  }
+  #pageTables .tables-title-row { margin:0 0 7px !important; min-height:28px; flex-wrap:nowrap !important; }
+  #pageTables .add-table-button { min-height:28px !important; height:28px !important; padding:3px 9px !important; font-size:11px !important; border-radius:7px !important; white-space:nowrap; }
+  #pageTables .dashboard-tables-card .tables-grid {
+    display:grid !important;
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+    grid-template-rows:repeat(3,minmax(0,1fr)) !important;
+    grid-auto-rows:minmax(0,1fr) !important;
+    gap:6px !important;
+    min-height:0 !important;
+    height:calc(100% - 35px) !important;
+    overflow:hidden !important;
+    padding:0 !important;
+    align-content:stretch !important;
+  }
+  #pageTables .table-card-wrap { min-height:0 !important; height:auto !important; }
+  #pageTables .dashboard-tables-card .table-card {
+    width:100% !important;
+    height:100% !important;
+    min-height:0 !important;
+    padding:5px !important;
+    border-radius:10px !important;
+    display:flex !important;
+    flex-direction:column !important;
+    justify-content:center !important;
+    align-items:center !important;
+    gap:3px !important;
+  }
+  #pageTables .table-number { font-size:clamp(22px,2.1vw,32px); font-weight:900; line-height:1; letter-spacing:.02em; }
+  #pageTables .table-total { font-size:clamp(11px,1vw,15px); font-weight:800; line-height:1; }
+  #pageTables .table-name, #pageTables .table-state, #pageTables .table-time { display:none !important; }
+  #pageTables .tables-help { display:none !important; }
+
+  #pageTables .dashboard-sales-card {
+    min-height:0 !important;
+    height:100% !important;
+    padding:9px 11px !important;
+    overflow:hidden !important;
+    display:flex !important;
+    flex-direction:column !important;
+  }
+  #pageTables .daily-sales-title-row { flex:0 0 auto; margin:0 0 5px !important; }
+  #pageTables .daily-sales-date { font-size:11px !important; }
+  #pageTables .daily-sales-head { flex:0 0 auto; padding:6px 9px !important; font-size:11px !important; border-radius:7px !important; }
+  #pageTables .dashboard-sales-card #salesList {
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    scrollbar-gutter:stable;
+    overscroll-behavior:contain;
+  }
+  #pageTables .daily-sales-row { padding:6px 9px !important; font-size:12px !important; }
+  #pageTables .daily-sales-total { flex:0 0 auto; margin-top:4px !important; padding:6px 9px !important; font-size:13px !important; border-radius:7px !important; }
+  #pageTables .daily-sales-total strong { font-size:16px !important; }
+}
+
+@media (min-width:951px) and (max-height:760px) {
+  #pageTables .operations-dashboard { height:calc(100vh - 98px) !important; grid-template-rows:minmax(220px,44%) minmax(180px,56%) !important; }
+  #pageTables .dashboard-top-grid { grid-template-columns:205px minmax(0,1fr) !important; }
+  #pageTables .table-number { font-size:22px !important; }
+  #pageTables .dashboard-cash-card { padding:8px !important; }
+}
