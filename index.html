@@ -12,6 +12,66 @@
 <meta content="yes" name="apple-mobile-web-app-capable"/>
 <meta content="KNPOS" name="apple-mobile-web-app-title"/>
 </head>
+<style>
+  /* KASA KARTINI VE EKRAN TAŞMALARINI DÜZELTME */
+  body {
+    overflow-y: auto !important;
+    padding-bottom: 80px !important;
+  }
+
+  /* Sol Kasa Kartı Esnetme */
+  .cash-card, div[class*="cash"] {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding-bottom: 20px !important;
+  }
+
+  #openCashPanel, #closeCashPanel {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin-top: 15px !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  #openCashPanel input, #closeCashPanel input {
+    width: 100% !important;
+    padding: 10px !important;
+    font-size: 14px !important;
+    border: 1px solid #ccc !important;
+    border-radius: 6px !important;
+    box-sizing: border-box !important;
+  }
+
+  #openCashPanel button, #closeCashPanel button {
+    width: 100% !important;
+    padding: 10px !important;
+    background-color: #0f766e !important;
+    color: white !important;
+    font-weight: bold !important;
+    border: none !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+  }
+
+  /* Bugünkü Anlık Satışlar Tablosunu Kısaltma ve Kaydırma */
+  div[class*="daily-sales"], #salesList {
+    max-height: 160px !important;
+    overflow-y: auto !important;
+  }
+
+  /* Alt Toplam Barı */
+  div[class*="summary"], #salesDailyTotalWrap {
+    margin-top: 15px !important;
+    margin-bottom: 30px !important;
+    padding: 12px !important;
+    background: #e6f4ea !important;
+    color: #137333 !important;
+    border-radius: 8px !important;
+  }
+</style>        
 <body>
 <section id="loginScreen">
 <div class="login-card">
