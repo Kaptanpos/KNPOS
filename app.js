@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - MASAYI BOŞALT DÜZELTİLMİŞ SÜRÜM */
+/* KAPTAN NİLİ BULUT POS - ÜRÜNLER YÖNETİMİ ENTEGRELİ SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -15,6 +15,7 @@ const logoutButton = document.getElementById("logoutButton");
 let currentCashSession = null;
 let selectedTableId = null;
 let saleProducts = [];
+let allManagementProducts = [];
 let selectedCategory = "Tümü";
 
 const TABLE_STORAGE_KEY = "knpos_tables_v1";
@@ -69,7 +70,7 @@ function logout() {
   }
 }
 
-// 2. SAYFA GEÇİŞLERİ
+// 2. SAYFA GEÇİŞLERİ VE AKTİF MENÜ VURGUSU
 function showPage(pageName) {
   const pages = {
     tables: document.getElementById("pageTables"),
@@ -86,12 +87,24 @@ function showPage(pageName) {
   const activePage = pages[pageName] || pages.tables;
   if (activePage) activePage.style.display = "block";
 
+  // Header Navigasyon Butonlarının Aktifliğini Güncelle
+  const navBtns = document.querySelectorAll(".main-nav button");
+  navBtns.forEach(btn => {
+    const txt = (btn.textContent || "").trim().toUpperCase();
+    btn.classList.remove("active-nav");
+    if (pageName === "tables" && txt.includes("ANA MENÜ")) btn.classList.add("active-nav");
+    if (pageName === "ingredients" && txt.includes("MALZEMELER")) btn.classList.add("active-nav");
+    if (pageName === "internet" && txt.includes("İNTERNET")) btn.classList.add("active-nav");
+    if (pageName === "products" && txt.includes("ÜRÜNLER")) btn.classList.add("active-nav");
+    if (pageName === "reports" && txt.includes("RAPORLAR")) btn.classList.add("active-nav");
+  });
+
   if (pageName === "tables") {
     renderTables();
     loadCashStatus();
     renderSales();
   } else if (pageName === "products") {
-    loadProducts();
+    loadManagementProducts();
   }
 }
 
@@ -231,7 +244,6 @@ function closeTableModal() {
   renderTables();
 }
 
-// MASAYI BOŞALT / SİPARİŞİ İPTAL ET FONKSİYONU
 function clearCurrentTable() {
   if (!selectedTableId) return;
   const tables = getTables();
@@ -251,7 +263,7 @@ function clearCurrentTable() {
   }
 }
 
-// 6. ÜRÜNLER VE SEPET
+// 6. ÜRÜNLER (SATIŞ KATALOĞU)
 async function loadProducts() {
   try {
     const { data, error } = await client
@@ -416,7 +428,141 @@ function changeQty(productId, delta) {
   renderTables();
 }
 
-// 7. ÖDEME MODALI VE KAPATMA
+// 7. ÜRÜN YÖNETİMİ YENİ BÖLÜMÜ (SUPABASE YÖNETİMİ)
+async function loadManagementProducts() {
+  try {
+    const { data, error } = await client
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    allManagementProducts = data || [];
+    renderManagementProductsTable(allManagementProducts);
+  } catch (err) {
+    alert("Ürünler yüklenirken hata oluştu: " + err.message);
+  }
+}
+
+function renderManagementProductsTable(products) {
+  const tbody = document.getElementById("managementProductsTbody");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+  if (products.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Kayıtlı ürün bulunamadı.</td></tr>';
+    return;
+  }
+
+  products.forEach(p => {
+    const tr = document.createElement("tr");
+    
+    const imgHtml = p.image_url 
+      ? `<img src="${escapeHtml(p.image_url)}" style="width:36px; height:36px; object-fit:contain; border-radius:6px;" onerror="this.src='https://via.placeholder.com/36?text=?'">`
+      : `<span style="font-size:20px;">${getProductEmoji(p.category)}</span>`;
+
+    tr.innerHTML = `
+      <td>${imgHtml}</td>
+      <td><strong>${escapeHtml(p.name)}</strong></td>
+      <td>${escapeHtml(p.category || 'Diğer')}</td>
+      <td><strong>${formatMoney(p.price)}</strong></td>
+      <td>
+        <span class="${p.active ? 'badge-active' : 'badge-passive'}">
+          ${p.active ? 'Aktif' : 'Pasif'}
+        </span>
+      </td>
+      <td style="text-align: right;">
+        <button type="button" class="btn-edit" onclick="editProduct(${p.id})">Düzenle</button>
+        <button type="button" class="btn-toggle" onclick="toggleProductActive(${p.id}, ${p.active})">
+          ${p.active ? 'Pasif Yap' : 'Aktif Yap'}
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function saveProductFromForm() {
+  const editId = document.getElementById("editProductId").value;
+  const name = document.getElementById("prodNameInput").value.trim();
+  const category = document.getElementById("prodCategorySelect").value;
+  const price = parseFloat(document.getElementById("prodPriceInput").value);
+  const imageUrl = document.getElementById("prodImageInput").value.trim();
+
+  if (!name || isNaN(price) || price < 0) {
+    alert("Lütfen geçerli bir ürün adı ve fiyatı giriniz.");
+    return;
+  }
+
+  const payload = {
+    name: name,
+    category: category,
+    price: price,
+    image_url: imageUrl || null
+  };
+
+  try {
+    if (editId) {
+      // Güncelleme
+      const { error } = await client.from("products").update(payload).eq("id", editId);
+      if (error) throw error;
+      alert("Ürün başarıyla güncellendi!");
+    } else {
+      // Yeni Ekleme
+      payload.active = true;
+      const { error } = await client.from("products").insert(payload);
+      if (error) throw error;
+      alert("Yeni ürün eklendi!");
+    }
+
+    resetProductForm();
+    await loadManagementProducts();
+    await loadProducts(); // Satış kataloğunu da güncelle
+
+  } catch (err) {
+    alert("Ürün kaydedilemedi: " + err.message);
+  }
+}
+
+function editProduct(id) {
+  const product = allManagementProducts.find(p => p.id === id);
+  if (!product) return;
+
+  document.getElementById("editProductId").value = product.id;
+  document.getElementById("prodNameInput").value = product.name;
+  document.getElementById("prodCategorySelect").value = product.category || "Profiterol";
+  document.getElementById("prodPriceInput").value = product.price;
+  document.getElementById("prodImageInput").value = product.image_url || "";
+
+  document.getElementById("productFormTitle").textContent = "Ürün Düzenle";
+  document.getElementById("resetProductFormBtn").style.display = "inline-block";
+}
+
+function resetProductForm() {
+  document.getElementById("editProductId").value = "";
+  document.getElementById("prodNameInput").value = "";
+  document.getElementById("prodPriceInput").value = "";
+  document.getElementById("prodImageInput").value = "";
+  document.getElementById("productFormTitle").textContent = "Yeni Ürün Ekle";
+  document.getElementById("resetProductFormBtn").style.display = "none";
+}
+
+async function toggleProductActive(id, currentActive) {
+  try {
+    const { error } = await client
+      .from("products")
+      .update({ active: !currentActive })
+      .eq("id", id);
+
+    if (error) throw error;
+    await loadManagementProducts();
+    await loadProducts();
+  } catch (err) {
+    alert("Durum değiştirilemedi: " + err.message);
+  }
+}
+
+// 8. ÖDEME MODALI VE KAPATMA
 function openPaymentModal() {
   const table = getTables().find(t => t.id === selectedTableId);
   const paymentModal = document.getElementById("paymentModal");
@@ -454,7 +600,7 @@ function updatePaymentSummary() {
   }
 }
 
-// 8. ANLIK SATIŞLAR TABLOSU
+// 9. ANLIK SATIŞLAR TABLOSU
 async function renderSales() {
   const list = document.getElementById("salesList");
   const totalElem = document.getElementById("salesDailyTotal");
@@ -501,19 +647,17 @@ function escapeHtml(str) {
   return String(str || "").replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
 }
 
-// GLOBAL EVENT DELEGATION (EKSİKSİZ VE KESİN TIKLAMA YAKALAYICI)
+// GLOBAL EVENT DELEGATION
 document.addEventListener("click", function(e) {
   const target = e.target;
   if (!target) return;
 
-  // 1. MASAYI BOŞALT / SİPARİŞİ İPTAL ET
   if (target.id === "clearTableButton" || target.closest("#clearTableButton")) {
     e.preventDefault();
     clearCurrentTable();
     return;
   }
 
-  // 2. ANA MENÜYE DÖN / KAYDET VE ANA MENÜ
   if (target.id === "topClosePanelButton" || target.id === "cancelTableButton") {
     e.preventDefault();
     closeTableModal();
@@ -524,6 +668,24 @@ document.addEventListener("click", function(e) {
 // TIKLAMA VE ETKİLEŞİM DİNLENMELERİ
 function bindEvents() {
   setupNavigation();
+
+  // Ürün Yönetimi Buton Dinleyicileri
+  const saveProdBtn = document.getElementById("saveProductBtn");
+  if (saveProdBtn) saveProdBtn.onclick = saveProductFromForm;
+
+  const resetProdBtn = document.getElementById("resetProductFormBtn");
+  if (resetProdBtn) resetProdBtn.onclick = resetProductForm;
+
+  const searchProdInput = document.getElementById("searchProductInput");
+  if (searchProdInput) {
+    searchProdInput.oninput = (e) => {
+      const q = e.target.value.toLowerCase();
+      const filtered = allManagementProducts.filter(p => 
+        p.name.toLowerCase().includes(q) || (p.category && p.category.toLowerCase().includes(q))
+      );
+      renderManagementProductsTable(filtered);
+    };
+  }
 
   // MASAYI KAPAT / ÖDEME AL
   const closeTableBtn = document.getElementById("closeTableButton");
