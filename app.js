@@ -22,7 +22,7 @@ async function login() {
   }
 
   // Supabase Auth üzerinden giriş
-  const email = "deniz@kaptannili.com"; // Veya Supabase Auth'ta tanımlı mailiniz
+  const email = "denizmazlumoglu@gmail.com"; // Veya Supabase Auth'ta tanımlı mailiniz
 
   try {
     const { data, error } = await client.auth.signInWithPassword({
