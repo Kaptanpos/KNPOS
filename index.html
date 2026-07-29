@@ -52,8 +52,8 @@
     .input-inline { display: flex; gap: 6px; }
     .input-inline input { flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; }
     .input-inline button { padding: 10px 16px; border: none; border-radius: 8px; font-weight: bold; color: white; cursor: pointer; }
-    .btn-primary { background: #0f766e; }
-    .btn-danger { background: #dc2626; }
+    .btn-primary { background: #0f766e; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .btn-danger { background: #dc2626; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
     /* MASALAR */
     .tables-card { background: white; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); min-height: 250px; }
@@ -88,7 +88,7 @@
     .product-image-box { font-size: 32px; height: 60px; display: flex; align-items: center; justify-content: center; }
     .product-image-box img { max-height: 100%; max-width: 100%; object-fit: contain; }
     
-    /* SAĞ SEPET ALANI VE SABİTLENMİŞ ALT KISIM */
+    /* SAĞ SEPET ALANI */
     .cart-side { width: 380px !important; flex-shrink: 0 !important; padding: 16px; background: #f8fafc; display: flex !important; flex-direction: column !important; justify-content: space-between !important; height: 100% !important; }
     .cart-list { flex: 1 !important; overflow-y: auto !important; margin-bottom: 10px; padding-right: 5px; }
     .cart-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
@@ -114,6 +114,23 @@
     .payment-totals { display: flex; justify-content: space-between; font-weight: bold; margin: 15px 0; }
     .modal-actions { display: flex; gap: 10px; }
     .modal-actions button { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+
+    /* --- ÜRÜNLER YÖNETİM SAYFASI ÖZEL STİLLERİ --- */
+    .products-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start; }
+    .product-form-card { background: white; border-radius: 14px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .product-form-card h3 { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #0f766e; }
+    .form-group { margin-bottom: 12px; text-align: left; }
+    .form-group label { display: block; font-size: 12px; font-weight: bold; color: #475569; margin-bottom: 4px; }
+    .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; }
+    .products-list-card { background: white; border-radius: 14px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .products-list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .product-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .product-table th, .product-table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    .product-table th { background: #f8fafc; font-weight: bold; color: #475569; }
+    .badge-active { background: #dcfce7; color: #15803d; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+    .badge-passive { background: #fee2e2; color: #b91c1c; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+    .btn-edit { background: #0284c7; color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; }
+    .btn-toggle { background: #64748b; color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; margin-left: 4px; }
   </style>
 </head>
 <body>
@@ -157,7 +174,7 @@
 
     <main class="main-content">
       
-      <!-- 1. ANA MENÜ -->
+      <!-- 1. ANA MENÜ (MASALAR VE KASA) -->
       <section id="pageTables">
         <div class="pos-grid">
           
@@ -212,21 +229,91 @@
         </div>
       </section>
 
-      <!-- DİĞER SAYFALAR -->
-      <section id="pageProducts" style="display: none; padding:20px; background:white; border-radius:14px;">
-        <h2>Ürün Yönetimi</h2>
+      <!-- 2. ÜRÜNLER SAYFASI (TAM ENTEGRE YENİ ARAYÜZ) -->
+      <section id="pageProducts" style="display: none;">
+        <div class="products-layout">
+          
+          <!-- Sol Form: Ürün Ekle / Düzenle -->
+          <div class="product-form-card">
+            <h3 id="productFormTitle">Yeni Ürün Ekle</h3>
+            <input type="hidden" id="editProductId" value="">
+
+            <div class="form-group">
+              <label>Ürün Adı</label>
+              <input type="text" id="prodNameInput" placeholder="Örn: Profiterol Porsiyon">
+            </div>
+
+            <div class="form-group">
+              <label>Kategori</label>
+              <select id="prodCategorySelect">
+                <option value="Profiterol">Profiterol</option>
+                <option value="Dondurma">Dondurma</option>
+                <option value="İçecekler">İçecekler</option>
+                <option value="Kurabiye">Kurabiye</option>
+                <option value="İnternet Tatlılar">İnternet Tatlılar</option>
+                <option value="Diğer">Diğer</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Satış Fiyatı (TL)</label>
+              <input type="number" id="prodPriceInput" placeholder="0,00" step="0.01">
+            </div>
+
+            <div class="form-group">
+              <label>Resim Bağlantısı (URL - İsteğe Bağlı)</label>
+              <input type="text" id="prodImageInput" placeholder="https://...">
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-top: 15px;">
+              <button type="button" id="saveProductBtn" class="btn-primary" style="flex:1;">KAYDET</button>
+              <button type="button" id="resetProductFormBtn" class="btn-secondary" style="display:none;">İPTAL</button>
+            </div>
+          </div>
+
+          <!-- Sağ Liste: Mevcut Ürünler Tablosu -->
+          <div class="products-list-card">
+            <div class="products-list-header">
+              <h3 style="font-size:18px; font-weight:bold;">Tüm Ürünler</h3>
+              <input type="text" id="searchProductInput" placeholder="Ürün Ara..." style="padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; width: 220px;">
+            </div>
+
+            <table class="product-table">
+              <thead>
+                <tr>
+                  <th>Görsel</th>
+                  <th>Ürün Adı</th>
+                  <th>Kategori</th>
+                  <th>Fiyat</th>
+                  <th>Durum</th>
+                  <th style="text-align: right;">İşlemler</th>
+                </tr>
+              </thead>
+              <tbody id="managementProductsTbody">
+                <!-- JS Dinamik Yükleyecek -->
+              </tbody>
+            </table>
+          </div>
+
+        </div>
       </section>
 
+      <!-- 3. MALZEMELER SAYFASI -->
       <section id="pageIngredients" style="display: none; padding:20px; background:white; border-radius:14px;">
         <h2>Malzeme Yönetimi</h2>
+        <p style="margin-top:10px; color:#64748b;">Yakında aktif edilecek.</p>
       </section>
 
+      <!-- 4. İNTERNET PANELİ SAYFASI -->
       <section id="pageInternet" style="display: none; padding:20px; background:white; border-radius:14px;">
         <h2>İnternet Sipariş Paneli</h2>
+        <p style="margin-top:10px; color:#64748b;">Yakında aktif edilecek.</p>
       </section>
 
+      <!-- 5. RAPORLAR SAYFASI -->
       <section id="pageReports" style="display: none; padding:20px; background:white; border-radius:14px;">
         <h2>Satış Raporları</h2>
+        <p style="margin-top:10px; color:#64748b;">Yakında aktif edilecek.</p>
       </section>
 
     </main>
