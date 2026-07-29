@@ -425,3 +425,159 @@ if (modalBackdrop) {
     if (e.target === modalBackdrop) closeTableModal();
   });
 }
+// MASAYI KAPAT VE ÖDEME MODALINI AÇ
+const closeTableBtn = document.getElementById("closeTableButton");
+if (closeTableBtn) {
+  closeTableBtn.addEventListener("click", () => {
+    const table = getTables().find(t => t.id === selectedTableId);
+    if (!table) return;
+
+    if (!table.orders || table.orders.length === 0) {
+      alert("Masayı kapatmadan önce en az bir ürün ekleyiniz.");
+      return;
+    }
+
+    openPaymentModal();
+  });
+}
+
+function openPaymentModal() {
+  const table = getTables().find(t => t.id === selectedTableId);
+  const paymentModal = document.getElementById("paymentModal");
+  const paymentTitle = document.getElementById("paymentTotalTitle");
+
+  if (!table || !paymentModal) return;
+
+  if (paymentTitle) {
+    paymentTitle.innerHTML = `<strong>${escapeHtml(table.name)}</strong><br>Toplam: <strong>${formatMoney(table.total)}</strong>`;
+  }
+
+  // Ödeme girdi alanlarını sıfırla
+  const paymentInputs = document.querySelectorAll(".payment-input");
+  paymentInputs.forEach(i => i.value = "0");
+
+  updatePaymentSummary();
+  paymentModal.classList.add("show");
+  paymentModal.style.display = "flex";
+}
+
+// TEK TIKLA NAKİT / KART DOLDURMA
+const allCashBtn = document.getElementById("allCashButton");
+const allCardBtn = document.getElementById("allCardButton");
+
+if (allCashBtn) {
+  allCashBtn.addEventListener("click", () => {
+    const table = getTables().find(t => t.id === selectedTableId);
+    if (!table) return;
+    const payCash = document.getElementById("payCash");
+    if (payCash) payCash.value = Number(table.total || 0).toFixed(2);
+    updatePaymentSummary();
+  });
+}
+
+if (allCardBtn) {
+  allCardBtn.addEventListener("click", () => {
+    const table = getTables().find(t => t.id === selectedTableId);
+    if (!table) return;
+    const payCard = document.getElementById("payCard");
+    if (payCard) payCard.value = Number(table.total || 0).toFixed(2);
+    updatePaymentSummary();
+  });
+}
+
+function updatePaymentSummary() {
+  const table = getTables().find(t => t.id === selectedTableId);
+  if (!table) return;
+
+  const payCash = Number(document.getElementById("payCash")?.value || 0);
+  const payCard = Number(document.getElementById("payCard")?.value || 0);
+  const totalCollected = payCash + payCard;
+  const tableTotal = Number(table.total || 0);
+
+  const collectedElem = document.getElementById("collectedAmount");
+  const remainingElem = document.getElementById("remainingAmount");
+  const completeBtn = document.getElementById("completePaymentButton");
+
+  if (collectedElem) collectedElem.textContent = formatMoney(totalCollected);
+  if (remainingElem) {
+    const remaining = Math.max(tableTotal - totalCollected, 0);
+    remainingElem.textContent = formatMoney(remaining);
+  }
+
+  if (completeBtn) {
+    completeBtn.disabled = totalCollected + 0.01 < tableTotal;
+  }
+}
+
+// SATIŞI TAMAMLAMA (SUPABASE + STOK DÜŞME)
+const completeBtn = document.getElementById("completePaymentButton");
+if (completeBtn) {
+  completeBtn.addEventListener("click", async () => {
+    const tables = getTables();
+    const table = tables.find(t => t.id === selectedTableId);
+    if (!table) return;
+
+    try {
+      // 1. Supabase Sales tablosuna ekle
+      const { data: sale, error: saleErr } = await client
+        .from("sales")
+        .insert({
+          total_amount: Number(table.total),
+          payment_type: "Nakit / Kart"
+        })
+        .select("id")
+        .single();
+
+      if (saleErr) throw saleErr;
+
+      // 2. Detayları sale_items tablosuna ekle (Bu işlem SQL Trigger ile stoğu otomatik düşürür)
+      const saleItems = table.orders.map(item => ({
+        sale_id: sale.id,
+        product_id: item.productId,
+        quantity: Number(item.quantity),
+        unit_price: Number(item.price),
+        line_total: Number(item.quantity) * Number(item.price)
+      }));
+
+      const { error: itemsErr } = await client
+        .from("sale_items")
+        .insert(saleItems);
+
+      if (itemsErr) throw itemsErr;
+
+      // 3. Masayı Sıfırla ve Kapat
+      table.status = "closed";
+      table.openedAt = null;
+      table.total = 0;
+      table.orders = [];
+      saveTables(tables);
+
+      const paymentModal = document.getElementById("paymentModal");
+      if (paymentModal) {
+        paymentModal.classList.remove("show");
+        paymentModal.style.display = "none";
+      }
+
+      closeTableModal();
+      renderTables();
+      await renderSales();
+
+      alert("Satış başarıyla kaydedildi ve stoklar düşüldü!");
+
+    } catch (err) {
+      alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
+    }
+  });
+}
+
+// İPTAL BUTONU
+const cancelPayBtn = document.getElementById("cancelPaymentButton");
+if (cancelPayBtn) {
+  cancelPayBtn.addEventListener("click", () => {
+    const paymentModal = document.getElementById("paymentModal");
+    if (paymentModal) {
+      paymentModal.classList.remove("show");
+      paymentModal.style.display = "none";
+    }
+  });
+}
