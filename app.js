@@ -28,6 +28,39 @@ const DEFAULT_TABLES = [
   { id: 5, name: "Masa 5", status: "closed", orders: [], total: 0 }
 ];
 
+function renderTables() {
+  // Hem tablesGrid hem de alternatif container'ları kontrol et
+  const grid = document.getElementById("tablesGrid") || document.querySelector(".tables-grid") || document.getElementById("tables-container");
+  if (!grid) return;
+
+  const tables = getTables();
+  grid.innerHTML = "";
+
+  tables.forEach(table => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "table-card-wrap";
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `table-card ${table.status || 'closed'}`;
+    const num = String(table.name || "").replace(/[^0-9]/g, "") || table.id;
+    
+    button.innerHTML = `
+      <div class="table-number">${String(num).padStart(2, "0")}</div>
+      ${table.status === "open" ? `<div class="table-total">${formatMoney(table.total)}</div>` : ""}
+    `;
+    
+    button.onclick = () => openTableModal(table.id);
+    wrapper.appendChild(button);
+    grid.appendChild(wrapper);
+  });
+}
+
+// Sayfa ilk yüklendiğinde masaları zorunlu çizdir
+document.addEventListener("DOMContentLoaded", () => {
+  renderTables();
+});
+renderTables();
 // 1. GİRİŞ İŞLEMİ
 async function login() {
   const password = loginPassword ? loginPassword.value : "";
