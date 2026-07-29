@@ -1,36 +1,89 @@
-// Satış Kaydetme ve Masa Kapatma Fonksiyonu
-async function completeSale(tableId, saleType, paymentType, items) {
-  // items formatı: [{ product_id: 1, quantity: 2, unit_price: 675.00 }]
+/* KAPTAN NİLİ BULUT POS - SIFIRDAN TEMİZ KURULUM */
 
-  const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
+const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
 
-  // 1. sales tablosuna ana satışı ekle
-  const { data: saleData, error: saleErr } = await supabase
-    .from('sales')
-    .insert([{
-      total_amount: totalAmount,
-      payment_type: paymentType, // 'NAKİT', 'KREDİ KARTI'
-      sale_type: saleType        // 'MASA', 'YEMEKSEPETİ', 'PAKET'
-    }])
-    .select()
-    .single();
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  if (saleErr) return alert('Satış kaydedilemedi: ' + saleErr.message);
+// DOM Elemanları
+const loginScreen = document.getElementById("loginScreen");
+const appShell = document.getElementById("appShell");
+const loginUser = document.getElementById("loginUser");
+const loginPassword = document.getElementById("loginPassword");
+const loginButton = document.getElementById("loginButton");
 
-  // 2. sale_items tablosuna ürünleri ekle (Trigger otomatik çalışıp hammaddeleri düşecek!)
-  const saleItemsToInsert = items.map(item => ({
-    sale_id: saleData.id,
-    product_id: item.product_id,
-    quantity: item.quantity,
-    unit_price: item.unit_price,
-    line_total: item.quantity * item.unit_price
-  }));
+// 1. GİRİŞ İŞLEMİ (Şifresiz / Kolay Doğrulama veya Supabase Auth)
+async function login() {
+  const password = loginPassword.value;
 
-  const { error: itemsErr } = await supabase
-    .from('sale_items')
-    .insert(saleItemsToInsert);
+  if (!password) {
+    alert("Lütfen şifrenizi giriniz.");
+    return;
+  }
 
-  if (itemsErr) return alert('Satış detayları eklenemedi: ' + itemsErr.message);
+  // Supabase Auth üzerinden giriş
+  const email = "deniz@kaptannili.com"; // Veya Supabase Auth'ta tanımlı mailiniz
 
-  alert('Satış başarıyla tamamlandı, stoklar güncellendi!');
+  try {
+    const { data, error } = await client.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
+
+    if (error) {
+      alert("Giriş Başarısız: " + error.message);
+      return;
+    }
+
+    // Giriş başarılı
+    loginScreen.style.display = "none";
+    appShell.style.display = "block";
+    loadTables();
+
+  } catch (err) {
+    alert("Bağlantı hatası: " + err.message);
+  }
+}
+
+// 2. MASALARI YÜKLE
+async function loadTables() {
+  const grid = document.getElementById("tablesGrid");
+  if (!grid) return;
+
+  grid.innerHTML = '<div class="loading">Masalar yükleniyor...</div>';
+
+  // Supabase 'tables' veya 'sales' verisini çek
+  const { data: tables, error } = await client.from("tables").select("*");
+
+  if (error || !tables || tables.length === 0) {
+    // Veritabanında masa tablosu boşsa varsayılan masaları göster
+    renderDefaultTables(grid);
+    return;
+  }
+
+  grid.innerHTML = "";
+  tables.forEach(table => {
+    const btn = document.createElement("button");
+    btn.className = `table-card ${table.status || 'closed'}`;
+    btn.innerText = table.name || `Masa ${table.id}`;
+    grid.appendChild(btn);
+  });
+}
+
+function renderDefaultTables(grid) {
+  grid.innerHTML = "";
+  for (let i = 1; i <= 5; i++) {
+    const btn = document.createElement("button");
+    btn.className = "table-card closed";
+    btn.innerHTML = `<div class="table-number">0${i}</div>`;
+    grid.appendChild(btn);
+  }
+}
+
+// Olay Dinleyicileri
+if (loginButton) loginButton.addEventListener("click", login);
+if (loginPassword) {
+  loginPassword.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") login();
+  });
 }
