@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - MASA MODAL VE ÜRÜN FOTOĞRAFLARI TAM ONARIM */
+/* KAPTAN NİLİ BULUT POS - FULL FONKSİYONEL (KASA + DİNAMİK MASA) SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -70,7 +70,7 @@ function logout() {
   }
 }
 
-// 2. MASA YÖNETİMİ & MODAL AÇILIŞI
+// 2. MASA YÖNETİMİ VE DİNAMİK MASA EKLEME
 function getTables() {
   try {
     const saved = JSON.parse(localStorage.getItem(TABLE_STORAGE_KEY));
@@ -111,54 +111,84 @@ function renderTables() {
   });
 }
 
-async function openTableModal(tableId) {
-  selectedTableId = tableId;
-  const tables = getTables();
-  const table = tables.find(t => t.id === tableId);
-  if (!table) return;
-
-  const tableModal = document.getElementById("tableModal");
-  const modalName = document.getElementById("modalTableName");
-  const closedView = document.getElementById("modalClosedView");
-  const openView = document.getElementById("modalOpenView");
-
-  if (modalName) modalName.textContent = table.name;
-
-  // Masayı aç
-  if (table.status === "closed") {
-    table.status = "open";
-    table.openedAt = new Date().toISOString();
-    table.total = 0;
-    table.orders = [];
-    saveTables(tables);
-    renderTables();
-  }
-
-  // HTML Görünüm Panellerini Ayarla
-  if (closedView) closedView.style.display = "none";
-  if (openView) openView.style.display = "block";
-
-  await loadProducts();
-  renderCart();
-  
-  if (tableModal) {
-    tableModal.classList.add("show");
-    tableModal.style.display = "flex"; // Görünürlüğü garantiye al
+// Masa Yönetim Modal'ı Açma (Yeni Masa Ekleme/Silme)
+function openTableManagement() {
+  const modal = document.getElementById("tableManagementModal");
+  if (modal) {
+    renderTableManagementList();
+    modal.classList.add("show");
+    modal.style.display = "flex";
+  } else {
+    // Modal yoksa doğrudan hızlı masa ekle
+    addNewTableDirectly();
   }
 }
 
-function closeTableModal() {
-  const tableModal = document.getElementById("tableModal");
-  if (tableModal) {
-    tableModal.classList.remove("show");
-    tableModal.style.display = "none";
+function closeTableManagement() {
+  const modal = document.getElementById("tableManagementModal");
+  if (modal) {
+    modal.classList.remove("show");
+    modal.style.display = "none";
   }
+}
+
+function addNewTableDirectly() {
+  const tables = getTables();
+  const nextId = tables.reduce((max, t) => Math.max(max, Number(t.id) || 0), 0) + 1;
+  const newName = prompt("Yeni Masa Adı:", `Masa ${nextId}`);
+  if (!newName) return;
+
+  tables.push({
+    id: nextId,
+    name: newName,
+    status: "closed",
+    orders: [],
+    total: 0
+  });
+
+  saveTables(tables);
   renderTables();
 }
 
-// 3. KASA YÖNETİMİ
+function renderTableManagementList() {
+  const list = document.getElementById("tableManagementList");
+  if (!list) return;
+
+  const tables = getTables();
+  list.innerHTML = "";
+
+  tables.forEach((table, index) => {
+    const row = document.createElement("div");
+    row.className = "table-management-row";
+    row.style.cssText = "display:flex; justify-between; align-items:center; padding:10px; border-bottom:1px solid #ddd;";
+    row.innerHTML = `
+      <div><strong>${escapeHtml(table.name)}</strong> (${table.status === 'open' ? 'Açık' : 'Kapalı'})</div>
+      <button type="button" class="table-mini-button danger" style="background:#dc2626; color:#fff; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">Sil</button>
+    `;
+
+    row.querySelector(".danger").onclick = () => {
+      if (table.status === "open") {
+        alert("Açık masa silinemez. Önce hesabı kapatınız.");
+        return;
+      }
+      if (confirm(`${table.name} silinsin mi?`)) {
+        const remaining = tables.filter(t => t.id !== table.id);
+        saveTables(remaining);
+        renderTables();
+        renderTableManagementList();
+      }
+    };
+
+    list.appendChild(row);
+  });
+}
+
+// 3. KASA AÇMA VE KAPATMA İŞLEMLERİ
 async function loadCashStatus() {
   const cashStatus = document.getElementById("cashStatus");
+  const openPanel = document.getElementById("openCashPanel");
+  const closePanel = document.getElementById("closeCashPanel");
+
   if (!cashStatus) return;
 
   try {
@@ -178,19 +208,133 @@ async function loadCashStatus() {
         <div class="cash-status-title">KASA AÇIK</div>
         <div class="cash-detail">Açılış Nakdi: <strong>${formatMoney(currentCashSession.opening_amount)}</strong></div>
       `;
+
+      if (openPanel) openPanel.style.display = "none";
+      if (closePanel) closePanel.style.display = "block";
+
     } else {
       cashStatus.className = "cash-status cash-closed";
       cashStatus.innerHTML = `
         <div class="cash-status-title">KASA KAPALI</div>
         <div class="cash-detail">Satış yapmadan önce kasayı açınız.</div>
       `;
+
+      if (openPanel) openPanel.style.display = "block";
+      if (closePanel) closePanel.style.display = "none";
     }
   } catch (err) {
     cashStatus.textContent = "Kasa durumu kontrol edilemedi.";
   }
 }
 
-// 4. ÜRÜNLER, KATEGORİLER VE RESİMLİ GÖSTERİM
+// Kasa Aç Butonu Tetikleyici
+const openCashBtn = document.getElementById("openCashButton");
+if (openCashBtn) {
+  openCashBtn.addEventListener("click", async () => {
+    const openingInput = document.getElementById("openingAmount");
+    const amount = Number(openingInput?.value || 0);
+
+    if (!openingInput || openingInput.value === "" || amount < 0) {
+      alert("Lütfen geçerli bir açılış tutarı giriniz.");
+      return;
+    }
+
+    try {
+      const { error } = await client.from("cash_sessions").insert({
+        opening_amount: amount,
+        status: "open",
+        opened_at: new Date().toISOString()
+      });
+
+      if (error) throw error;
+      openingInput.value = "";
+      alert("Kasa başarıyla açıldı!");
+      await loadCashStatus();
+
+    } catch (err) {
+      alert("Kasa açılamadı: " + err.message);
+    }
+  });
+}
+
+// Kasa Kapat Butonu Tetikleyici
+const closeCashBtn = document.getElementById("closeCashButton");
+if (closeCashBtn) {
+  closeCashBtn.addEventListener("click", async () => {
+    if (!currentCashSession) return;
+
+    const closingInput = document.getElementById("closingAmount");
+    const amount = Number(closingInput?.value || 0);
+
+    if (!confirm("Kasayı kapatmak istediğinize emin misiniz?")) return;
+
+    try {
+      const { error } = await client
+        .from("cash_sessions")
+        .update({
+          closing_amount: amount,
+          closed_at: new Date().toISOString(),
+          status: "closed"
+        })
+        .eq("id", currentCashSession.id);
+
+      if (error) throw error;
+      if (closingInput) closingInput.value = "";
+      alert("Kasa başarıyla kapatıldı!");
+      currentCashSession = null;
+      await loadCashStatus();
+
+    } catch (err) {
+      alert("Kasa kapatılamadı: " + err.message);
+    }
+  });
+}
+
+// 4. MASA MODAL VE SEPET İŞLEMLERİ
+async function openTableModal(tableId) {
+  selectedTableId = tableId;
+  const tables = getTables();
+  const table = tables.find(t => t.id === tableId);
+  if (!table) return;
+
+  const tableModal = document.getElementById("tableModal");
+  const modalName = document.getElementById("modalTableName");
+  const closedView = document.getElementById("modalClosedView");
+  const openView = document.getElementById("modalOpenView");
+
+  if (modalName) modalName.textContent = table.name;
+
+  if (table.status === "closed") {
+    table.status = "open";
+    table.openedAt = new Date().toISOString();
+    table.total = 0;
+    table.orders = [];
+    saveTables(tables);
+    renderTables();
+  }
+
+  if (closedView) closedView.style.display = "none";
+  if (openView) openView.style.display = "block";
+
+  await loadProducts();
+  renderCart();
+  
+  if (tableModal) {
+    tableModal.classList.add("show");
+    tableModal.style.display = "flex";
+  }
+}
+
+function closeTableModal() {
+  const tableModal = document.getElementById("tableModal");
+  if (tableModal) {
+    tableModal.classList.remove("show");
+    tableModal.style.display = "none";
+  }
+  renderTables();
+}
+
+// 5. ÜRÜNLER VE RESİMLİ MASA MENÜSÜ
 async function loadProducts() {
   try {
     const { data, error } = await client
@@ -356,76 +500,7 @@ function changeQty(productId, delta) {
   renderTables();
 }
 
-// 5. ANLIK SATIŞLAR TABLOSU
-async function renderSales() {
-  const list = document.getElementById("salesList");
-  const totalElem = document.getElementById("salesDailyTotal");
-  if (!list) return;
-
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const { data: sales, error } = await client
-      .from("sales")
-      .select("*")
-      .gte("created_at", today)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-    if (!sales || sales.length === 0) {
-      list.innerHTML = '<div class="loading">Bugün henüz satış yapılmadı.</div>';
-      if (totalElem) totalElem.textContent = "0,00 TL";
-      return;
-    }
-
-    let sum = 0;
-    list.innerHTML = sales.map(s => {
-      sum += Number(s.total_amount || 0);
-      return `
-        <div class="daily-sales-row">
-          <div><strong>${new Date(s.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}</strong></div>
-          <div>${escapeHtml(s.payment_type || "Nakit")}</div>
-          <div><strong>${formatMoney(s.total_amount)}</strong></div>
-        </div>
-      `;
-    }).join("");
-
-    if (totalElem) totalElem.textContent = formatMoney(sum);
-  } catch (err) {
-    list.innerHTML = '<div class="loading">Satışlar çekilemedi.</div>';
-  }
-}
-
-// YARDIMCI BİLEŞENLER
-function formatMoney(val) {
-  return Number(val || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
-}
-
-function escapeHtml(str) {
-  return String(str || "").replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
-}
-
-// OLAY DİNLEYİCİLERİ
-if (loginButton) loginButton.addEventListener("click", login);
-if (logoutButton) logoutButton.addEventListener("click", logout);
-if (loginPassword) {
-  loginPassword.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") login();
-  });
-}
-
-const cancelTableBtn = document.getElementById("cancelTableButton");
-if (cancelTableBtn) cancelTableBtn.addEventListener("click", closeTableModal);
-
-const topCloseBtn = document.getElementById("topClosePanelButton");
-if (topCloseBtn) topCloseBtn.addEventListener("click", closeTableModal);
-
-const modalBackdrop = document.getElementById("tableModal");
-if (modalBackdrop) {
-  modalBackdrop.addEventListener("click", (e) => {
-    if (e.target === modalBackdrop) closeTableModal();
-  });
-}
-// MASAYI KAPAT VE ÖDEME MODALINI AÇ
+// 6. ÖDEME VE MASAYI KAPATMA
 const closeTableBtn = document.getElementById("closeTableButton");
 if (closeTableBtn) {
   closeTableBtn.addEventListener("click", () => {
@@ -452,7 +527,6 @@ function openPaymentModal() {
     paymentTitle.innerHTML = `<strong>${escapeHtml(table.name)}</strong><br>Toplam: <strong>${formatMoney(table.total)}</strong>`;
   }
 
-  // Ödeme girdi alanlarını sıfırla
   const paymentInputs = document.querySelectorAll(".payment-input");
   paymentInputs.forEach(i => i.value = "0");
 
@@ -461,7 +535,6 @@ function openPaymentModal() {
   paymentModal.style.display = "flex";
 }
 
-// TEK TIKLA NAKİT / KART DOLDURMA
 const allCashBtn = document.getElementById("allCashButton");
 const allCardBtn = document.getElementById("allCardButton");
 
@@ -509,7 +582,6 @@ function updatePaymentSummary() {
   }
 }
 
-// SATIŞI TAMAMLAMA (SUPABASE + STOK DÜŞME)
 const completeBtn = document.getElementById("completePaymentButton");
 if (completeBtn) {
   completeBtn.addEventListener("click", async () => {
@@ -518,7 +590,6 @@ if (completeBtn) {
     if (!table) return;
 
     try {
-      // 1. Supabase Sales tablosuna ekle
       const { data: sale, error: saleErr } = await client
         .from("sales")
         .insert({
@@ -530,7 +601,6 @@ if (completeBtn) {
 
       if (saleErr) throw saleErr;
 
-      // 2. Detayları sale_items tablosuna ekle (Bu işlem SQL Trigger ile stoğu otomatik düşürür)
       const saleItems = table.orders.map(item => ({
         sale_id: sale.id,
         product_id: item.productId,
@@ -545,7 +615,6 @@ if (completeBtn) {
 
       if (itemsErr) throw itemsErr;
 
-      // 3. Masayı Sıfırla ve Kapat
       table.status = "closed";
       table.openedAt = null;
       table.total = 0;
@@ -570,14 +639,90 @@ if (completeBtn) {
   });
 }
 
-// İPTAL BUTONU
-const cancelPayBtn = document.getElementById("cancelPaymentButton");
-if (cancelPayBtn) {
-  cancelPayBtn.addEventListener("click", () => {
-    const paymentModal = document.getElementById("paymentModal");
-    if (paymentModal) {
-      paymentModal.classList.remove("show");
-      paymentModal.style.display = "none";
+// 7. ANLIK SATIŞLAR TABLOSU
+async function renderSales() {
+  const list = document.getElementById("salesList");
+  const totalElem = document.getElementById("salesDailyTotal");
+  if (!list) return;
+
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const { data: sales, error } = await client
+      .from("sales")
+      .select("*")
+      .gte("created_at", today)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    if (!sales || sales.length === 0) {
+      list.innerHTML = '<div class="loading">Bugün henüz satış yapılmadı.</div>';
+      if (totalElem) totalElem.textContent = "0,00 TL";
+      return;
     }
+
+    let sum = 0;
+    list.innerHTML = sales.map(s => {
+      sum += Number(s.total_amount || 0);
+      return `
+        <div class="daily-sales-row">
+          <div><strong>${new Date(s.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}</strong></div>
+          <div>${escapeHtml(s.payment_type || "Nakit")}</div>
+          <div><strong>${formatMoney(s.total_amount)}</strong></div>
+        </div>
+      `;
+    }).join("");
+
+    if (totalElem) totalElem.textContent = formatMoney(sum);
+  } catch (err) {
+    list.innerHTML = '<div class="loading">Satışlar çekilemedi.</div>';
+  }
+}
+
+// YARDIMCI BİLEŞENLER
+function formatMoney(val) {
+  return Number(val || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+}
+
+function escapeHtml(str) {
+  return String(str || "").replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
+}
+
+// ETKİLEŞİM DİNLEYİCİLERİ
+if (loginButton) loginButton.addEventListener("click", login);
+if (logoutButton) logoutButton.addEventListener("click", logout);
+if (loginPassword) {
+  loginPassword.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") login();
   });
 }
+
+const addTableBtn = document.getElementById("addTableButton");
+if (addTableBtn) addTableBtn.addEventListener("click", openTableManagement);
+
+const saveNewTableBtn = document.getElementById("saveNewTableButton");
+if (saveNewTableBtn) {
+  saveNewTableBtn.addEventListener("click", () => {
+    const input = document.getElementById("newTableNameInput");
+    const name = input ? input.value.trim() : "";
+    if (!name) {
+      alert("Masa adı giriniz.");
+      return;
+    }
+    const tables = getTables();
+    const nextId = tables.reduce((max, t) => Math.max(max, Number(t.id) || 0), 0) + 1;
+    tables.push({ id: nextId, name, status: "closed", orders: [], total: 0 });
+    saveTables(tables);
+    if (input) input.value = "";
+    renderTables();
+    renderTableManagementList();
+  });
+}
+
+const cancelTableBtn = document.getElementById("cancelTableButton");
+if (cancelTableBtn) cancelTableBtn.addEventListener("click", closeTableModal);
+
+const topCloseBtn = document.getElementById("topClosePanelButton");
+if (topCloseBtn) topCloseBtn.addEventListener("click", closeTableModal);
+
+const closeTableMgmtBtn = document.getElementById("closeTableManagementButton");
+if (closeTableMgmtBtn) closeTableMgmtBtn.addEventListener("click", closeTableManagement);
