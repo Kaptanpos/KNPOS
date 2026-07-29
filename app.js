@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - TÜM SİSTEM TEK PARÇA %100 ÇALIŞAN SÜRÜM */
+/* KAPTAN NİLİ BULUT POS - KOMPLE FULL VE TEK PARÇA ÇALIŞAN SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -510,6 +510,18 @@ function escapeHtml(str) {
 // OLAĞAN VE DİNAMİK BUTON BİND'LERİ
 function bindEvents() {
   setupNavigation();
+
+  // "KAYDET VE ANA MENÜ" VE "ANA MENÜYE DÖN" BUTONLARI
+  const allButtons = document.querySelectorAll("button, a");
+  allButtons.forEach(btn => {
+    const txt = (btn.textContent || "").trim().toUpperCase();
+    if (txt.includes("ANA MENÜYE DÖN") || txt.includes("KAYDET VE ANA MENÜ")) {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        closeTableModal();
+      };
+    }
+  });
 
   const closeTableBtn = document.getElementById("closeTableButton");
   if (closeTableBtn) {
