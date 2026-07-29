@@ -207,6 +207,12 @@ async function loadCashStatus() {
 
 // 5. MASA SİPARİŞ PENCERESİ (MODAL)
 async function openTableModal(tableId) {
+  // KASA KONTROLÜ: Kasa kapalıysa satış ekranını açma!
+  if (!currentCashSession) {
+    alert("⚠️ Kasa kapalı! Satış yapabilmek veya masa açabilmek için lütfen önce sol taraftan KASAYI AÇINIZ.");
+    return;
+  }
+
   selectedTableId = tableId;
   const tables = getTables();
   const table = tables.find(t => t.id === tableId);
