@@ -2263,3 +2263,75 @@ flex-direction:column;
   #pageTables .table-number { font-size:22px !important; }
   #pageTables .dashboard-cash-card { padding:8px !important; }
 }
+/* KASA KARTINI VE EKRAN DÜZENİNİ RAHATLATMA */
+
+/* General Layout Adjustments */
+body {
+  overflow-y: auto !important;
+  padding-bottom: 50px !important;
+}
+
+/* Sol Kasa Kartı İç Düzeltmeleri */
+.cash-card, #pageTables .cash-status {
+  padding: 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+  overflow: visible !important;
+  min-height: auto !important;
+}
+
+#openCashPanel, #closeCashPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  clear: both;
+}
+
+#openCashPanel input, #closeCashPanel input {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 10px !important;
+  font-size: 15px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+}
+
+#openCashPanel button, #closeCashPanel button {
+  width: 100% !important;
+  padding: 12px !important;
+  font-size: 15px !important;
+  font-weight: bold !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+}
+
+/* Bugünkü Anlık Satışlar Tablosunu Sabitleme ve Taşkınlığı Önleme */
+.daily-sales-container, .daily-sales-wrap {
+  margin-top: 20px !important;
+  background: #ffffff !important;
+  border-radius: 12px !important;
+  padding: 15px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
+}
+
+#salesList {
+  max-height: 180px !important; /* Tablo boyunu sınırlayıp kaydırma getirir */
+  overflow-y: auto !important;
+  margin-bottom: 10px !important;
+}
+
+.daily-sales-summary, #salesDailyTotalWrap {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 12px 16px !important;
+  background-color: #e6f4ea !important;
+  border-radius: 8px !important;
+  font-weight: bold !important;
+  font-size: 16px !important;
+  color: #137333 !important;
+  margin-top: 10px !important;
+}
