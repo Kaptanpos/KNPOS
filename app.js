@@ -119,24 +119,20 @@ function showPage(pageName) {
 }
 
 function setupNavigation() {
-  const btnAnaMenu = document.querySelector("button:contains('ANA MENÜ')") || document.getElementById("navTables");
-  const btnMalzemeler = document.querySelector("button:contains('MALZEMELER')") || document.getElementById("navIngredients");
-  const btnInternet = document.querySelector("button:contains('İNTERNET PANELİ')") || document.getElementById("navInternet");
-  const btnUrunler = document.querySelector("button:contains('ÜRÜNLER')") || document.getElementById("navProducts");
-  const btnRaporlar = document.querySelector("button:contains('RAPORLAR')") || document.getElementById("navReports");
-
-  // Bütün üst menü butonlarını tıklamaya bağla
-  const allNavButtons = document.querySelectorAll("header nav button, .nav button");
+  const allNavButtons = document.querySelectorAll("header nav button, .nav button, nav button");
+  
   allNavButtons.forEach(button => {
-    button.addEventListener("click", (e) => {
+    // Çift dinleyici eklenmesini önlemek için önceden temizle veya direkt atama yap
+    button.onclick = (e) => {
       e.preventDefault();
       const txt = button.textContent.trim().toUpperCase();
+      
       if (txt.includes("ANA MENÜ")) showPage("tables");
       else if (txt.includes("MALZEMELER")) showPage("ingredients");
       else if (txt.includes("İNTERNET")) showPage("internet");
       else if (txt.includes("ÜRÜNLER")) showPage("products");
       else if (txt.includes("RAPORLAR")) showPage("reports");
-    });
+    };
   });
 }
 
