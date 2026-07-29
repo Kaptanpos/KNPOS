@@ -12,44 +12,15 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background-color: #f1f5f9; color: #0f172a; padding-bottom: 30px; }
     
-    /* GİRİŞ EKRANI KART & AMBLEM TASARIMI */
+    /* GİRİŞ EKRANI */
     .login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #0f766e; }
-    .login-card { background: white; padding: 40px; border-radius: 24px; width: 380px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3); animation: zoomIn 0.4s ease-out; }
-    @keyframes zoomIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
-    
-    /* ELİPS ORİJİNAL LOGO ÇERÇEVESİ */
-    .logo-ellipse-box {
-      width: 190px;
-      height: 70px;
-      margin: 0 auto 15px auto;
-      border: 3px solid #0f766e;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: white;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-      overflow: hidden;
-      padding: 5px;
-    }
-    .logo-ellipse-box img {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-    }
-    .logo-fallback-text {
-      font-weight: 800;
-      color: #0f766e;
-      font-size: 15px;
-      letter-spacing: 0.5px;
-    }
-
-    .brand-title { color: #0f766e; font-size: 26px; font-weight: 900; letter-spacing: 1px; }
-    .brand-subtitle { color: #64748b; font-size: 12px; font-weight: bold; margin-bottom: 25px; letter-spacing: 0.5px; }
-    .login-card input { width: 100%; padding: 14px; margin-bottom: 15px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 16px; outline: none; transition: 0.2s; }
-    .login-card input:focus { border-color: #0f766e; }
-    .login-card button { width: 100%; padding: 14px; background: #0f766e; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-    .login-card button:hover { background: #115e59; }
+    .login-card { background: white; padding: 40px; border-radius: 24px; width: 380px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+    .logo-ellipse-box { width: 190px; height: 70px; margin: 0 auto 15px auto; border: 3px solid #0f766e; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: white; overflow: hidden; padding: 5px; }
+    .logo-ellipse-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .brand-title { color: #0f766e; font-size: 26px; font-weight: 900; }
+    .brand-subtitle { color: #64748b; font-size: 12px; font-weight: bold; margin-bottom: 25px; }
+    .login-card input { width: 100%; padding: 14px; margin-bottom: 15px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 16px; outline: none; }
+    .login-card button { width: 100%; padding: 14px; background: #0f766e; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; }
 
     /* ÜST HEADER */
     .top-header { background: #0f766e; color: white; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
@@ -94,33 +65,36 @@
     .daily-sales-row { display: grid; grid-template-columns: 80px 1fr 120px; padding: 8px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
     .daily-sales-summary { margin-top: 10px; padding: 10px 14px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; color: #166534; font-weight: bold; display: flex; justify-content: space-between; font-size: 14px; }
 
-    /* MASA MODAL (YAN YANA VE SABİTLENMİŞ YAPI) */
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-    .modal-content { background: white; border-radius: 20px; width: 95%; max-width: 1100px; height: 85vh; max-height: 680px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 25px 50px rgba(0,0,0,0.25); }
-    .modal-header { padding: 16px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+    /* MASA SİPARİŞ MODALI (YAN YANA VE SABİT ALT BUTONLAR) */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+    .modal-content { background: white; border-radius: 20px; width: 95vw; max-width: 1150px; height: 88vh; max-height: 720px; display: flex !important; flex-direction: column !important; overflow: hidden !important; box-shadow: 0 25px 50px rgba(0,0,0,0.3); }
+    .modal-header { padding: 16px 24px; background: #f8fafc; border-bottom: 2px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
 
-    .pos-order-layout { display: flex !important; flex-direction: row !important; height: calc(100% - 65px) !important; overflow: hidden !important; }
+    /* KESİN YAN YANA KOYMA KURALLARI (IMPORTANT ILE KİLİTLENDİ) */
+    .pos-order-layout { display: flex !important; flex-direction: row !important; flex: 1 !important; height: calc(100% - 65px) !important; overflow: hidden !important; }
     
-    .catalog-side { flex: 1 !important; padding: 16px; overflow-y: auto; border-right: 2px solid #e2e8f0; display: flex; flex-direction: column; }
+    /* SOL ÜRÜN KATALOĞU */
+    .catalog-side { flex: 1 !important; width: 60% !important; padding: 16px; overflow-y: auto !important; border-right: 2px solid #cbd5e1 !important; display: flex; flex-direction: column; }
     .category-strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; flex-shrink: 0; }
     .category-button { padding: 8px 16px; border: 1px solid #cbd5e1; background: white; border-radius: 20px; cursor: pointer; white-space: nowrap; font-size: 13px; font-weight: bold; }
     .category-button.active-category { background: #0f766e; color: white; border-color: #0f766e; }
-    .sale-products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; margin-top: 10px; overflow-y: auto; }
+    .sale-products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 12px; margin-top: 10px; overflow-y: auto; }
     .sale-product-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px; text-align: center; cursor: pointer; position: relative; }
-    .product-image-box { font-size: 32px; height: 65px; display: flex; align-items: center; justify-content: center; }
+    .product-image-box { font-size: 32px; height: 60px; display: flex; align-items: center; justify-content: center; }
     .product-image-box img { max-height: 100%; max-width: 100%; object-fit: contain; }
     
-    .cart-side { width: 380px !important; flex-shrink: 0 !important; padding: 16px; background: #f8fafc; display: flex !important; flex-direction: column !important; height: 100% !important; justify-content: space-between !important; }
+    /* SAĞ SEPET ALANI VE SABİTLENMİŞ ALT KISIM */
+    .cart-side { width: 380px !important; flex-shrink: 0 !important; padding: 16px; background: #f8fafc; display: flex !important; flex-direction: column !important; justify-content: space-between !important; height: 100% !important; }
     .cart-list { flex: 1 !important; overflow-y: auto !important; margin-bottom: 10px; padding-right: 5px; }
     .cart-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
     
-    .cart-footer-area { flex-shrink: 0 !important; background: #f8fafc; padding-top: 10px; border-top: 2px dashed #cbd5e1; }
-    .cart-summary { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 18px; margin-bottom: 12px; }
+    .cart-footer-area { flex-shrink: 0 !important; background: #f8fafc; padding-top: 12px; border-top: 2px dashed #cbd5e1; }
+    .cart-summary { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 20px; margin-bottom: 12px; }
     .cart-summary strong { color: #0f766e; }
     
     .cart-footer-buttons { display: flex; flex-direction: column; gap: 8px; }
     .btn-danger-large { width: 100%; padding: 14px; background: #dc2626; color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; }
-    .btn-secondary-large { width: 100%; padding: 11px; background: #64748b; color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: bold; cursor: pointer; }
+    .btn-secondary-large { width: 100%; padding: 12px; background: #64748b; color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: bold; cursor: pointer; }
     .btn-secondary { background: #64748b; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
     .quantity-badge { position: absolute; top: -6px; right: -6px; background: #2563eb; color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 11px; display: none; align-items: center; justify-content: center; font-weight: bold; }
@@ -141,13 +115,10 @@
   <!-- GİRİŞ EKRANI -->
   <div id="loginScreen" class="login-screen">
     <div class="login-card">
-      
-      <!-- ELİPS LOGO ALANI (Resim Varsa Resim Gösterir, Yoksa Yazılı Şık Logo) -->
       <div class="logo-ellipse-box">
         <img src="logo.png" alt="Kaptan Nili Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-        <span class="logo-fallback-text" style="display:none;">KAPTAN NİLİ</span>
+        <span class="logo-fallback-text" style="display:none; font-weight:bold; color:#0f766e;">KAPTAN NİLİ</span>
       </div>
-
       <h1 class="brand-title">KAPTAN NİLİ</h1>
       <p class="brand-subtitle">BULUT POS SYSTEM</p>
       
@@ -255,7 +226,7 @@
     </main>
   </div>
 
-  <!-- MASA MODALI -->
+  <!-- MASA MODALI (YAN YANA İKİ KOLON + ÇAKILI ALT BUTONLAR) -->
   <div id="tableModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
       <div class="modal-header">
@@ -264,18 +235,21 @@
       </div>
 
       <div id="modalOpenView" class="pos-order-layout">
+        
         <!-- SOL ÜRÜN KATALOĞU -->
         <div class="catalog-side">
           <div id="categoryStrip" class="category-strip"></div>
           <div id="saleProductsGrid" class="sale-products-grid"></div>
         </div>
 
-        <!-- SAĞ SEPET & ÇAKILI BUTONLAR -->
+        <!-- SAĞ SEPET & ÇAKILI ALT ALAN -->
         <div class="cart-side">
           <h3 style="flex-shrink:0;">Sipariş</h3>
           
+          <!-- Sepet Elemanları Kaydırma Alanı -->
           <div id="cartList" class="cart-list"></div>
           
+          <!-- Sabit Alt Tutar ve Butonlar -->
           <div class="cart-footer-area">
             <div class="cart-summary">
               <span>TOPLAM</span>
@@ -288,6 +262,7 @@
             </div>
           </div>
         </div>
+
       </div>
     </div>
   </div>
