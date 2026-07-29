@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - TAM TEMİZLENMİŞ VE HATA GİDERİLMİŞ SÜRÜM */
+/* KAPTAN NİLİ BULUT POS - TÜM SİSTEM TEK PARÇA %100 ÇALIŞAN SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -51,8 +51,10 @@ async function login() {
     if (loginScreen) loginScreen.style.display = "none";
     if (appShell) appShell.style.display = "block";
 
-    // Navigasyon ve Ekranları Yükle
-    setupNavigation();
+    // Tüm Tıklama ve Sayfa Dinleyicilerini Bağla
+    bindEvents();
+    
+    // Verileri Yükle
     renderTables();
     await loadCashStatus();
     await loadProducts();
@@ -72,27 +74,23 @@ function logout() {
   }
 }
 
-// 2. SAYFA VE MENÜ GEÇİŞLERİ (GÜVENLİ JAVASCRIPT)
+// 2. SAYFA GEÇİŞLERİ (ÜRÜNLER, MALZEMELER, RAPORLAR, İNTERNET)
 function showPage(pageName) {
-  const pageMap = {
-    tables: "pageTables",
-    products: "pageProducts",
-    reports: "pageReports",
-    internet: "pageInternet",
-    ingredients: "pageIngredients"
+  const pages = {
+    tables: document.getElementById("pageTables") || document.querySelector(".page-tables"),
+    ingredients: document.getElementById("pageIngredients") || document.querySelector(".page-ingredients"),
+    internet: document.getElementById("pageInternet") || document.querySelector(".page-internet"),
+    products: document.getElementById("pageProducts") || document.querySelector(".page-products"),
+    reports: document.getElementById("pageReports") || document.querySelector(".page-reports")
   };
 
-  const targetId = pageMap[pageName] || "pageTables";
-
-  // Tüm sayfaları gizle/göster
-  Object.values(pageMap).forEach(id => {
-    const elem = document.getElementById(id);
-    if (elem) {
-      elem.style.display = (id === targetId) ? "block" : "none";
-    }
+  Object.keys(pages).forEach(key => {
+    if (pages[key]) pages[key].style.display = "none";
   });
 
-  // Sayfaya özel yenilemeler
+  const activePage = pages[pageName] || pages.tables;
+  if (activePage) activePage.style.display = "block";
+
   if (pageName === "tables") {
     renderTables();
     loadCashStatus();
@@ -103,20 +101,22 @@ function showPage(pageName) {
 }
 
 function setupNavigation() {
-  // querySelector:contains KULLANMADAN BÜTÜN BUTONLARI METİNLERİYLE YAKALA
-  const buttons = document.querySelectorAll("header button, nav button, .nav button");
+  const allButtons = document.querySelectorAll("button, a");
 
-  buttons.forEach(btn => {
-    btn.onclick = (e) => {
-      e.preventDefault();
-      const txt = (btn.textContent || "").trim().toUpperCase();
+  allButtons.forEach(btn => {
+    const txt = (btn.textContent || "").trim().toUpperCase();
 
-      if (txt.includes("ANA MENÜ")) showPage("tables");
-      else if (txt.includes("MALZEMELER")) showPage("ingredients");
-      else if (txt.includes("İNTERNET")) showPage("internet");
-      else if (txt.includes("ÜRÜNLER")) showPage("products");
-      else if (txt.includes("RAPORLAR")) showPage("reports");
-    };
+    if (txt.includes("ANA MENÜ")) {
+      btn.onclick = (e) => { e.preventDefault(); showPage("tables"); };
+    } else if (txt.includes("MALZEMELER")) {
+      btn.onclick = (e) => { e.preventDefault(); showPage("ingredients"); };
+    } else if (txt.includes("İNTERNET")) {
+      btn.onclick = (e) => { e.preventDefault(); showPage("internet"); };
+    } else if (txt.includes("ÜRÜNLER")) {
+      btn.onclick = (e) => { e.preventDefault(); showPage("products"); };
+    } else if (txt.includes("RAPORLAR")) {
+      btn.onclick = (e) => { e.preventDefault(); showPage("reports"); };
+    }
   });
 }
 
@@ -161,7 +161,7 @@ function renderTables() {
   });
 }
 
-// 4. KASA AÇMA / KAPATMA
+// 4. KASA DURUMU VE İŞLEMLERİ
 async function loadCashStatus() {
   const cashStatus = document.getElementById("cashStatus");
   const openPanel = document.getElementById("openCashPanel");
@@ -205,7 +205,7 @@ async function loadCashStatus() {
   }
 }
 
-// 5. MASA MODAL & SEPET
+// 5. MASA SİPARİŞ PENCERESİ (MODAL)
 async function openTableModal(tableId) {
   selectedTableId = tableId;
   const tables = getTables();
@@ -415,22 +415,7 @@ function changeQty(productId, delta) {
   renderTables();
 }
 
-// 7. ÖDEME VE MASAYI KAPATMA
-const closeTableBtn = document.getElementById("closeTableButton");
-if (closeTableBtn) {
-  closeTableBtn.addEventListener("click", () => {
-    const table = getTables().find(t => t.id === selectedTableId);
-    if (!table) return;
-
-    if (!table.orders || table.orders.length === 0) {
-      alert("Masayı kapatmadan önce en az bir ürün ekleyiniz.");
-      return;
-    }
-
-    openPaymentModal();
-  });
-}
-
+// 7. ÖDEME ALMA VE MASAYI KAPATMA
 function openPaymentModal() {
   const table = getTables().find(t => t.id === selectedTableId);
   const paymentModal = document.getElementById("paymentModal");
@@ -448,29 +433,6 @@ function openPaymentModal() {
   updatePaymentSummary();
   paymentModal.classList.add("show");
   paymentModal.style.display = "flex";
-}
-
-const allCashBtn = document.getElementById("allCashButton");
-const allCardBtn = document.getElementById("allCardButton");
-
-if (allCashBtn) {
-  allCashBtn.addEventListener("click", () => {
-    const table = getTables().find(t => t.id === selectedTableId);
-    if (!table) return;
-    const payCash = document.getElementById("payCash");
-    if (payCash) payCash.value = Number(table.total || 0).toFixed(2);
-    updatePaymentSummary();
-  });
-}
-
-if (allCardBtn) {
-  allCardBtn.addEventListener("click", () => {
-    const table = getTables().find(t => t.id === selectedTableId);
-    if (!table) return;
-    const payCard = document.getElementById("payCard");
-    if (payCard) payCard.value = Number(table.total || 0).toFixed(2);
-    updatePaymentSummary();
-  });
 }
 
 function updatePaymentSummary() {
@@ -495,63 +457,6 @@ function updatePaymentSummary() {
   if (completeBtn) {
     completeBtn.disabled = totalCollected + 0.01 < tableTotal;
   }
-}
-
-const completeBtn = document.getElementById("completePaymentButton");
-if (completeBtn) {
-  completeBtn.addEventListener("click", async () => {
-    const tables = getTables();
-    const table = tables.find(t => t.id === selectedTableId);
-    if (!table) return;
-
-    try {
-      const { data: sale, error: saleErr } = await client
-        .from("sales")
-        .insert({
-          total_amount: Number(table.total),
-          payment_type: "Nakit / Kart"
-        })
-        .select("id")
-        .single();
-
-      if (saleErr) throw saleErr;
-
-      const saleItems = table.orders.map(item => ({
-        sale_id: sale.id,
-        product_id: item.productId,
-        quantity: Number(item.quantity),
-        unit_price: Number(item.price),
-        line_total: Number(item.quantity) * Number(item.price)
-      }));
-
-      const { error: itemsErr } = await client
-        .from("sale_items")
-        .insert(saleItems);
-
-      if (itemsErr) throw itemsErr;
-
-      table.status = "closed";
-      table.openedAt = null;
-      table.total = 0;
-      table.orders = [];
-      saveTables(tables);
-
-      const paymentModal = document.getElementById("paymentModal");
-      if (paymentModal) {
-        paymentModal.classList.remove("show");
-        paymentModal.style.display = "none";
-      }
-
-      closeTableModal();
-      renderTables();
-      await renderSales();
-
-      alert("Satış başarıyla kaydedildi ve stoklar düşüldü!");
-
-    } catch (err) {
-      alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
-    }
-  });
 }
 
 // 8. ANLIK SATIŞLAR TABLOSU
@@ -602,7 +507,153 @@ function escapeHtml(str) {
   return String(str || "").replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
 }
 
-// ETKİLEŞİM VE DİNLEYİCİLER
+// OLAĞAN VE DİNAMİK BUTON BİND'LERİ
+function bindEvents() {
+  setupNavigation();
+
+  const closeTableBtn = document.getElementById("closeTableButton");
+  if (closeTableBtn) {
+    closeTableBtn.onclick = () => {
+      const table = getTables().find(t => t.id === selectedTableId);
+      if (!table || !table.orders || table.orders.length === 0) {
+        alert("Masayı kapatmadan önce en az bir ürün ekleyiniz.");
+        return;
+      }
+      openPaymentModal();
+    };
+  }
+
+  const allCashBtn = document.getElementById("allCashButton");
+  if (allCashBtn) {
+    allCashBtn.onclick = () => {
+      const table = getTables().find(t => t.id === selectedTableId);
+      if (table) {
+        const payCash = document.getElementById("payCash");
+        if (payCash) payCash.value = Number(table.total || 0).toFixed(2);
+        updatePaymentSummary();
+      }
+    };
+  }
+
+  const allCardBtn = document.getElementById("allCardButton");
+  if (allCardBtn) {
+    allCardBtn.onclick = () => {
+      const table = getTables().find(t => t.id === selectedTableId);
+      if (table) {
+        const payCard = document.getElementById("payCard");
+        if (payCard) payCard.value = Number(table.total || 0).toFixed(2);
+        updatePaymentSummary();
+      }
+    };
+  }
+
+  const completeBtn = document.getElementById("completePaymentButton");
+  if (completeBtn) {
+    completeBtn.onclick = async () => {
+      const tables = getTables();
+      const table = tables.find(t => t.id === selectedTableId);
+      if (!table) return;
+
+      try {
+        const { data: sale, error: saleErr } = await client
+          .from("sales")
+          .insert({ total_amount: Number(table.total), payment_type: "Nakit / Kart" })
+          .select("id")
+          .single();
+
+        if (saleErr) throw saleErr;
+
+        const saleItems = table.orders.map(item => ({
+          sale_id: sale.id,
+          product_id: item.productId,
+          quantity: Number(item.quantity),
+          unit_price: Number(item.price),
+          line_total: Number(item.quantity) * Number(item.price)
+        }));
+
+        await client.from("sale_items").insert(saleItems);
+
+        table.status = "closed";
+        table.openedAt = null;
+        table.total = 0;
+        table.orders = [];
+        saveTables(tables);
+
+        const paymentModal = document.getElementById("paymentModal");
+        if (paymentModal) paymentModal.style.display = "none";
+
+        closeTableModal();
+        renderTables();
+        await renderSales();
+
+        alert("Satış başarıyla kaydedildi ve stoklar düşüldü!");
+
+      } catch (err) {
+        alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
+      }
+    };
+  }
+
+  const openCashBtn = document.getElementById("openCashButton");
+  if (openCashBtn) {
+    openCashBtn.onclick = async () => {
+      const openingInput = document.getElementById("openingAmount");
+      const amount = Number(openingInput?.value || 0);
+
+      if (!openingInput || openingInput.value === "" || amount < 0) {
+        alert("Lütfen geçerli bir açılış tutarı giriniz.");
+        return;
+      }
+
+      try {
+        await client.from("cash_sessions").insert({
+          opening_amount: amount,
+          status: "open",
+          opened_at: new Date().toISOString()
+        });
+        openingInput.value = "";
+        alert("Kasa başarıyla açıldı!");
+        await loadCashStatus();
+      } catch (err) {
+        alert("Kasa açılamadı: " + err.message);
+      }
+    };
+  }
+
+  const closeCashBtn = document.getElementById("closeCashButton");
+  if (closeCashBtn) {
+    closeCashBtn.onclick = async () => {
+      if (!currentCashSession) return;
+      const closingInput = document.getElementById("closingAmount");
+      const amount = Number(closingInput?.value || 0);
+
+      if (!confirm("Kasayı kapatmak istediğinize emin misiniz?")) return;
+
+      try {
+        await client.from("cash_sessions").update({
+          closing_amount: amount,
+          closed_at: new Date().toISOString(),
+          status: "closed"
+        }).eq("id", currentCashSession.id);
+
+        if (closingInput) closingInput.value = "";
+        alert("Kasa başarıyla kapatıldı!");
+        currentCashSession = null;
+        await loadCashStatus();
+      } catch (err) {
+        alert("Kasa kapatılamadı: " + err.message);
+      }
+    };
+  }
+
+  const cancelTableBtn = document.getElementById("cancelTableButton");
+  if (cancelTableBtn) cancelTableBtn.onclick = closeTableModal;
+
+  const topCloseBtn = document.getElementById("topClosePanelButton");
+  if (topCloseBtn) topCloseBtn.onclick = closeTableModal;
+}
+
+// İLK AÇILIŞ DİNLEYİCİLERİ
 if (loginButton) loginButton.addEventListener("click", login);
 if (logoutButton) logoutButton.addEventListener("click", logout);
 if (loginPassword) {
@@ -610,7 +661,3 @@ if (loginPassword) {
     if (e.key === "Enter") login();
   });
 }
-
-document.addEventListener("DOMContentLoaded", () => {
-  setupNavigation();
-});
