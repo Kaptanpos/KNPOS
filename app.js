@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - MENÜ GEÇİŞLERİ VE GÖRSEL DÜZELTME SÜRÜMÜ */
+/* KAPTAN NİLİ BULUT POS - TAM TEMİZLENMİŞ VE HATA GİDERİLMİŞ SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -51,9 +51,8 @@ async function login() {
     if (loginScreen) loginScreen.style.display = "none";
     if (appShell) appShell.style.display = "block";
 
-    // Sayfa buton dinleyicilerini bağla
+    // Navigasyon ve Ekranları Yükle
     setupNavigation();
-
     renderTables();
     await loadCashStatus();
     await loadProducts();
@@ -73,60 +72,45 @@ function logout() {
   }
 }
 
-// 2. SAYFA VE MENÜ GEÇİŞLERİ (NAVIGASYON)
+// 2. SAYFA VE MENÜ GEÇİŞLERİ (GÜVENLİ JAVASCRIPT)
 function showPage(pageName) {
-  const pages = document.querySelectorAll(".page");
-  const navButtons = document.querySelectorAll(".nav button, header button");
-
-  pages.forEach(p => p.classList.remove("active-page"));
-  navButtons.forEach(b => b.classList.remove("active-nav"));
-
-  // İlgili Sayfayı ve Butonu Bulup Aktif Yap
   const pageMap = {
-    tables: ["pageTables", "navTables"],
-    products: ["pageProducts", "navProducts"],
-    reports: ["pageReports", "navReports"],
-    internet: ["pageInternet", "navInternet"],
-    ingredients: ["pageIngredients", "navIngredients"]
+    tables: "pageTables",
+    products: "pageProducts",
+    reports: "pageReports",
+    internet: "pageInternet",
+    ingredients: "pageIngredients"
   };
 
-  const target = pageMap[pageName] || pageMap.tables;
-  const pageElem = document.getElementById(target[0]);
-  const btnElem = document.getElementById(target[1]);
+  const targetId = pageMap[pageName] || "pageTables";
 
-  if (pageElem) {
-    pageElem.classList.add("active-page");
-    pageElem.style.display = "block"; // Sayfayı görünür yap
-  }
-  
-  // Diğer sayfaları gizle
-  Object.keys(pageMap).forEach(key => {
-    if (key !== pageName) {
-      const p = document.getElementById(pageMap[key][0]);
-      if (p) p.style.display = "none";
+  // Tüm sayfaları gizle/göster
+  Object.values(pageMap).forEach(id => {
+    const elem = document.getElementById(id);
+    if (elem) {
+      elem.style.display = (id === targetId) ? "block" : "none";
     }
   });
 
-  if (btnElem) btnElem.classList.add("active-nav");
-
-  // Sayfaya özel yüklemeler
+  // Sayfaya özel yenilemeler
   if (pageName === "tables") {
     renderTables();
     loadCashStatus();
     renderSales();
+  } else if (pageName === "products") {
+    loadProducts();
   }
-  if (pageName === "products") loadProducts();
 }
 
 function setupNavigation() {
-  const allNavButtons = document.querySelectorAll("header nav button, .nav button, nav button");
-  
-  allNavButtons.forEach(button => {
-    // Çift dinleyici eklenmesini önlemek için önceden temizle veya direkt atama yap
-    button.onclick = (e) => {
+  // querySelector:contains KULLANMADAN BÜTÜN BUTONLARI METİNLERİYLE YAKALA
+  const buttons = document.querySelectorAll("header button, nav button, .nav button");
+
+  buttons.forEach(btn => {
+    btn.onclick = (e) => {
       e.preventDefault();
-      const txt = button.textContent.trim().toUpperCase();
-      
+      const txt = (btn.textContent || "").trim().toUpperCase();
+
       if (txt.includes("ANA MENÜ")) showPage("tables");
       else if (txt.includes("MALZEMELER")) showPage("ingredients");
       else if (txt.includes("İNTERNET")) showPage("internet");
@@ -177,7 +161,7 @@ function renderTables() {
   });
 }
 
-// 4. KASA AÇMA VE KAPATMA İŞLEMLERİ
+// 4. KASA AÇMA / KAPATMA
 async function loadCashStatus() {
   const cashStatus = document.getElementById("cashStatus");
   const openPanel = document.getElementById("openCashPanel");
@@ -221,68 +205,7 @@ async function loadCashStatus() {
   }
 }
 
-const openCashBtn = document.getElementById("openCashButton");
-if (openCashBtn) {
-  openCashBtn.addEventListener("click", async () => {
-    const openingInput = document.getElementById("openingAmount");
-    const amount = Number(openingInput?.value || 0);
-
-    if (!openingInput || openingInput.value === "" || amount < 0) {
-      alert("Lütfen geçerli bir açılış tutarı giriniz.");
-      return;
-    }
-
-    try {
-      const { error } = await client.from("cash_sessions").insert({
-        opening_amount: amount,
-        status: "open",
-        opened_at: new Date().toISOString()
-      });
-
-      if (error) throw error;
-      openingInput.value = "";
-      alert("Kasa başarıyla açıldı!");
-      await loadCashStatus();
-
-    } catch (err) {
-      alert("Kasa açılamadı: " + err.message);
-    }
-  });
-}
-
-const closeCashBtn = document.getElementById("closeCashButton");
-if (closeCashBtn) {
-  closeCashBtn.addEventListener("click", async () => {
-    if (!currentCashSession) return;
-
-    const closingInput = document.getElementById("closingAmount");
-    const amount = Number(closingInput?.value || 0);
-
-    if (!confirm("Kasayı kapatmak istediğinize emin misiniz?")) return;
-
-    try {
-      const { error } = await client
-        .from("cash_sessions")
-        .update({
-          closing_amount: amount,
-          closed_at: new Date().toISOString(),
-          status: "closed"
-        })
-        .eq("id", currentCashSession.id);
-
-      if (error) throw error;
-      if (closingInput) closingInput.value = "";
-      alert("Kasa başarıyla kapatıldı!");
-      currentCashSession = null;
-      await loadCashStatus();
-
-    } catch (err) {
-      alert("Kasa kapatılamadı: " + err.message);
-    }
-  });
-}
-
-// 5. MASA MODAL VE SEPET
+// 5. MASA MODAL & SEPET
 async function openTableModal(tableId) {
   selectedTableId = tableId;
   const tables = getTables();
@@ -326,7 +249,7 @@ function closeTableModal() {
   renderTables();
 }
 
-// 6. ÜRÜNLER VE KATEGORİLER
+// 6. ÜRÜNLER & KATEGORİLER
 async function loadProducts() {
   try {
     const { data, error } = await client
@@ -679,7 +602,7 @@ function escapeHtml(str) {
   return String(str || "").replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
 }
 
-// ETKİLEŞİM VE DINLEYICILER
+// ETKİLEŞİM VE DİNLEYİCİLER
 if (loginButton) loginButton.addEventListener("click", login);
 if (logoutButton) logoutButton.addEventListener("click", logout);
 if (loginPassword) {
