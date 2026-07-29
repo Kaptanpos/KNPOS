@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - KOMPLE FULL VE TEK PARÇA ÇALIŞAN SÜRÜM */
+/* KAPTAN NİLİ BULUT POS - MASAYI BOŞALT DÜZELTİLMİŞ SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -8,13 +8,11 @@ const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // DOM Elemanları
 const loginScreen = document.getElementById("loginScreen");
 const appShell = document.getElementById("appShell");
-const loginUser = document.getElementById("loginUser");
 const loginPassword = document.getElementById("loginPassword");
 const loginButton = document.getElementById("loginButton");
 const logoutButton = document.getElementById("logoutButton");
 
 let currentCashSession = null;
-let currentProfile = { role: "admin", full_name: "Deniz Mazlumoğlu" };
 let selectedTableId = null;
 let saleProducts = [];
 let selectedCategory = "Tümü";
@@ -51,10 +49,7 @@ async function login() {
     if (loginScreen) loginScreen.style.display = "none";
     if (appShell) appShell.style.display = "block";
 
-    // Tüm Tıklama ve Sayfa Dinleyicilerini Bağla
     bindEvents();
-    
-    // Verileri Yükle
     renderTables();
     await loadCashStatus();
     await loadProducts();
@@ -74,14 +69,14 @@ function logout() {
   }
 }
 
-// 2. SAYFA GEÇİŞLERİ (ÜRÜNLER, MALZEMELER, RAPORLAR, İNTERNET)
+// 2. SAYFA GEÇİŞLERİ
 function showPage(pageName) {
   const pages = {
-    tables: document.getElementById("pageTables") || document.querySelector(".page-tables"),
-    ingredients: document.getElementById("pageIngredients") || document.querySelector(".page-ingredients"),
-    internet: document.getElementById("pageInternet") || document.querySelector(".page-internet"),
-    products: document.getElementById("pageProducts") || document.querySelector(".page-products"),
-    reports: document.getElementById("pageReports") || document.querySelector(".page-reports")
+    tables: document.getElementById("pageTables"),
+    ingredients: document.getElementById("pageIngredients"),
+    internet: document.getElementById("pageInternet"),
+    products: document.getElementById("pageProducts"),
+    reports: document.getElementById("pageReports")
   };
 
   Object.keys(pages).forEach(key => {
@@ -101,22 +96,18 @@ function showPage(pageName) {
 }
 
 function setupNavigation() {
-  const allButtons = document.querySelectorAll("button, a");
+  const allNavButtons = document.querySelectorAll("header nav button");
+  allNavButtons.forEach(btn => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      const txt = (btn.textContent || "").trim().toUpperCase();
 
-  allButtons.forEach(btn => {
-    const txt = (btn.textContent || "").trim().toUpperCase();
-
-    if (txt.includes("ANA MENÜ")) {
-      btn.onclick = (e) => { e.preventDefault(); showPage("tables"); };
-    } else if (txt.includes("MALZEMELER")) {
-      btn.onclick = (e) => { e.preventDefault(); showPage("ingredients"); };
-    } else if (txt.includes("İNTERNET")) {
-      btn.onclick = (e) => { e.preventDefault(); showPage("internet"); };
-    } else if (txt.includes("ÜRÜNLER")) {
-      btn.onclick = (e) => { e.preventDefault(); showPage("products"); };
-    } else if (txt.includes("RAPORLAR")) {
-      btn.onclick = (e) => { e.preventDefault(); showPage("reports"); };
-    }
+      if (txt.includes("ANA MENÜ")) showPage("tables");
+      else if (txt.includes("MALZEMELER")) showPage("ingredients");
+      else if (txt.includes("İNTERNET")) showPage("internet");
+      else if (txt.includes("ÜRÜNLER")) showPage("products");
+      else if (txt.includes("RAPORLAR")) showPage("reports");
+    };
   });
 }
 
@@ -135,16 +126,13 @@ function saveTables(tables) {
 }
 
 function renderTables() {
-  const grid = document.getElementById("tablesGrid") || document.querySelector(".tables-grid");
+  const grid = document.getElementById("tablesGrid");
   if (!grid) return;
 
   const tables = getTables();
   grid.innerHTML = "";
 
   tables.forEach(table => {
-    const wrapper = document.createElement("div");
-    wrapper.className = "table-card-wrap";
-
     const button = document.createElement("button");
     button.type = "button";
     button.className = `table-card ${table.status || 'closed'}`;
@@ -156,12 +144,11 @@ function renderTables() {
     `;
     
     button.onclick = () => openTableModal(table.id);
-    wrapper.appendChild(button);
-    grid.appendChild(wrapper);
+    grid.appendChild(button);
   });
 }
 
-// 4. KASA DURUMU VE İŞLEMLERİ
+// 4. KASA DURUMU VE KONTROLÜ
 async function loadCashStatus() {
   const cashStatus = document.getElementById("cashStatus");
   const openPanel = document.getElementById("openCashPanel");
@@ -186,17 +173,14 @@ async function loadCashStatus() {
         <div class="cash-status-title">KASA AÇIK</div>
         <div class="cash-detail">Açılış Nakdi: <strong>${formatMoney(currentCashSession.opening_amount)}</strong></div>
       `;
-
       if (openPanel) openPanel.style.display = "none";
       if (closePanel) closePanel.style.display = "block";
-
     } else {
       cashStatus.className = "cash-status cash-closed";
       cashStatus.innerHTML = `
         <div class="cash-status-title">KASA KAPALI</div>
         <div class="cash-detail">Satış yapmadan önce kasayı açınız.</div>
       `;
-
       if (openPanel) openPanel.style.display = "block";
       if (closePanel) closePanel.style.display = "none";
     }
@@ -205,11 +189,10 @@ async function loadCashStatus() {
   }
 }
 
-// 5. MASA SİPARİŞ PENCERESİ (MODAL)
+// 5. MASA SİPARİŞ MODALI
 async function openTableModal(tableId) {
-  // KASA KONTROLÜ: Kasa kapalıysa satış ekranını açma!
   if (!currentCashSession) {
-    alert("⚠️ Kasa kapalı! Satış yapabilmek veya masa açabilmek için lütfen önce sol taraftan KASAYI AÇINIZ.");
+    alert("⚠️ Kasa kapalı! Satış yapabilmek veya masa açabilmek için lütfen önce KASAYI AÇINIZ.");
     return;
   }
 
@@ -220,8 +203,6 @@ async function openTableModal(tableId) {
 
   const tableModal = document.getElementById("tableModal");
   const modalName = document.getElementById("modalTableName");
-  const closedView = document.getElementById("modalClosedView");
-  const openView = document.getElementById("modalOpenView");
 
   if (modalName) modalName.textContent = table.name;
 
@@ -234,14 +215,10 @@ async function openTableModal(tableId) {
     renderTables();
   }
 
-  if (closedView) closedView.style.display = "none";
-  if (openView) openView.style.display = "block";
-
   await loadProducts();
   renderCart();
   
   if (tableModal) {
-    tableModal.classList.add("show");
     tableModal.style.display = "flex";
   }
 }
@@ -249,13 +226,32 @@ async function openTableModal(tableId) {
 function closeTableModal() {
   const tableModal = document.getElementById("tableModal");
   if (tableModal) {
-    tableModal.classList.remove("show");
     tableModal.style.display = "none";
   }
   renderTables();
 }
 
-// 6. ÜRÜNLER & KATEGORİLER
+// MASAYI BOŞALT / SİPARİŞİ İPTAL ET FONKSİYONU
+function clearCurrentTable() {
+  if (!selectedTableId) return;
+  const tables = getTables();
+  const table = tables.find(t => t.id === selectedTableId);
+  const tableName = table ? table.name : "Seçili masa";
+
+  if (confirm(`${tableName} masasındaki tüm siparişleri silmek ve masayı boşaltmak istediğinize emin misiniz?`)) {
+    if (table) {
+      table.status = "closed";
+      table.openedAt = null;
+      table.total = 0;
+      table.orders = [];
+      saveTables(tables);
+    }
+    closeTableModal();
+    renderTables();
+  }
+}
+
+// 6. ÜRÜNLER VE SEPET
 async function loadProducts() {
   try {
     const { data, error } = await client
@@ -310,12 +306,11 @@ function renderSaleProducts() {
 
   const tables = getTables();
   const table = tables.find(t => t.id === selectedTableId);
-
   const filtered = saleProducts.filter(p => selectedCategory === "Tümü" || (p.category || "Diğer") === selectedCategory);
+  
   grid.innerHTML = "";
-
   if (filtered.length === 0) {
-    grid.innerHTML = '<div class="loading">Bu kategoride ürün bulunamadı.</div>';
+    grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding:20px;">Bu kategoride ürün bulunamadı.</div>';
     return;
   }
 
@@ -334,8 +329,8 @@ function renderSaleProducts() {
     card.innerHTML = `
       <div class="quantity-badge ${quantity > 0 ? "show" : ""}">${quantity}</div>
       <div class="product-image-box">${imageHtml}</div>
-      <div class="sale-product-name">${escapeHtml(product.name)}</div>
-      <div class="sale-product-price">${formatMoney(product.price)}</div>
+      <div style="font-size:12px; font-weight:bold; margin-top:4px;">${escapeHtml(product.name)}</div>
+      <div style="font-size:13px; color:#0f766e; font-weight:800; margin-top:2px;">${formatMoney(product.price)}</div>
     `;
 
     card.onclick = () => addToCart(product);
@@ -372,7 +367,7 @@ function renderCart() {
   cartList.innerHTML = "";
 
   if (!table.orders || table.orders.length === 0) {
-    cartList.innerHTML = '<div class="cart-empty">Henüz ürün eklenmedi.</div>';
+    cartList.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:30px 0;">Henüz ürün eklenmedi.</div>';
     if (cartTotal) cartTotal.textContent = formatMoney(0);
     return;
   }
@@ -382,12 +377,12 @@ function renderCart() {
     row.className = "cart-row";
     row.innerHTML = `
       <div>
-        <div class="cart-name">${escapeHtml(item.name)}</div>
-        <div class="cart-sub">${formatMoney(item.price)} × ${item.quantity} = ${formatMoney(item.price * item.quantity)}</div>
+        <div style="font-size:13px; font-weight:bold;">${escapeHtml(item.name)}</div>
+        <div style="font-size:11px; color:#64748b;">${formatMoney(item.price)} × ${item.quantity} = ${formatMoney(item.price * item.quantity)}</div>
       </div>
       <div class="cart-controls">
         <button class="qty-button qty-minus" type="button">−</button>
-        <span class="qty-count">${item.quantity}</span>
+        <span style="font-size:13px; font-weight:bold;">${item.quantity}</span>
         <button class="qty-button qty-plus" type="button">+</button>
       </div>
     `;
@@ -421,7 +416,7 @@ function changeQty(productId, delta) {
   renderTables();
 }
 
-// 7. ÖDEME ALMA VE MASAYI KAPATMA
+// 7. ÖDEME MODALI VE KAPATMA
 function openPaymentModal() {
   const table = getTables().find(t => t.id === selectedTableId);
   const paymentModal = document.getElementById("paymentModal");
@@ -430,14 +425,13 @@ function openPaymentModal() {
   if (!table || !paymentModal) return;
 
   if (paymentTitle) {
-    paymentTitle.innerHTML = `<strong>${escapeHtml(table.name)}</strong><br>Toplam: <strong>${formatMoney(table.total)}</strong>`;
+    paymentTitle.innerHTML = `<strong>${escapeHtml(table.name)}</strong><br>Toplam Tutar: <strong>${formatMoney(table.total)}</strong>`;
   }
 
-  const paymentInputs = document.querySelectorAll(".payment-input");
-  paymentInputs.forEach(i => i.value = "0");
+  document.getElementById("payCash").value = "0";
+  document.getElementById("payCard").value = "0";
 
   updatePaymentSummary();
-  paymentModal.classList.add("show");
   paymentModal.style.display = "flex";
 }
 
@@ -452,16 +446,11 @@ function updatePaymentSummary() {
 
   const collectedElem = document.getElementById("collectedAmount");
   const remainingElem = document.getElementById("remainingAmount");
-  const completeBtn = document.getElementById("completePaymentButton");
 
   if (collectedElem) collectedElem.textContent = formatMoney(totalCollected);
   if (remainingElem) {
     const remaining = Math.max(tableTotal - totalCollected, 0);
     remainingElem.textContent = formatMoney(remaining);
-  }
-
-  if (completeBtn) {
-    completeBtn.disabled = totalCollected + 0.01 < tableTotal;
   }
 }
 
@@ -481,7 +470,7 @@ async function renderSales() {
 
     if (error) throw error;
     if (!sales || sales.length === 0) {
-      list.innerHTML = '<div class="loading">Bugün henüz satış yapılmadı.</div>';
+      list.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Bugün henüz satış yapılmadı.</div>';
       if (totalElem) totalElem.textContent = "0,00 TL";
       return;
     }
@@ -500,11 +489,10 @@ async function renderSales() {
 
     if (totalElem) totalElem.textContent = formatMoney(sum);
   } catch (err) {
-    list.innerHTML = '<div class="loading">Satışlar çekilemedi.</div>';
+    list.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Satışlar çekilemedi.</div>';
   }
 }
 
-// YARDIMCI BİLEŞENLER
 function formatMoney(val) {
   return Number(val || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
 }
@@ -513,22 +501,31 @@ function escapeHtml(str) {
   return String(str || "").replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
 }
 
-// OLAĞAN VE DİNAMİK BUTON BİND'LERİ
+// GLOBAL EVENT DELEGATION (EKSİKSİZ VE KESİN TIKLAMA YAKALAYICI)
+document.addEventListener("click", function(e) {
+  const target = e.target;
+  if (!target) return;
+
+  // 1. MASAYI BOŞALT / SİPARİŞİ İPTAL ET
+  if (target.id === "clearTableButton" || target.closest("#clearTableButton")) {
+    e.preventDefault();
+    clearCurrentTable();
+    return;
+  }
+
+  // 2. ANA MENÜYE DÖN / KAYDET VE ANA MENÜ
+  if (target.id === "topClosePanelButton" || target.id === "cancelTableButton") {
+    e.preventDefault();
+    closeTableModal();
+    return;
+  }
+});
+
+// TIKLAMA VE ETKİLEŞİM DİNLENMELERİ
 function bindEvents() {
   setupNavigation();
 
-  // "KAYDET VE ANA MENÜ" VE "ANA MENÜYE DÖN" BUTONLARI
-  const allButtons = document.querySelectorAll("button, a");
-  allButtons.forEach(btn => {
-    const txt = (btn.textContent || "").trim().toUpperCase();
-    if (txt.includes("ANA MENÜYE DÖN") || txt.includes("KAYDET VE ANA MENÜ")) {
-      btn.onclick = (e) => {
-        e.preventDefault();
-        closeTableModal();
-      };
-    }
-  });
-
+  // MASAYI KAPAT / ÖDEME AL
   const closeTableBtn = document.getElementById("closeTableButton");
   if (closeTableBtn) {
     closeTableBtn.onclick = () => {
@@ -541,13 +538,19 @@ function bindEvents() {
     };
   }
 
+  // ÖDEME HESAPLAMA BUTONLARI
+  const payCashInput = document.getElementById("payCash");
+  const payCardInput = document.getElementById("payCard");
+  if (payCashInput) payCashInput.oninput = updatePaymentSummary;
+  if (payCardInput) payCardInput.oninput = updatePaymentSummary;
+
   const allCashBtn = document.getElementById("allCashButton");
   if (allCashBtn) {
     allCashBtn.onclick = () => {
       const table = getTables().find(t => t.id === selectedTableId);
-      if (table) {
-        const payCash = document.getElementById("payCash");
-        if (payCash) payCash.value = Number(table.total || 0).toFixed(2);
+      if (table && payCashInput) {
+        payCashInput.value = Number(table.total || 0).toFixed(2);
+        if (payCardInput) payCardInput.value = "0";
         updatePaymentSummary();
       }
     };
@@ -557,14 +560,15 @@ function bindEvents() {
   if (allCardBtn) {
     allCardBtn.onclick = () => {
       const table = getTables().find(t => t.id === selectedTableId);
-      if (table) {
-        const payCard = document.getElementById("payCard");
-        if (payCard) payCard.value = Number(table.total || 0).toFixed(2);
+      if (table && payCardInput) {
+        payCardInput.value = Number(table.total || 0).toFixed(2);
+        if (payCashInput) payCashInput.value = "0";
         updatePaymentSummary();
       }
     };
   }
 
+  // SATIŞI TAMAMLA
   const completeBtn = document.getElementById("completePaymentButton");
   if (completeBtn) {
     completeBtn.onclick = async () => {
@@ -604,7 +608,7 @@ function bindEvents() {
         renderTables();
         await renderSales();
 
-        alert("Satış başarıyla kaydedildi ve stoklar düşüldü!");
+        alert("Satış başarıyla kaydedildi!");
 
       } catch (err) {
         alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
@@ -612,6 +616,15 @@ function bindEvents() {
     };
   }
 
+  const cancelPayBtn = document.getElementById("cancelPaymentButton");
+  if (cancelPayBtn) {
+    cancelPayBtn.onclick = () => {
+      const paymentModal = document.getElementById("paymentModal");
+      if (paymentModal) paymentModal.style.display = "none";
+    };
+  }
+
+  // KASA AÇMA & KAPATMA
   const openCashBtn = document.getElementById("openCashButton");
   if (openCashBtn) {
     openCashBtn.onclick = async () => {
@@ -663,15 +676,9 @@ function bindEvents() {
       }
     };
   }
-
-  const cancelTableBtn = document.getElementById("cancelTableButton");
-  if (cancelTableBtn) cancelTableBtn.onclick = closeTableModal;
-
-  const topCloseBtn = document.getElementById("topClosePanelButton");
-  if (topCloseBtn) topCloseBtn.onclick = closeTableModal;
 }
 
-// İLK AÇILIŞ DİNLEYİCİLERİ
+// İLK AÇILIŞ
 if (loginButton) loginButton.addEventListener("click", login);
 if (logoutButton) logoutButton.addEventListener("click", logout);
 if (loginPassword) {
