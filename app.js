@@ -376,3 +376,19 @@ if (cancelTableBtn) cancelTableBtn.addEventListener("click", closeTableModal);
 
 const topCloseBtn = document.getElementById("topClosePanelButton");
 if (topCloseBtn) topCloseBtn.addEventListener("click", closeTableModal);
+// MENÜ VE SAYFA GEÇİŞLERİNİ SABİTLEME (GİRİŞE DÖNMEYİ ENGELLEME)
+document.addEventListener("DOMContentLoaded", () => {
+  // Tüm menü butonlarını yakala ve sayfa yenilemeyi engelle
+  const navButtons = document.querySelectorAll(".nav button, header button, .main-menu button");
+  
+  navButtons.forEach(button => {
+    button.addEventListener("click", (e) => {
+      e.preventDefault(); // Sayfanın yenilenmesini ve girişe atmasını engeller
+      
+      const targetPage = button.getAttribute("data-page") || button.id.replace("nav", "").toLowerCase();
+      if (typeof showPage === "function" && targetPage) {
+        showPage(targetPage);
+      }
+    });
+  });
+});
