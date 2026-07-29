@@ -11,6 +11,75 @@
 <meta content="#0f766e" name="theme-color"/>
 <meta content="yes" name="apple-mobile-web-app-capable"/>
 <meta content="KNPOS" name="apple-mobile-web-app-title"/>
+<head>
+    <meta charset="UTF-8">
+    <title>KAPTAN NİLİ BULUT POS</title>
+    <!-- Var olan diğer link ve metalar burada kalacak -->
+
+    <!-- BURAYA YAPIŞTIRACAKSIN: -->
+    <style>
+      /* KASA KAPALI PEMBE KUTUSUNU KÜÇÜLTME */
+      .cash-status, .cash-closed, .cash-open {
+        padding: 10px 12px !important;
+        min-height: auto !important;
+        height: auto !important;
+        margin-bottom: 8px !important;
+      }
+
+      .cash-status-title {
+        font-size: 16px !important;
+        font-weight: 800 !important;
+        margin-bottom: 4px !important;
+      }
+
+      .cash-detail {
+        font-size: 12px !important;
+        line-height: 1.2 !important;
+      }
+
+      /* SOL KASA KARTININ ALTI HİÇ KESİLMESİN */
+      .cash-card, div[class*="cash-card"] {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: flex-start !important;
+        padding: 12px !important;
+      }
+
+      #openCashPanel, #closeCashPanel {
+        margin-top: 8px !important;
+      }
+
+      #openCashPanel input, #closeCashPanel input {
+        padding: 8px !important;
+        font-size: 13px !important;
+        margin-bottom: 6px !important;
+      }
+
+      #openCashPanel button, #closeCashPanel button {
+        padding: 8px !important;
+        font-size: 13px !important;
+      }
+
+      /* BUGÜNKÜ ANLIK SATIŞLAR TABLOSUNU DARALTMA VE EN ALTI GÖRÜNÜR YAPMA */
+      #salesList {
+        max-height: 120px !important;
+        overflow-y: auto !important;
+      }
+
+      .daily-sales-container, .daily-sales-wrap {
+        margin-top: 10px !important;
+        padding-bottom: 10px !important;
+      }
+
+      /* EN ALTTAKİ GÜNLÜK TOPLAM BARI */
+      .daily-sales-summary, #salesDailyTotalWrap, div[class*="summary"] {
+        margin-top: 8px !important;
+        padding: 10px 15px !important;
+        font-size: 15px !important;
+        margin-bottom: 20px !important;
+      }
+    </style>
+</head>
 </head>
 <style>
   /* KASA KARTINI VE EKRAN TAŞMALARINI DÜZELTME */
