@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - MALZEME PAYLOAD DÜZELTİLMİŞ SÜRÜM */
+/* KAPTAN NİLİ BULUT POS - ESNEK ÖDEME KANALLARI & OTOMATİK REÇETE SÜRÜMÜ */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -18,6 +18,7 @@ let selectedRecipeProductId = null;
 let saleProducts = [];
 let allManagementProducts = [];
 let allIngredients = [];
+let paymentMethods = [];
 let selectedCategory = "Tümü";
 
 const TABLE_STORAGE_KEY = "knpos_tables_v1";
@@ -69,6 +70,7 @@ async function login() {
     renderTables();
     await loadCashStatus();
     await loadProducts();
+    await loadPaymentMethods();
     await renderSales();
     await checkRecipeTable();
 
@@ -120,6 +122,7 @@ function showPage(pageName) {
     renderSales();
   } else if (pageName === "products") {
     loadManagementProducts();
+    loadPaymentMethods();
   } else if (pageName === "ingredients") {
     loadIngredients();
   }
@@ -472,7 +475,7 @@ function changeQty(productId, delta) {
   renderTables();
 }
 
-// 7. MALZEMELER / YARI MAMUL MODÜLÜ (TAMEMEN TEMİZLENMİŞ PAYLOAD)
+// 7. MALZEMELER / YARI MAMUL MODÜLÜ
 async function loadIngredients() {
   try {
     const { data, error } = await client.from("ingredients").select("*").order("name", { ascending: true });
@@ -496,15 +499,13 @@ function renderIngredientsTable(ingredients) {
 
   ingredients.forEach(ing => {
     const tr = document.createElement("tr");
-    
-    // Yalnızca Supabase'de var olan stock_quantity kolonu okunuyor
     const currentStock = ing.stock_quantity ?? 0;
     const isCritical = Number(currentStock) <= 0;
 
     tr.innerHTML = `
       <td><strong>${escapeHtml(ing.name)}</strong></td>
       <td><strong style="font-size:15px; color:${isCritical ? '#dc2626' : '#0f766e'};">${currentStock}</strong></td>
-      <td>${escapeHtml(ing.unit || 'Gram')}</td>
+      <td>${escapeHtml(ing.unit || 'gr')}</td>
       <td>${isCritical ? '<span class="badge-critical">⚠️ Kritik Stok</span>' : '<span class="badge-active">Normal</span>'}</td>
       <td style="text-align: right;">
         <button type="button" class="btn-edit" onclick="editIngredient(${ing.id})">Düzenle</button>
@@ -515,7 +516,6 @@ function renderIngredientsTable(ingredients) {
   });
 }
 
-// SADECE MEVCUT SÜTUNLAR GÖNDERİLİYOR
 async function saveIngredientFromForm() {
   const editId = document.getElementById("editIngId").value;
   const name = document.getElementById("ingNameInput").value.trim();
@@ -527,12 +527,7 @@ async function saveIngredientFromForm() {
     return;
   }
 
-  // Sadece Supabase'deki kesin var olan alanlar: name, unit, stock_quantity
-  const payload = {
-    name: name,
-    unit: unit,
-    stock_quantity: stock
-  };
+  const payload = { name: name, unit: unit, stock_quantity: stock };
 
   try {
     if (editId) {
@@ -564,7 +559,7 @@ function editIngredient(id) {
   
   const unitSelect = document.getElementById("ingUnitSelect");
   if (unitSelect) {
-    unitSelect.value = ing.unit || "Gram";
+    unitSelect.value = ing.unit || "gr";
   }
 
   document.getElementById("ingStockInput").value = currentStock;
@@ -606,7 +601,148 @@ async function adjustIngredientStock(id) {
   }
 }
 
-// 8. ÜRÜN YÖNETİMİ & REÇETE YÖNETİMİ
+// 8. ESNEK ÖDEME KANALLARI YÖNETİMİ
+async function loadPaymentMethods() {
+  try {
+    const { data, error } = await client.from("payment_methods").select("*").eq("active", true).order("id", { ascending: true });
+    if (error) throw error;
+    paymentMethods = data || [
+      { id: 1, name: "Nakit" },
+      { id: 2, name: "Kredi Kartı" },
+      { id: 3, name: "Yemeksepeti" },
+      { id: 4, name: "Trendyol" },
+      { id: 5, name: "Getir" },
+      { id: 6, name: "KaptanNili.com" }
+    ];
+    renderPaymentMethodsList();
+  } catch (err) {
+    console.error("Ödeme kanalları çekilemedi:", err.message);
+  }
+}
+
+function renderPaymentMethodsList() {
+  const container = document.getElementById("paymentMethodsList");
+  if (!container) return;
+
+  container.innerHTML = paymentMethods.map(m => `
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px solid #e2e8f0; font-size:12px;">
+      <span><strong>${escapeHtml(m.name)}</strong></span>
+      <button type="button" style="background:#dc2626; color:white; border:none; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold; cursor:pointer;" onclick="deletePaymentMethod(${m.id})">Sil</button>
+    </div>
+  `).join("");
+}
+
+async function addPaymentMethod() {
+  const input = document.getElementById("newPaymentMethodInput");
+  const name = input ? input.value.trim() : "";
+
+  if (!name) {
+    alert("Lütfen kanal adı giriniz.");
+    return;
+  }
+
+  try {
+    const { error } = await client.from("payment_methods").insert({ name: name, active: true });
+    if (error) throw error;
+    if (input) input.value = "";
+    await loadPaymentMethods();
+    alert(`'${name}' kanalı başarıyla eklendi!`);
+  } catch (err) {
+    alert("Kanal eklenemedi: " + err.message);
+  }
+}
+
+async function deletePaymentMethod(id) {
+  if (!confirm("Bu ödeme kanalını silmek istediğinize emin misiniz?")) return;
+  try {
+    const { error } = await client.from("payment_methods").delete().eq("id", id);
+    if (error) throw error;
+    await loadPaymentMethods();
+  } catch (err) {
+    alert("Silinemedi: " + err.message);
+  }
+}
+
+// 9. DİNAMİK ÖDEME MODALI HESAPLAMA
+function openPaymentModal() {
+  const table = getTables().find(t => t.id === selectedTableId);
+  const paymentModal = document.getElementById("paymentModal");
+  const paymentTitle = document.getElementById("paymentTotalTitle");
+  const grid = document.getElementById("dynamicPaymentGrid");
+
+  if (!table || !paymentModal || !grid) return;
+
+  if (paymentTitle) {
+    paymentTitle.innerHTML = `<strong>${escapeHtml(table.name)}</strong><br>Toplam Tutar: <strong>${formatMoney(table.total)}</strong>`;
+  }
+
+  // Dinamik olarak ödeme kanalları inputlarını doldur
+  grid.innerHTML = paymentMethods.map(m => `
+    <div class="payment-item">
+      <label>💳 ${escapeHtml(m.name)}</label>
+      <input type="number" class="dynamic-pay-input" data-name="${escapeHtml(m.name)}" id="pay_channel_${m.id}" value="0" step="0.01">
+      <button type="button" class="btn-quick-pay" onclick="setSingleChannelDynamic('pay_channel_${m.id}')">Tümü ${escapeHtml(m.name)}</button>
+    </div>
+  `).join("");
+
+  // İnput dinamik dinleme
+  document.querySelectorAll(".dynamic-pay-input").forEach(inp => {
+    inp.oninput = updateDynamicPaymentSummary;
+  });
+
+  updateDynamicPaymentSummary();
+  paymentModal.style.display = "flex";
+}
+
+function setSingleChannelDynamic(activeId) {
+  const table = getTables().find(t => t.id === selectedTableId);
+  if (!table) return;
+
+  document.querySelectorAll(".dynamic-pay-input").forEach(inp => {
+    if (inp.id === activeId) {
+      inp.value = Number(table.total || 0).toFixed(2);
+    } else {
+      inp.value = "0";
+    }
+  });
+
+  updateDynamicPaymentSummary();
+}
+
+function updateDynamicPaymentSummary() {
+  const table = getTables().find(t => t.id === selectedTableId);
+  if (!table) return;
+
+  let totalCollected = 0;
+  document.querySelectorAll(".dynamic-pay-input").forEach(inp => {
+    totalCollected += Number(inp.value || 0);
+  });
+
+  const tableTotal = Number(table.total || 0);
+
+  const collectedElem = document.getElementById("collectedAmount");
+  const remainingElem = document.getElementById("remainingAmount");
+
+  if (collectedElem) collectedElem.textContent = formatMoney(totalCollected);
+  if (remainingElem) {
+    const remaining = Math.max(tableTotal - totalCollected, 0);
+    remainingElem.textContent = formatMoney(remaining);
+  }
+}
+
+function getDynamicPaymentSummaryString() {
+  let used = [];
+  document.querySelectorAll(".dynamic-pay-input").forEach(inp => {
+    const val = Number(inp.value || 0);
+    if (val > 0) {
+      const name = inp.getAttribute("data-name") || "Ödeme";
+      used.push(name);
+    }
+  });
+  return used.length > 0 ? used.join(" + ") : "Nakit";
+}
+
+// 10. ÜRÜN YÖNETİMİ & REÇETE YÖNETİMİ
 async function loadManagementProducts() {
   try {
     const { data, error } = await client.from("products").select("*").order("created_at", { ascending: false });
@@ -759,7 +895,7 @@ async function renderRecipeItemsList() {
       <div class="recipe-item-row">
         <div>
           <strong>${escapeHtml(r.ingredients?.name || 'Malzeme')}</strong>: 
-          <span style="color:#0f766e; font-weight:bold;">${r.quantity_required} ${escapeHtml(r.ingredients?.unit || 'gr')}</span>
+          <span style="color:#0f766e; font-weight:bold;">${r.quantity_required || r.quantity || 0} ${escapeHtml(r.unit || r.ingredients?.unit || 'gr')}</span>
         </div>
         <button type="button" style="background:#dc2626; color:white; border:none; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:bold;" onclick="deleteRecipeItem(${r.id})">Sil</button>
       </div>
@@ -779,11 +915,16 @@ async function addRecipeItem() {
     return;
   }
 
+  const ingObj = allIngredients.find(i => String(i.id) === String(ingId));
+  const unitVal = ingObj ? (ingObj.unit || "gr") : "gr";
+
   try {
     const { error } = await client.from("recipes").insert({
       product_id: selectedRecipeProductId,
       ingredient_id: ingId,
-      quantity_required: qty
+      quantity: qty,
+      quantity_required: qty,
+      unit: unitVal
     });
 
     if (error) throw error;
@@ -806,56 +947,19 @@ async function deleteRecipeItem(recipeId) {
   }
 }
 
-// 9. ÖDEME VE OTOMATİK STOK DÜŞÜMÜ
-function openPaymentModal() {
-  const table = getTables().find(t => t.id === selectedTableId);
-  const paymentModal = document.getElementById("paymentModal");
-  const paymentTitle = document.getElementById("paymentTotalTitle");
-
-  if (!table || !paymentModal) return;
-
-  if (paymentTitle) {
-    paymentTitle.innerHTML = `<strong>${escapeHtml(table.name)}</strong><br>Toplam Tutar: <strong>${formatMoney(table.total)}</strong>`;
-  }
-
-  document.getElementById("payCash").value = "0";
-  document.getElementById("payCard").value = "0";
-
-  updatePaymentSummary();
-  paymentModal.style.display = "flex";
-}
-
-function updatePaymentSummary() {
-  const table = getTables().find(t => t.id === selectedTableId);
-  if (!table) return;
-
-  const payCash = Number(document.getElementById("payCash")?.value || 0);
-  const payCard = Number(document.getElementById("payCard")?.value || 0);
-  const totalCollected = payCash + payCard;
-  const tableTotal = Number(table.total || 0);
-
-  const collectedElem = document.getElementById("collectedAmount");
-  const remainingElem = document.getElementById("remainingAmount");
-
-  if (collectedElem) collectedElem.textContent = formatMoney(totalCollected);
-  if (remainingElem) {
-    const remaining = Math.max(tableTotal - totalCollected, 0);
-    remainingElem.textContent = formatMoney(remaining);
-  }
-}
-
 async function deductStockFromRecipe(orders) {
   try {
     for (const item of orders) {
       const { data: recipeItems, error } = await client
         .from("recipes")
-        .select("ingredient_id, quantity_required")
+        .select("ingredient_id, quantity_required, quantity")
         .eq("product_id", item.productId);
 
       if (error || !recipeItems) continue;
 
       for (const r of recipeItems) {
-        const totalDeduct = Number(r.quantity_required) * Number(item.quantity);
+        const qtyPerItem = Number(r.quantity_required || r.quantity || 0);
+        const totalDeduct = qtyPerItem * Number(item.quantity);
 
         const { data: ingData } = await client
           .from("ingredients")
@@ -878,7 +982,7 @@ async function deductStockFromRecipe(orders) {
   }
 }
 
-// 10. ANLIK SATIŞLAR TABLOSU
+// 11. ANLIK SATIŞLAR TABLOSU
 async function renderSales() {
   const list = document.getElementById("salesList");
   const totalElem = document.getElementById("salesDailyTotal");
@@ -905,7 +1009,7 @@ async function renderSales() {
       return `
         <div class="daily-sales-row">
           <div><strong>${new Date(s.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}</strong></div>
-          <div>${escapeHtml(s.payment_type || "Nakit")}</div>
+          <div><strong style="color:#0f766e;">${escapeHtml(s.payment_type || "Nakit")}</strong></div>
           <div><strong>${formatMoney(s.total_amount)}</strong></div>
         </div>
       `;
@@ -971,6 +1075,12 @@ document.addEventListener("click", function(e) {
     addRecipeItem();
     return;
   }
+
+  if (target.id === "addPaymentMethodBtn") {
+    e.preventDefault();
+    addPaymentMethod();
+    return;
+  }
 });
 
 // TIKLAMA VE ETKİLEŞİM DİNLENMELERİ
@@ -1024,36 +1134,6 @@ function bindEvents() {
     };
   }
 
-  // ÖDEME HESAPLAMA BUTONLARI
-  const payCashInput = document.getElementById("payCash");
-  const payCardInput = document.getElementById("payCard");
-  if (payCashInput) payCashInput.oninput = updatePaymentSummary;
-  if (payCardInput) payCardInput.oninput = updatePaymentSummary;
-
-  const allCashBtn = document.getElementById("allCashButton");
-  if (allCashBtn) {
-    allCashBtn.onclick = () => {
-      const table = getTables().find(t => t.id === selectedTableId);
-      if (table && payCashInput) {
-        payCashInput.value = Number(table.total || 0).toFixed(2);
-        if (payCardInput) payCardInput.value = "0";
-        updatePaymentSummary();
-      }
-    };
-  }
-
-  const allCardBtn = document.getElementById("allCardButton");
-  if (allCardBtn) {
-    allCardBtn.onclick = () => {
-      const table = getTables().find(t => t.id === selectedTableId);
-      if (table && payCardInput) {
-        payCardInput.value = Number(table.total || 0).toFixed(2);
-        if (payCashInput) payCashInput.value = "0";
-        updatePaymentSummary();
-      }
-    };
-  }
-
   // SATIŞI TAMAMLA & OTOMATİK STOK DÜŞÜMÜ
   const completeBtn = document.getElementById("completePaymentButton");
   if (completeBtn) {
@@ -1062,10 +1142,12 @@ function bindEvents() {
       const table = tables.find(t => t.id === selectedTableId);
       if (!table) return;
 
+      const paymentTypeStr = getDynamicPaymentSummaryString();
+
       try {
         const { data: sale, error: saleErr } = await client
           .from("sales")
-          .insert({ total_amount: Number(table.total), payment_type: "Nakit / Kart" })
+          .insert({ total_amount: Number(table.total), payment_type: paymentTypeStr })
           .select("id")
           .single();
 
@@ -1081,7 +1163,7 @@ function bindEvents() {
 
         await client.from("sale_items").insert(saleItems);
 
-        // REÇETEDEN OTOMATİK GRAMAJ DÜŞÜMÜ
+        // REÇETEDEN OTOMATİK STOK DÜŞÜMÜ
         await deductStockFromRecipe(table.orders);
 
         table.status = "closed";
@@ -1097,7 +1179,7 @@ function bindEvents() {
         renderTables();
         await renderSales();
 
-        alert("Satış tamamlandı ve reçetedeki malzemeler stoktan otomatik düşüldü!");
+        alert(`Satış [ ${paymentTypeStr} ] kanalı üzerinden başarıyla kaydedildi ve stoklar düşüldü!`);
 
       } catch (err) {
         alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
