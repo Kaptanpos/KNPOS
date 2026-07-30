@@ -225,7 +225,7 @@
     <header class="top-header">
       <div class="header-brand">
         <h2>KAPTAN NİLİ BULUT POS</h2>
-        <span class="version-tag">v3.6.0 • FILTERABLE LOGS</span>
+        <span class="version-tag">v3.6.1 • ACTIVE FILTER BUTTONS</span>
       </div>
       
       <nav class="main-nav">
@@ -405,9 +405,9 @@
                 <span>-</span>
                 <input type="date" id="logEndDate" style="padding:6px; font-size:12px;">
 
-                <button type="button" class="btn-date-filter" onclick="setLogDateRange('today')">Bugün</button>
-                <button type="button" class="btn-date-filter" onclick="setLogDateRange('week')">Bu Hafta</button>
-                <button type="button" class="btn-date-filter" onclick="setLogDateRange('month')">Bu Ay</button>
+                <button type="button" id="logFilterTodayBtn" class="btn-date-filter" onclick="setLogDateRange('today')">Bugün</button>
+                <button type="button" id="logFilterWeekBtn" class="btn-date-filter" onclick="setLogDateRange('week')">Bu Hafta</button>
+                <button type="button" id="logFilterMonthBtn" class="btn-date-filter" onclick="setLogDateRange('month')">Bu Ay</button>
                 
                 <button type="button" id="runLogFilterBtn" class="btn-primary" style="padding:6px 12px; font-size:12px; margin-left:auto;">FİLTRELE</button>
               </div>
@@ -435,7 +435,7 @@
       <section id="pageProducts" style="display: none;">
         
         <div class="excel-bar">
-          <span style="font-size:13px; font-weight:bold; color:var(--primary);">📥 Excel İşlemleri (Ürünler & Fiyatlar):</span>
+          <span style="font-size:13px; font-weight:bold; color:var(--primary);">📥 Excel İşlemleri (Malzemeler/Ürünler):</span>
           <button type="button" class="btn-excel-export" onclick="exportProductsExcel()">Excel'e Aktar (İndir)</button>
           <label class="btn-excel-import">
             📂 Excel'den Yükle <input type="file" id="importProductsFile" accept=".xlsx, .xls" style="display:none;" onchange="importProductsExcel(event)">
