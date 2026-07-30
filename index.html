@@ -85,14 +85,17 @@
     .table-number { font-size: 16px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 90%; }
     .table-total { font-size: 13px; margin-top: 2px; opacity: 0.9; }
 
-    /* SATIŞLAR TABLOSU VE KAYDIRMALI YAPI */
-    .daily-sales-container { background: var(--card-bg); border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid var(--border-color); }
-    .sales-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    /* SATIŞLAR TABLOSU VE YAN YANA KOMPAKT YAPI */
+    .daily-sales-container { background: var(--card-bg); border-radius: 16px; padding: 16px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid var(--border-color); }
+    .sales-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .sales-title-group { display: flex; align-items: baseline; gap: 12px; }
+    .sales-title-group h3 { font-size: 16px; font-weight: bold; }
+    .sales-title-group span { font-size: 11px; color: var(--text-muted); }
     .sales-total-badge { background: #f0fdf4; border: 1px solid #86efac; color: #166534; padding: 6px 14px; border-radius: 10px; font-weight: 800; font-size: 15px; }
     
-    .sales-table-header { display: grid; grid-template-columns: 80px 1fr 120px; padding: 10px 14px; background: #f3f4f6; border-radius: 8px; font-weight: bold; font-size: 12px; color: #4b5563; }
-    .sales-list { max-height: 160px; overflow-y: auto; padding-right: 4px; }
-    .daily-sales-row { display: grid; grid-template-columns: 80px 1fr 120px; padding: 12px 14px; border-bottom: 1px solid var(--border-color); font-size: 13px; cursor: pointer; transition: 0.15s; }
+    .sales-table-header { display: grid; grid-template-columns: 80px 1fr 120px; padding: 8px 12px; background: #f3f4f6; border-radius: 8px; font-weight: bold; font-size: 12px; color: #4b5563; }
+    .sales-list { max-height: 150px; overflow-y: auto; padding-right: 4px; }
+    .daily-sales-row { display: grid; grid-template-columns: 80px 1fr 120px; padding: 10px 12px; border-bottom: 1px solid var(--border-color); font-size: 13px; cursor: pointer; transition: 0.15s; }
     .daily-sales-row:hover { background: #f0fdf4; }
 
     /* MASA SİPARİŞ MODALI */
@@ -213,7 +216,7 @@
     <header class="top-header">
       <div class="header-brand">
         <h2>KAPTAN NİLİ BULUT POS</h2>
-        <span class="version-tag">v3.3.1 • SCROLLABLE EDITION</span>
+        <span class="version-tag">v3.3.2 • COMPACT SALES</span>
       </div>
       
       <nav class="main-nav">
@@ -268,12 +271,12 @@
 
         </div>
 
-        <!-- BUGÜNKÜ ANLIK SATIŞLAR (SAĞDA TOPLAM ROZETİ VE SCROLL LİSTE) -->
+        <!-- BUGÜNKÜ ANLIK SATIŞLAR (YAN YANA KOMPAKT YAPI) -->
         <div class="daily-sales-container">
           <div class="sales-header-flex">
-            <div>
-              <h3 style="font-size:16px; font-weight:bold;">Bugünkü Anlık Satışlar</h3>
-              <span style="font-size:11px; color:var(--text-muted);">(Adisyon Detayı İçin Satıra Tıklayın)</span>
+            <div class="sales-title-group">
+              <h3>Bugünkü Anlık Satışlar</h3>
+              <span>(Adisyon Detayı İçin Satıra Tıklayın)</span>
             </div>
             <div id="salesDailyTotal" class="sales-total-badge">0,00 TL</div>
           </div>
@@ -532,7 +535,6 @@
       <section id="pageSettings" style="display: none;">
         <div style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
           
-          <!-- TEMA AYARLARI KARTI -->
           <div class="admin-form-card" style="max-width: 100%;">
             <h3>🎨 Site Tema ve Renk Paleti</h3>
             <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Dükkanınızın kurumsal rengini seçin, tüm sistem anında o renge bürünsün.</p>
@@ -549,7 +551,6 @@
             </div>
           </div>
 
-          <!-- ÖDEME KANALLARI YÖNETİM KARTI -->
           <div class="admin-form-card" style="max-width: 100%;">
             <h3>💳 Ödeme Kanalları Yönetimi</h3>
             <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Masa kapatırken çıkan ödeme seçeneklerini buradan ekleyebilir veya silebilirsiniz.</p>
