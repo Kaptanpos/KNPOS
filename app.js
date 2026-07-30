@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - ESNEK ÖDEME KANALLARI & OTOMATİK REÇETE SÜRÜMÜ */
+/* KAPTAN NİLİ BULUT POS - SADE VE TEK TIK ÖDEME KANALLARI SÜRÜMÜ */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -601,23 +601,29 @@ async function adjustIngredientStock(id) {
   }
 }
 
-// 8. ESNEK ÖDEME KANALLARI YÖNETİMİ
+// 8. ÖDEME KANALLARI YÖNETİMİ (SADE & YEDEKLİ)
 async function loadPaymentMethods() {
+  const defaultMethods = [
+    { id: 1, name: "Nakit" },
+    { id: 2, name: "Kredi Kartı" },
+    { id: 3, name: "Yemeksepeti" },
+    { id: 4, name: "Trendyol" },
+    { id: 5, name: "Getir" },
+    { id: 6, name: "KaptanNili.com" }
+  ];
+
   try {
     const { data, error } = await client.from("payment_methods").select("*").eq("active", true).order("id", { ascending: true });
-    if (error) throw error;
-    paymentMethods = data || [
-      { id: 1, name: "Nakit" },
-      { id: 2, name: "Kredi Kartı" },
-      { id: 3, name: "Yemeksepeti" },
-      { id: 4, name: "Trendyol" },
-      { id: 5, name: "Getir" },
-      { id: 6, name: "KaptanNili.com" }
-    ];
-    renderPaymentMethodsList();
+    
+    if (error || !data || data.length === 0) {
+      paymentMethods = defaultMethods;
+    } else {
+      paymentMethods = data;
+    }
   } catch (err) {
-    console.error("Ödeme kanalları çekilemedi:", err.message);
+    paymentMethods = defaultMethods;
   }
+  renderPaymentMethodsList();
 }
 
 function renderPaymentMethodsList() {
@@ -663,86 +669,89 @@ async function deletePaymentMethod(id) {
   }
 }
 
-// 9. DİNAMİK ÖDEME MODALI HESAPLAMA
+// 9. TEK TIKLA SADE ÖDEME MODALI
 function openPaymentModal() {
   const table = getTables().find(t => t.id === selectedTableId);
   const paymentModal = document.getElementById("paymentModal");
   const paymentTitle = document.getElementById("paymentTotalTitle");
-  const grid = document.getElementById("dynamicPaymentGrid");
+  const grid = document.getElementById("quickPaymentGrid");
 
   if (!table || !paymentModal || !grid) return;
 
   if (paymentTitle) {
-    paymentTitle.innerHTML = `<strong>${escapeHtml(table.name)}</strong><br>Toplam Tutar: <strong>${formatMoney(table.total)}</strong>`;
+    paymentTitle.innerHTML = `<strong>${escapeHtml(table.name)}</strong> • Ödenecek Tutar: <strong style="color:#0f766e; font-size:18px;">${formatMoney(table.total)}</strong>`;
   }
 
-  // Dinamik olarak ödeme kanalları inputlarını doldur
+  if (!paymentMethods || paymentMethods.length === 0) {
+    paymentMethods = [
+      { id: 1, name: "Nakit" },
+      { id: 2, name: "Kredi Kartı" },
+      { id: 3, name: "Yemeksepeti" },
+      { id: 4, name: "Trendyol" },
+      { id: 5, name: "Getir" },
+      { id: 6, name: "KaptanNili.com" }
+    ];
+  }
+
+  // SADECE TEK TIK BUTONLARI OLUŞTURULUYOR
   grid.innerHTML = paymentMethods.map(m => `
-    <div class="payment-item">
-      <label>💳 ${escapeHtml(m.name)}</label>
-      <input type="number" class="dynamic-pay-input" data-name="${escapeHtml(m.name)}" id="pay_channel_${m.id}" value="0" step="0.01">
-      <button type="button" class="btn-quick-pay" onclick="setSingleChannelDynamic('pay_channel_${m.id}')">Tümü ${escapeHtml(m.name)}</button>
-    </div>
+    <button type="button" class="btn-pay-channel-large" onclick="completePaymentWithChannel('${escapeHtml(m.name)}')">
+      💳 ${escapeHtml(m.name)}
+    </button>
   `).join("");
 
-  // İnput dinamik dinleme
-  document.querySelectorAll(".dynamic-pay-input").forEach(inp => {
-    inp.oninput = updateDynamicPaymentSummary;
-  });
-
-  updateDynamicPaymentSummary();
   paymentModal.style.display = "flex";
 }
 
-function setSingleChannelDynamic(activeId) {
-  const table = getTables().find(t => t.id === selectedTableId);
+// TEK TIKLA SATIŞI BİTİRME VE STOK DÜŞME
+async function completePaymentWithChannel(channelName) {
+  const tables = getTables();
+  const table = tables.find(t => t.id === selectedTableId);
   if (!table) return;
 
-  document.querySelectorAll(".dynamic-pay-input").forEach(inp => {
-    if (inp.id === activeId) {
-      inp.value = Number(table.total || 0).toFixed(2);
-    } else {
-      inp.value = "0";
-    }
-  });
+  try {
+    const { data: sale, error: saleErr } = await client
+      .from("sales")
+      .insert({ total_amount: Number(table.total), payment_type: channelName })
+      .select("id")
+      .single();
 
-  updateDynamicPaymentSummary();
-}
+    if (saleErr) throw saleErr;
 
-function updateDynamicPaymentSummary() {
-  const table = getTables().find(t => t.id === selectedTableId);
-  if (!table) return;
+    const saleItems = table.orders.map(item => ({
+      sale_id: sale.id,
+      product_id: item.productId,
+      quantity: Number(item.quantity),
+      unit_price: Number(item.price),
+      line_total: Number(item.quantity) * Number(item.price)
+    }));
 
-  let totalCollected = 0;
-  document.querySelectorAll(".dynamic-pay-input").forEach(inp => {
-    totalCollected += Number(inp.value || 0);
-  });
+    await client.from("sale_items").insert(saleItems);
 
-  const tableTotal = Number(table.total || 0);
+    // REÇETEDEN OTOMATİK STOK DÜŞÜMÜ
+    await deductStockFromRecipe(table.orders);
 
-  const collectedElem = document.getElementById("collectedAmount");
-  const remainingElem = document.getElementById("remainingAmount");
+    table.status = "closed";
+    table.openedAt = null;
+    table.total = 0;
+    table.orders = [];
+    saveTables(tables);
 
-  if (collectedElem) collectedElem.textContent = formatMoney(totalCollected);
-  if (remainingElem) {
-    const remaining = Math.max(tableTotal - totalCollected, 0);
-    remainingElem.textContent = formatMoney(remaining);
+    const paymentModal = document.getElementById("paymentModal");
+    if (paymentModal) paymentModal.style.display = "none";
+
+    closeTableModal();
+    renderTables();
+    await renderSales();
+
+    alert(`Satış [ ${channelName} ] kanalı üzerinden başarıyla tamamlandı ve stoklar düşüldü!`);
+
+  } catch (err) {
+    alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
   }
 }
 
-function getDynamicPaymentSummaryString() {
-  let used = [];
-  document.querySelectorAll(".dynamic-pay-input").forEach(inp => {
-    const val = Number(inp.value || 0);
-    if (val > 0) {
-      const name = inp.getAttribute("data-name") || "Ödeme";
-      used.push(name);
-    }
-  });
-  return used.length > 0 ? used.join(" + ") : "Nakit";
-}
-
-// 10. ÜRÜN YÖNETİMİ & REÇETE YÖNETİMİ
+// 10. ÜRÜNLER & REÇETE İŞLEMLERİ
 async function loadManagementProducts() {
   try {
     const { data, error } = await client.from("products").select("*").order("created_at", { ascending: false });
@@ -1131,59 +1140,6 @@ function bindEvents() {
         return;
       }
       openPaymentModal();
-    };
-  }
-
-  // SATIŞI TAMAMLA & OTOMATİK STOK DÜŞÜMÜ
-  const completeBtn = document.getElementById("completePaymentButton");
-  if (completeBtn) {
-    completeBtn.onclick = async () => {
-      const tables = getTables();
-      const table = tables.find(t => t.id === selectedTableId);
-      if (!table) return;
-
-      const paymentTypeStr = getDynamicPaymentSummaryString();
-
-      try {
-        const { data: sale, error: saleErr } = await client
-          .from("sales")
-          .insert({ total_amount: Number(table.total), payment_type: paymentTypeStr })
-          .select("id")
-          .single();
-
-        if (saleErr) throw saleErr;
-
-        const saleItems = table.orders.map(item => ({
-          sale_id: sale.id,
-          product_id: item.productId,
-          quantity: Number(item.quantity),
-          unit_price: Number(item.price),
-          line_total: Number(item.quantity) * Number(item.price)
-        }));
-
-        await client.from("sale_items").insert(saleItems);
-
-        // REÇETEDEN OTOMATİK STOK DÜŞÜMÜ
-        await deductStockFromRecipe(table.orders);
-
-        table.status = "closed";
-        table.openedAt = null;
-        table.total = 0;
-        table.orders = [];
-        saveTables(tables);
-
-        const paymentModal = document.getElementById("paymentModal");
-        if (paymentModal) paymentModal.style.display = "none";
-
-        closeTableModal();
-        renderTables();
-        await renderSales();
-
-        alert(`Satış [ ${paymentTypeStr} ] kanalı üzerinden başarıyla kaydedildi ve stoklar düşüldü!`);
-
-      } catch (err) {
-        alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
-      }
     };
   }
 
