@@ -234,7 +234,7 @@
         </div>
       </section>
 
-      <!-- 2. MALZEMELER / YARI MAMUL SAYFASI -->
+      <!-- 2. MALZEMELER / YARI MAMUL SAYFASI (VERİTABANI KISITLAMASINA TAM UYUMLU BİRİMLER) -->
       <section id="pageIngredients" style="display: none;">
         <div class="admin-layout">
           
@@ -250,22 +250,17 @@
             <div class="form-group">
               <label>Birim</label>
               <select id="ingUnitSelect">
-                <option value="Gram">Gram (gr)</option>
-                <option value="Kg">Kilogram (Kg)</option>
-                <option value="Litre">Litre (Lt)</option>
-                <option value="Adet">Adet</option>
-                <option value="Paket">Paket</option>
+                <option value="gr">Gram (gr)</option>
+                <option value="kg">Kilogram (kg)</option>
+                <option value="lt">Litre (lt)</option>
+                <option value="adet">Adet</option>
+                <option value="paket">Paket</option>
               </select>
             </div>
 
             <div class="form-group">
               <label>Mevcut Stok Miktarı</label>
               <input type="number" id="ingStockInput" placeholder="0.00" step="0.01">
-            </div>
-
-            <div class="form-group">
-              <label>Kritik Stok Seviyesi (Uyarı İçin)</label>
-              <input type="number" id="ingMinInput" placeholder="500.00" step="0.01">
             </div>
 
             <div style="display: flex; gap: 8px; margin-top: 15px;">
