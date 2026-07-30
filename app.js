@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - LOG LİSTELEME İLİŞKİSİZ %100 ÇÖZÜM SÜRÜMÜ */
+/* KAPTAN NİLİ BULUT POS - TARİH FİLTRELİ ÜRETİM LOGLARI SÜRÜMÜ */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -165,6 +165,7 @@ function showPage(pageName) {
     loadManagementProducts();
   } else if (pageName === "ingredients") {
     loadIngredients();
+    initLogDates();
     loadStockMovements();
   } else if (pageName === "reports") {
     initReportDates();
@@ -522,7 +523,7 @@ function changeQty(productId, delta) {
   renderTables();
 }
 
-// 7. MALZEMELER VE ANA EKRAN ÜRETİM GİRİŞİ
+// 7. MALZEMELER VE ÜRETİM LOG FİLTRELEME MOTORU
 async function loadIngredientsForDashboard() {
   try {
     const { data, error } = await client.from("ingredients").select("*").order("name", { ascending: true });
@@ -602,26 +603,59 @@ async function submitProductionEntry() {
   }
 }
 
+function initLogDates() {
+  const startInput = document.getElementById("logStartDate");
+  const endInput = document.getElementById("logEndDate");
+  
+  const todayStr = new Date().toISOString().split("T")[0];
+  if (startInput && !startInput.value) startInput.value = todayStr;
+  if (endInput && !endInput.value) endInput.value = todayStr;
+}
+
+function setLogDateRange(type) {
+  const startInput = document.getElementById("logStartDate");
+  const endInput = document.getElementById("logEndDate");
+  const now = new Date();
+  
+  const todayStr = now.toISOString().split("T")[0];
+  endInput.value = todayStr;
+
+  if (type === "today") {
+    startInput.value = todayStr;
+  } else if (type === "week") {
+    const firstDay = new Date(now.setDate(now.getDate() - now.getDay() + 1));
+    startInput.value = firstDay.toISOString().split("T")[0];
+  } else if (type === "month") {
+    const firstDayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    startInput.value = firstDayStr;
+  }
+  loadStockMovements();
+}
+
 async function loadStockMovements() {
   const tbody = document.getElementById("stockMovementsTbody");
   if (!tbody) return;
 
-  try {
-    // JOIN ilişkisi yerine veriyi doğrudan tek başına çekip local diziden eşleştiriyoruz (Sıfır Hata)
-    const { data: movements, error: movErr } = await client
-      .from("stock_movements")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(20);
+  const startDate = document.getElementById("logStartDate")?.value;
+  const endDate = document.getElementById("logEndDate")?.value;
 
+  try {
+    let query = client.from("stock_movements").select("*").order("created_at", { ascending: false });
+
+    if (startDate && endDate) {
+      const startIso = `${startDate}T00:00:00.000Z`;
+      const endIso = `${endDate}T23:59:59.999Z`;
+      query = query.gte("created_at", startIso).lte("created_at", endIso);
+    }
+
+    const { data: movements, error: movErr } = await query;
     if (movErr) throw movErr;
 
     if (!movements || movements.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:15px;">Henüz üretim hareketi bulunmuyor.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:15px;">Bu tarih aralığında üretim hareketi bulunmuyor.</td></tr>';
       return;
     }
 
-    // Eğer allIngredients boşsa önce malzemeleri çekelim
     if (!allIngredients || allIngredients.length === 0) {
       const { data: ingData } = await client.from("ingredients").select("*");
       if (ingData) allIngredients = ingData;
@@ -769,7 +803,7 @@ async function adjustIngredientStock(id) {
   }
 }
 
-// 8. EXCEL İŞLEMLERİ (MALZEMELER, ÜRÜNLER, REÇETELER)
+// 8. EXCEL İŞLEMLERİ
 function exportIngredientsExcel() {
   if (!allIngredients || allIngredients.length === 0) {
     alert("İndirilecek malzeme bulunamadı.");
@@ -1786,6 +1820,12 @@ document.addEventListener("click", function(e) {
     return;
   }
 
+  if (target.id === "runLogFilterBtn") {
+    e.preventDefault();
+    loadStockMovements();
+    return;
+  }
+
   if (target.id === "runReportBtn") {
     e.preventDefault();
     document.querySelectorAll(".btn-date-filter").forEach(b => b.classList.remove("active-date-btn"));
@@ -1912,6 +1952,6 @@ if (loginButton) loginButton.addEventListener("click", login);
 if (logoutButton) logoutButton.addEventListener("click", logout);
 if (loginPassword) {
   loginPassword.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") login();
+    e.key === "Enter" && login();
   });
 }
