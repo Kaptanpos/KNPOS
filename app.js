@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - EXCEL & RENDER MOTORU */
+/* KAPTAN NİLİ BULUT POS - DİNAMİK TEMA & EXCEL MOTORU */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -45,6 +45,42 @@ async function checkRecipeTable() {
   }
 }
 
+// TEMA RENK YÖNETİMİ
+async function loadThemeColor() {
+  try {
+    const { data, error } = await client.from("app_settings").select("value").eq("key", "primary_color").single();
+    if (!error && data && data.value) {
+      applyThemeColor(data.value);
+    }
+  } catch (err) {
+    console.log("Tema yüklenemedi, varsayılan kullanılıyor.");
+  }
+}
+
+function applyThemeColor(primaryHex) {
+  document.documentElement.style.setProperty('--primary', primaryHex);
+  
+  // Koyu tonu türetme veya hafif koyulaştırma
+  let darkHex = primaryHex;
+  if (primaryHex === '#2d5a27') darkHex = '#1e3d1a';
+  else if (primaryHex === '#0f766e') darkHex = '#115e59';
+  else if (primaryHex === '#78350f') darkHex = '#451a03';
+  else if (primaryHex === '#1e3a8a') darkHex = '#172554';
+  else if (primaryHex === '#9d174d') darkHex = '#831843';
+
+  document.documentElement.style.setProperty('--primary-dark', darkHex);
+}
+
+async function changeThemeColor(primaryHex, darkHex) {
+  applyThemeColor(primaryHex);
+  try {
+    await client.from("app_settings").upsert({ key: "primary_color", value: primaryHex });
+    alert("Tema rengi başarıyla güncellendi ve kaydedildi!");
+  } catch (err) {
+    alert("Tema kaydedilemedi: " + err.message);
+  }
+}
+
 // 1. GİRİŞ İŞLEMİ
 async function login() {
   const password = loginPassword ? loginPassword.value : "";
@@ -70,6 +106,7 @@ async function login() {
 
     bindEvents();
     renderTables();
+    await loadThemeColor();
     await loadCashStatus();
     await loadProducts();
     await loadPaymentMethods();
@@ -394,7 +431,7 @@ function renderSaleProducts() {
       <div class="quantity-badge ${quantity > 0 ? "show" : ""}">${quantity}</div>
       <div class="product-image-box">${imageHtml}</div>
       <div style="font-size:12px; font-weight:bold; margin-top:4px;">${escapeHtml(product.name)}</div>
-      <div style="font-size:13px; color:#0f766e; font-weight:800; margin-top:2px;">${formatMoney(product.price)}</div>
+      <div style="font-size:13px; color:var(--primary); font-weight:800; margin-top:2px;">${formatMoney(product.price)}</div>
     `;
 
     card.onclick = () => addToCart(product);
@@ -442,7 +479,7 @@ function renderCart() {
     row.innerHTML = `
       <div>
         <div style="font-size:13px; font-weight:bold;">${escapeHtml(item.name)}</div>
-        <div style="font-size:11px; color:#64748b;">${formatMoney(item.price)} × ${item.quantity} = ${formatMoney(item.price * item.quantity)}</div>
+        <div style="font-size:11px; color:var(--text-muted);">${formatMoney(item.price)} × ${item.quantity} = ${formatMoney(item.price * item.quantity)}</div>
       </div>
       <div class="cart-controls">
         <button class="qty-button qty-minus" type="button">−</button>
@@ -509,7 +546,7 @@ function renderIngredientsTable(ingredients) {
 
     tr.innerHTML = `
       <td><strong>${escapeHtml(ing.name)}</strong></td>
-      <td><strong style="font-size:15px; color:${isCritical ? '#dc2626' : '#0f766e'};">${currentStock}</strong></td>
+      <td><strong style="font-size:15px; color:${isCritical ? '#dc2626' : 'var(--primary)'};">${currentStock}</strong></td>
       <td>${escapeHtml(ing.unit || 'gr')}</td>
       <td>${isCritical ? '<span class="badge-critical">⚠️ Kritik Stok</span>' : '<span class="badge-active">Normal</span>'}</td>
       <td style="text-align: right;">
@@ -803,7 +840,7 @@ function renderPaymentMethodsList() {
   if (!container) return;
 
   container.innerHTML = paymentMethods.map(m => `
-    <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px solid #e2e8f0; font-size:12px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px solid var(--border-color); font-size:12px;">
       <span><strong>${escapeHtml(m.name)}</strong></span>
       <button type="button" style="background:#dc2626; color:white; border:none; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold; cursor:pointer;" onclick="deletePaymentMethod(${m.id})">Sil</button>
     </div>
@@ -851,7 +888,7 @@ function openPaymentModal() {
   if (!table || !paymentModal || !grid) return;
 
   if (paymentTitle) {
-    paymentTitle.innerHTML = `<strong>${escapeHtml(table.name)}</strong> • Ödenecek Tutar: <strong style="color:#0f766e; font-size:18px;">${formatMoney(table.total)}</strong>`;
+    paymentTitle.innerHTML = `<strong>${escapeHtml(table.name)}</strong> • Ödenecek Tutar: <strong style="color:var(--primary); font-size:18px;">${formatMoney(table.total)}</strong>`;
   }
 
   if (!paymentMethods || paymentMethods.length === 0) {
@@ -948,7 +985,7 @@ async function renderSales() {
       return `
         <div class="daily-sales-row" onclick="openReceiptDetailModal(${s.id}, '${timeStr}', '${escapeHtml(s.payment_type || "Nakit")}', ${s.total_amount})">
           <div><strong>${timeStr}</strong></div>
-          <div><strong style="color:#0f766e;">${escapeHtml(s.payment_type || "Nakit")}</strong></div>
+          <div><strong style="color:var(--primary);">${escapeHtml(s.payment_type || "Nakit")}</strong></div>
           <div style="text-align:right;"><strong>${formatMoney(s.total_amount)} 🔍</strong></div>
         </div>
       `;
@@ -971,7 +1008,7 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
   if (subtitle) subtitle.textContent = `Saat: ${timeStr} • Kanal: ${paymentType}`;
   if (totalElem) totalElem.textContent = formatMoney(totalAmount);
   
-  container.innerHTML = '<div style="text-align:center; padding:15px; color:#64748b; font-size:12px;">Adisyon detayları yükleniyor...</div>';
+  container.innerHTML = '<div style="text-align:center; padding:15px; color:var(--text-muted); font-size:12px;">Adisyon detayları yükleniyor...</div>';
   modal.style.display = "flex";
 
   try {
@@ -994,9 +1031,9 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
         <div class="receipt-detail-row">
           <div>
             <strong>${escapeHtml(prodName)}</strong><br>
-            <span style="font-size:11px; color:#64748b;">${item.quantity} Adet × ${formatMoney(item.unit_price)}</span>
+            <span style="font-size:11px; color:var(--text-muted);">${item.quantity} Adet × ${formatMoney(item.unit_price)}</span>
           </div>
-          <div style="font-weight:bold; color:#0f766e; align-self:center;">
+          <div style="font-weight:bold; color:var(--primary); align-self:center;">
             ${formatMoney(lineTotal)}
           </div>
         </div>
@@ -1032,7 +1069,6 @@ function initReportDates() {
   if (startInput && !startInput.value) startInput.value = todayStr;
   if (endInput && !endInput.value) endInput.value = todayStr;
 
-  // Varsayılan olarak bugün aktif olsun
   setActiveDateButton("reportFilterTodayBtn");
 }
 
@@ -1145,7 +1181,7 @@ function renderPaymentReportTable(sales) {
 
   tbody.innerHTML = channels.map(ch => `
     <tr>
-      <td><strong style="color:#0f766e;">${escapeHtml(ch)}</strong></td>
+      <td><strong style="color:var(--primary);">${escapeHtml(ch)}</strong></td>
       <td><strong>${paymentMap[ch].count}</strong> işlem</td>
       <td style="text-align:right;"><strong>${formatMoney(paymentMap[ch].total)}</strong></td>
     </tr>
@@ -1182,7 +1218,7 @@ function renderProductReportTable(saleItems) {
     <tr>
       <td><strong>${escapeHtml(pName)}</strong></td>
       <td>${escapeHtml(productMap[pName].category)}</td>
-      <td><strong style="color:#2563eb;">${productMap[pName].qty}</strong> adet</td>
+      <td><strong style="color:#0284c7;">${productMap[pName].qty}</strong> adet</td>
       <td style="text-align:right;"><strong>${formatMoney(productMap[pName].total)}</strong></td>
     </tr>
   `).join("");
@@ -1190,6 +1226,8 @@ function renderProductReportTable(saleItems) {
 
 function renderReportCharts(sales, saleItems) {
   Chart.register(ChartDataLabels);
+
+  const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#2d5a27';
 
   const commonOptions = (isVertical = true) => ({
     responsive: true,
@@ -1217,7 +1255,7 @@ function renderReportCharts(sales, saleItems) {
     }
   });
 
-  // 1. ÖDEME KANALLARI GRAFİĞİ (DİKEY SÜTUN)
+  // 1. ÖDEME KANALLARI GRAFİĞİ
   const paymentMap = {};
   (sales || []).forEach(s => {
     const ch = s.payment_type || "Nakit";
@@ -1236,7 +1274,7 @@ function renderReportCharts(sales, saleItems) {
         labels: payLabels,
         datasets: [{
           data: payValues,
-          backgroundColor: ["#0f766e", "#0284c7", "#d97706", "#ea580c", "#7c3aed", "#16a34a", "#dc2626"],
+          backgroundColor: [primaryColor, "#0284c7", "#d97706", "#ea580c", "#7c3aed", "#16a34a", "#dc2626"],
           borderRadius: 8
         }]
       },
@@ -1244,7 +1282,7 @@ function renderReportCharts(sales, saleItems) {
     });
   }
 
-  // 2. KATEGORİ BAZLI GRAFİK (DİKEY SÜTUN)
+  // 2. KATEGORİ BAZLI GRAFİK
   const categoryMap = {};
   (saleItems || []).forEach(item => {
     const cat = item.products?.category || "Diğer";
@@ -1264,7 +1302,7 @@ function renderReportCharts(sales, saleItems) {
         labels: catLabels,
         datasets: [{
           data: catValues,
-          backgroundColor: "#0f766e",
+          backgroundColor: primaryColor,
           borderRadius: 8
         }]
       },
@@ -1272,7 +1310,7 @@ function renderReportCharts(sales, saleItems) {
     });
   }
 
-  // 3. ÜRÜN BAZLI PERFORMANS GRAFİĞİ (YATAY BAR - FARKLI RENKLER)
+  // 3. ÜRÜN BAZLI PERFORMANS GRAFİĞİ (TOP 10 - RENKLİ)
   const productMap = {};
   (saleItems || []).forEach(item => {
     const pName = item.products?.name || "Bilinmeyen Ürün";
@@ -1283,9 +1321,8 @@ function renderReportCharts(sales, saleItems) {
   const sortedProdNames = Object.keys(productMap).sort((a,b) => productMap[b] - productMap[a]).slice(0, 10);
   const prodValues = sortedProdNames.map(pName => productMap[pName]);
   
-  // Farklı renk paleti oluşturma
   const vibrantColors = [
-    "#0f766e", "#0284c7", "#d97706", "#ea580c", "#7c3aed", 
+    primaryColor, "#0284c7", "#d97706", "#ea580c", "#7c3aed", 
     "#16a34a", "#dc2626", "#db2777", "#4f46e5", "#0891b2"
   ];
   const barColors = sortedProdNames.map((_, idx) => vibrantColors[idx % vibrantColors.length]);
@@ -1464,7 +1501,7 @@ async function renderRecipeItemsList() {
       <div class="recipe-item-row">
         <div>
           <strong>${escapeHtml(r.ingredients?.name || 'Malzeme')}</strong>: 
-          <span style="color:#0f766e; font-weight:bold;">${r.quantity_required || r.quantity || 0} ${escapeHtml(r.unit || r.ingredients?.unit || 'gr')}</span>
+          <span style="color:var(--primary); font-weight:bold;">${r.quantity_required || r.quantity || 0} ${escapeHtml(r.unit || r.ingredients?.unit || 'gr')}</span>
         </div>
         <button type="button" style="background:#dc2626; color:white; border:none; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:bold;" onclick="deleteRecipeItem(${r.id})">Sil</button>
       </div>
@@ -1620,7 +1657,6 @@ document.addEventListener("click", function(e) {
 
   if (target.id === "runReportBtn") {
     e.preventDefault();
-    // Manuel tarih seçilirse aktif butonu kaldır
     document.querySelectorAll(".btn-date-filter").forEach(b => b.classList.remove("active-date-btn"));
     fetchAndRenderReports();
     return;
