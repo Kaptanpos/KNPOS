@@ -55,22 +55,31 @@
 
     /* LAYOUT */
     .main-content { max-width: 1400px; margin: 24px auto; padding: 0 16px; }
-    .pos-grid { display: grid; grid-template-columns: 300px 1fr; gap: 24px; margin-bottom: 24px; align-items: start; }
+    .pos-grid { display: grid; grid-template-columns: 320px 1fr; gap: 24px; margin-bottom: 24px; align-items: start; }
 
-    /* KASA PANELİ */
-    .cash-card { background: var(--card-bg); border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid var(--border-color); }
-    .cash-card h3 { font-size: 16px; margin-bottom: 12px; font-weight: bold; color: var(--primary); }
-    .cash-status { padding: 14px; border-radius: 12px; text-align: center; margin-bottom: 16px; }
+    /* KASA PANELİ VE SOL KOLON */
+    .left-column { display: flex; flex-direction: column; gap: 20px; }
+    .cash-card { background: var(--card-bg); border-radius: 16px; padding: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid var(--border-color); }
+    .cash-card h3 { font-size: 15px; margin-bottom: 10px; font-weight: bold; color: var(--primary); }
+    .cash-status { padding: 12px; border-radius: 10px; text-align: center; margin-bottom: 14px; }
     .cash-closed { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
     .cash-open { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
-    .cash-status-title { font-weight: 800; font-size: 15px; }
-    .cash-action-panel label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 6px; color: var(--text-muted); }
+    .cash-status-title { font-weight: 800; font-size: 14px; }
+    .cash-action-panel label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: var(--text-muted); }
     .input-inline { display: flex; gap: 6px; }
-    .input-inline input { flex: 1; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; }
-    .input-inline button { padding: 10px 16px; border: none; border-radius: 8px; font-weight: bold; color: white; cursor: pointer; }
-    .btn-primary { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .input-inline input { flex: 1; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; }
+    .input-inline button { padding: 8px 14px; border: none; border-radius: 8px; font-weight: bold; color: white; cursor: pointer; font-size: 12px; }
+    .btn-primary { background: var(--primary); color: white; border: none; padding: 9px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 13px; }
     .btn-primary:hover { background: var(--primary-dark); }
-    .btn-danger { background: #dc2626; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .btn-danger { background: #dc2626; color: white; border: none; padding: 9px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; }
+
+    /* ANA EKRAN KOMPAKT ÜRETİM GİRİŞİ */
+    .quick-prod-card { background: #f0fdf4; border: 1px solid #86efac; border-radius: 16px; padding: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+    .quick-prod-card h3 { font-size: 15px; font-weight: bold; color: #166534; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+    .quick-prod-card p { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.3; }
+    .quick-prod-form-group { margin-bottom: 10px; text-align: left; }
+    .quick-prod-form-group label { display: block; font-size: 11px; font-weight: bold; color: #374151; margin-bottom: 4px; }
+    .quick-prod-form-group input, .quick-prod-form-group select { width: 100%; padding: 8px 10px; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 12px; background: white; outline: none; }
 
     /* MASALAR */
     .tables-card { background: var(--card-bg); border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid var(--border-color); min-height: 280px; }
@@ -216,7 +225,7 @@
     <header class="top-header">
       <div class="header-brand">
         <h2>KAPTAN NİLİ BULUT POS</h2>
-        <span class="version-tag">v3.4.0 • PRO PRODUCTION EDITION</span>
+        <span class="version-tag">v3.5.0 • DASHBOARD PRODUCTION</span>
       </div>
       
       <nav class="main-nav">
@@ -233,64 +242,94 @@
 
     <main class="main-content">
       
-      <!-- 1. ANA MENÜ (MASALAR VE KASA) -->
+      <!-- 1. ANA MENÜ (MASALAR, KASA VE HIZLI ÜRETİM PANELİ) -->
       <section id="pageTables">
         <div class="pos-grid">
           
-          <div class="cash-card">
-            <h3>Kasa</h3>
-            <div id="cashStatus" class="cash-status cash-closed">
-              <div class="cash-status-title">KASA KAPALI</div>
-              <div class="cash-detail">Satış yapmadan önce kasayı açınız.</div>
-            </div>
+          <!-- SOL KOLON: KASA + HIZLI ÜRETİM GİRİŞİ -->
+          <div class="left-column">
+            
+            <div class="cash-card">
+              <h3>Kasa</h3>
+              <div id="cashStatus" class="cash-status cash-closed">
+                <div class="cash-status-title">KASA KAPALI</div>
+                <div class="cash-detail">Satış yapmadan önce kasayı açınız.</div>
+              </div>
 
-            <div id="openCashPanel" class="cash-action-panel">
-              <label for="openingAmount">Açılış nakdi</label>
-              <div class="input-inline">
-                <input type="number" id="openingAmount" placeholder="0,00" step="0.01">
-                <button type="button" id="openCashButton" class="btn-primary">AÇ</button>
+              <div id="openCashPanel" class="cash-action-panel">
+                <label for="openingAmount">Açılış nakdi</label>
+                <div class="input-inline">
+                  <input type="number" id="openingAmount" placeholder="0,00" step="0.01">
+                  <button type="button" id="openCashButton" class="btn-primary">AÇ</button>
+                </div>
+              </div>
+
+              <div id="closeCashPanel" class="cash-action-panel" style="display: none;">
+                <label for="closingAmount">Kasada sayılan nakit</label>
+                <div class="input-inline">
+                  <input type="number" id="closingAmount" placeholder="0,00" step="0.01">
+                  <button type="button" id="closeCashButton" class="btn-danger">KAPAT</button>
+                </div>
               </div>
             </div>
 
-            <div id="closeCashPanel" class="cash-action-panel" style="display: none;">
-              <label for="closingAmount">Kasada sayılan nakit</label>
-              <div class="input-inline">
-                <input type="number" id="closingAmount" placeholder="0,00" step="0.01">
-                <button type="button" id="closeCashButton" class="btn-danger">KAPAT</button>
+            <!-- ANA SAYFA KOMPAKT ÜRETİM GİRİŞİ -->
+            <div class="quick-prod-card">
+              <h3>🏭 Hızlı Üretim Girişi</h3>
+              <p>Üretilen miktarı girin, tarih/saat loglansın.</p>
+
+              <div class="quick-prod-form-group">
+                <label>Malzeme / Yarı Mamul</label>
+                <select id="prodInputIngSelect"></select>
               </div>
+
+              <div class="quick-prod-form-group">
+                <label>Üretilen Miktar</label>
+                <input type="number" id="prodInputQty" placeholder="Örn: 5000 (gr) veya 20" step="0.01">
+              </div>
+
+              <div class="quick-prod-form-group">
+                <label>Açıklama / Parti</label>
+                <input type="text" id="prodInputNote" placeholder="Örn: Sabah Vardiyası">
+              </div>
+
+              <button type="button" id="submitProductionBtn" class="btn-primary" style="width: 100%; background: #16a34a; margin-top: 4px; padding: 8px; font-size: 12px;">STOK ARTIR</button>
+            </div>
+
+          </div>
+
+          <!-- SAĞ KOLON: MASALAR VE ANLIK SATIŞLAR -->
+          <div style="display: flex; flex-direction: column; gap: 24px;">
+            <div class="tables-card">
+              <div class="tables-header">
+                <h3>Masalar</h3>
+                <button type="button" id="addNewTableBtn" class="btn-add-table">+ YENİ MASA EKLE</button>
+              </div>
+              <div id="tablesGrid" class="tables-grid"></div>
+            </div>
+
+            <div class="daily-sales-container">
+              <div class="sales-header-flex">
+                <div class="sales-title-group">
+                  <h3>Bugünkü Anlık Satışlar</h3>
+                  <span>(Adisyon Detayı İçin Satıra Tıklayın)</span>
+                </div>
+                <div id="salesDailyTotal" class="sales-total-badge">0,00 TL</div>
+              </div>
+
+              <div class="sales-table-header">
+                <div>Saat</div>
+                <div>Ödeme Türü / Kanal</div>
+                <div style="text-align: right;">Tutar</div>
+              </div>
+              <div id="salesList" class="sales-list"></div>
             </div>
           </div>
 
-          <div class="tables-card">
-            <div class="tables-header">
-              <h3>Masalar</h3>
-              <button type="button" id="addNewTableBtn" class="btn-add-table">+ YENİ MASA EKLE</button>
-            </div>
-            <div id="tablesGrid" class="tables-grid"></div>
-          </div>
-
-        </div>
-
-        <!-- BUGÜNKÜ ANLIK SATIŞLAR -->
-        <div class="daily-sales-container">
-          <div class="sales-header-flex">
-            <div class="sales-title-group">
-              <h3>Bugünkü Anlık Satışlar</h3>
-              <span>(Adisyon Detayı İçin Satıra Tıklayın)</span>
-            </div>
-            <div id="salesDailyTotal" class="sales-total-badge">0,00 TL</div>
-          </div>
-
-          <div class="sales-table-header">
-            <div>Saat</div>
-            <div>Ödeme Türü / Kanal</div>
-            <div style="text-align: right;">Tutar</div>
-          </div>
-          <div id="salesList" class="sales-list"></div>
         </div>
       </section>
 
-      <!-- 2. MALZEMELER / YARI MAMUL VE ÜRETİM GİRİŞİ SAYFASI -->
+      <!-- 2. MALZEMELER / YARI MAMUL SAYFASI -->
       <section id="pageIngredients" style="display: none;">
         
         <div class="excel-bar">
@@ -303,69 +342,42 @@
 
         <div class="admin-layout">
           
-          <div style="display: flex; flex-direction: column; gap: 24px;">
-            <!-- YENİ MALZEME EKLEME FORMU -->
-            <div class="admin-form-card" style="max-width: 100%;">
-              <h3 id="ingFormTitle">Yeni Malzeme / Yarı Mamul Ekle</h3>
-              <input type="hidden" id="editIngId" value="">
+          <div class="admin-form-card">
+            <h3 id="ingFormTitle">Yeni Malzeme / Yarı Mamul Ekle</h3>
+            <input type="hidden" id="editIngId" value="">
 
-              <div class="form-group">
-                <label>Malzeme Adı</label>
-                <input type="text" id="ingNameInput" placeholder="Örn: Normal Sos, Glütensiz Pataşu">
-              </div>
-
-              <div class="form-group">
-                <label>Birim</label>
-                <select id="ingUnitSelect">
-                  <option value="gr">Gram (gr)</option>
-                  <option value="kg">Kilogram (kg)</option>
-                  <option value="lt">Litre (lt)</option>
-                  <option value="adet">Adet</option>
-                  <option value="paket">Paket</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label>Mevcut Stok Miktarı</label>
-                <input type="number" id="ingStockInput" placeholder="0.00" step="0.01">
-              </div>
-
-              <div style="display: flex; gap: 8px; margin-top: 15px;">
-                <button type="button" id="saveIngBtn" class="btn-primary" style="flex:1;">KAYDET</button>
-                <button type="button" id="resetIngFormBtn" class="btn-secondary" style="display:none;">İPTAL</button>
-              </div>
+            <div class="form-group">
+              <label>Malzeme Adı</label>
+              <input type="text" id="ingNameInput" placeholder="Örn: Normal Sos, Glütensiz Pataşu">
             </div>
 
-            <!-- PROFESYONEL ÜRETİM / STOK GİRİŞ PANELİ -->
-            <div class="admin-form-card" style="max-width: 100%; background: #f0fdf4; border-color: #86efac;">
-              <h3 style="color: #166534;">🏭 Profesyonel Üretim / Stok Girişi</h3>
-              <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Üretilen miktarı ekleyin, tarih ve saat olarak sisteme kaydedilsin.</p>
+            <div class="form-group">
+              <label>Birim</label>
+              <select id="ingUnitSelect">
+                <option value="gr">Gram (gr)</option>
+                <option value="kg">Kilogram (kg)</option>
+                <option value="lt">Litre (lt)</option>
+                <option value="adet">Adet</option>
+                <option value="paket">Paket</option>
+              </select>
+            </div>
 
-              <div class="form-group">
-                <label>Malzeme / Yarı Mamul Seçin</label>
-                <select id="prodInputIngSelect" style="padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; width: 100%;"></select>
-              </div>
+            <div class="form-group">
+              <label>Mevcut Stok Miktarı</label>
+              <input type="number" id="ingStockInput" placeholder="0.00" step="0.01">
+            </div>
 
-              <div class="form-group">
-                <label>Üretilen Miktar (Eklenecek Artış)</label>
-                <input type="number" id="prodInputQty" placeholder="Örn: 5000 (gr) veya 20 (adet)" step="0.01">
-              </div>
-
-              <div class="form-group">
-                <label>Açıklama / Parti No (Opsiyonel)</label>
-                <input type="text" id="prodInputNote" placeholder="Örn: Sabah Vardiyası Üretimi">
-              </div>
-
-              <button type="button" id="submitProductionBtn" class="btn-primary" style="width: 100%; background: #16a34a; margin-top: 5px;">KAYDI GİR VE STOK ARTIR</button>
+            <div style="display: flex; gap: 8px; margin-top: 15px;">
+              <button type="button" id="saveIngBtn" class="btn-primary" style="flex:1;">KAYDET</button>
+              <button type="button" id="resetIngFormBtn" class="btn-secondary" style="display:none;">İPTAL</button>
             </div>
           </div>
 
-          <!-- STOK VE HAREKET GEÇMİŞİ LİSTESİ -->
           <div style="display: flex; flex-direction: column; gap: 24px;">
             <div class="admin-list-card">
               <div class="admin-list-header">
                 <h3 style="font-size:18px; font-weight:bold;">Yarı Mamul / Stok Listesi</h3>
-                <input type="text" id="searchIngInput" placeholder="Malzeme Ara..." style="padding: 9px 12px; border: 1px solid var(--border-color); border-radius: 8px; width: 200px;">
+                <input type="text" id="searchIngInput" placeholder="Malzeme Ara..." style="padding: 9px 12px; border: 1px solid var(--border-color); border-radius: 8px; width: 220px;">
               </div>
 
               <table class="admin-table">
@@ -382,12 +394,11 @@
               </table>
             </div>
 
-            <!-- ÜRETİM HAREKETLERİ GEÇMİŞİ (TARİH VE SAAT) -->
             <div class="admin-list-card">
               <div class="admin-list-header">
                 <h3 style="font-size:16px; font-weight:bold; color: #166534;">🕒 Son Üretim & Stok Hareketleri</h3>
               </div>
-              <div style="max-height: 220px; overflow-y: auto;">
+              <div style="max-height: 200px; overflow-y: auto;">
                 <table class="admin-table" style="font-size: 13px;">
                   <thead>
                     <tr>
