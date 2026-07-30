@@ -225,7 +225,7 @@
     <header class="top-header">
       <div class="header-brand">
         <h2>KAPTAN NİLİ BULUT POS</h2>
-        <span class="version-tag">v3.5.0 • DASHBOARD PRODUCTION</span>
+        <span class="version-tag">v3.6.0 • FILTERABLE LOGS</span>
       </div>
       
       <nav class="main-nav">
@@ -242,11 +242,10 @@
 
     <main class="main-content">
       
-      <!-- 1. ANA MENÜ (MASALAR, KASA VE HIZLI ÜRETİM PANELİ) -->
+      <!-- 1. ANA MENÜ -->
       <section id="pageTables">
         <div class="pos-grid">
           
-          <!-- SOL KOLON: KASA + HIZLI ÜRETİM GİRİŞİ -->
           <div class="left-column">
             
             <div class="cash-card">
@@ -273,7 +272,7 @@
               </div>
             </div>
 
-            <!-- ANA SAYFA KOMPAKT ÜRETİM GİRİŞİ -->
+            <!-- HIZLI ÜRETİM GİRİŞİ -->
             <div class="quick-prod-card">
               <h3>🏭 Hızlı Üretim Girişi</h3>
               <p>Üretilen miktarı girin, tarih/saat loglansın.</p>
@@ -298,7 +297,6 @@
 
           </div>
 
-          <!-- SAĞ KOLON: MASALAR VE ANLIK SATIŞLAR -->
           <div style="display: flex; flex-direction: column; gap: 24px;">
             <div class="tables-card">
               <div class="tables-header">
@@ -329,7 +327,7 @@
         </div>
       </section>
 
-      <!-- 2. MALZEMELER / YARI MAMUL SAYFASI -->
+      <!-- 2. MALZEMELER / YARI MAMUL VE ÜRETİM LOGLARI SAYFASI -->
       <section id="pageIngredients" style="display: none;">
         
         <div class="excel-bar">
@@ -394,11 +392,27 @@
               </table>
             </div>
 
+            <!-- ÜRETİM HAREKETLERİ & TARİH FİLTRELEME KARTI -->
             <div class="admin-list-card">
-              <div class="admin-list-header">
-                <h3 style="font-size:16px; font-weight:bold; color: #166534;">🕒 Son Üretim & Stok Hareketleri</h3>
+              <div class="admin-list-header" style="flex-wrap: wrap; gap: 10px;">
+                <h3 style="font-size:16px; font-weight:bold; color: #166534;">🕒 Üretim & Stok Hareketleri</h3>
               </div>
-              <div style="max-height: 200px; overflow-y: auto;">
+
+              <!-- TARİH FİLTRELEME ÇUBUĞU -->
+              <div class="filter-bar" style="margin-bottom: 14px; padding: 10px;">
+                <label style="font-weight:bold; font-size:12px;">📅 Tarih:</label>
+                <input type="date" id="logStartDate" style="padding:6px; font-size:12px;">
+                <span>-</span>
+                <input type="date" id="logEndDate" style="padding:6px; font-size:12px;">
+
+                <button type="button" class="btn-date-filter" onclick="setLogDateRange('today')">Bugün</button>
+                <button type="button" class="btn-date-filter" onclick="setLogDateRange('week')">Bu Hafta</button>
+                <button type="button" class="btn-date-filter" onclick="setLogDateRange('month')">Bu Ay</button>
+                
+                <button type="button" id="runLogFilterBtn" class="btn-primary" style="padding:6px 12px; font-size:12px; margin-left:auto;">FİLTRELE</button>
+              </div>
+
+              <div style="max-height: 220px; overflow-y: auto;">
                 <table class="admin-table" style="font-size: 13px;">
                   <thead>
                     <tr>
