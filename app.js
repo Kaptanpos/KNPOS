@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - DASHBOARD ÜRETİM & DROPFIX SÜRÜMÜ */
+/* KAPTAN NİLİ BULUT POS - DROP DOWN DOLDURMA KESİN ÇÖZÜM SÜRÜMÜ */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -109,7 +109,7 @@ async function login() {
     await loadProducts();
     await loadPaymentMethods();
     await renderSales();
-    await loadIngredientsForDashboard(); // Ana ekran için malzemeleri çek
+    await loadIngredientsForDashboard(); // Malzemeleri anında çekip dropdown'ı dolduruyoruz
     await checkRecipeTable();
 
   } catch (err) {
@@ -550,6 +550,10 @@ async function loadIngredients() {
 function populateProductionDropdown() {
   const select = document.getElementById("prodInputIngSelect");
   if (!select) return;
+  if (!allIngredients || allIngredients.length === 0) {
+    select.innerHTML = '<option value="">Önce Malzeme Ekleyin</option>';
+    return;
+  }
   select.innerHTML = allIngredients.map(i => `<option value="${i.id}">${escapeHtml(i.name)} (${i.unit || 'gr'})</option>`).join("");
 }
 
