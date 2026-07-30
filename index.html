@@ -162,7 +162,7 @@
 
     /* TEMA KUTULARI */
     .theme-picker-box { display: flex; gap: 10px; margin-top: 8px; }
-    .theme-color-btn { width: 32px; height: 32px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.2s; }
+    .theme-color-btn { width: 36px; height: 36px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.25); transition: 0.2s; }
     .theme-color-btn:hover { transform: scale(1.1); }
 
     /* RAPORLAR ÖZEL VE SEKMELİ STİL */
@@ -211,7 +211,7 @@
     <header class="top-header">
       <div class="header-brand">
         <h2>KAPTAN NİLİ BULUT POS</h2>
-        <span class="version-tag">v3.2.0 • THEMED EDITION</span>
+        <span class="version-tag">v3.3.0 • SETTINGS EDITION</span>
       </div>
       
       <nav class="main-nav">
@@ -220,6 +220,7 @@
         <button type="button" class="nav-button">İNTERNET PANELİ</button>
         <button type="button" class="nav-button">ÜRÜNLER</button>
         <button type="button" class="nav-button">RAPORLAR</button>
+        <button type="button" class="nav-button">GENEL AYARLAR</button>
       </nav>
 
       <button type="button" id="logoutButton" class="logout-button">ÇIKIŞ</button>
@@ -347,7 +348,7 @@
         </div>
       </section>
 
-      <!-- 3. ÜRÜNLER VE ÖDEME KANALLARI SAYFASI -->
+      <!-- 3. ÜRÜNLER SAYFASI -->
       <section id="pageProducts" style="display: none;">
         
         <div class="excel-bar">
@@ -395,29 +396,6 @@
               <button type="button" id="saveProductBtn" class="btn-primary" style="flex:1;">KAYDET</button>
               <button type="button" id="resetProductFormBtn" class="btn-secondary" style="display:none;">İPTAL</button>
             </div>
-
-            <!-- TEMA & RENK SEÇİMİ YÖNETİMİ -->
-            <hr style="margin:20px 0; border:none; border-top:1px dashed var(--border-color);">
-            <h3 style="font-size:15px; font-weight:bold; color:var(--primary); margin-bottom:8px;">🎨 Tema ve Renk Ayarı</h3>
-            <div class="form-group">
-              <label>Hazır Temalar / Özel Renk Seç</label>
-              <div class="theme-picker-box">
-                <button type="button" class="theme-color-btn" style="background:#2d5a27;" onclick="changeThemeColor('#2d5a27', '#1e3d1a')" title="Fıstık Yeşili"></button>
-                <button type="button" class="theme-color-btn" style="background:#0f766e;" onclick="changeThemeColor('#0f766e', '#115e59')" title="Artisan Teal"></button>
-                <button type="button" class="theme-color-btn" style="background:#78350f;" onclick="changeThemeColor('#78350f', '#451a03')" title="Çikolata Kahve"></button>
-                <button type="button" class="theme-color-btn" style="background:#1e3a8a;" onclick="changeThemeColor('#1e3a8a', '#172554')" title="Kraliyet Laciverti"></button>
-                <button type="button" class="theme-color-btn" style="background:#9d174d;" onclick="changeThemeColor('#9d174d', '#831843')" title="Bordo / Gül"></button>
-              </div>
-            </div>
-
-            <!-- ÖDEME KANALLARI YÖNETİMİ ALANI -->
-            <hr style="margin:20px 0; border:none; border-top:1px dashed var(--border-color);">
-            <h3 style="font-size:15px; font-weight:bold; color:var(--primary); margin-bottom:10px;">💳 Ödeme Kanalları Yönetimi</h3>
-            <div style="display:flex; gap:6px; margin-bottom:10px;">
-              <input type="text" id="newPaymentMethodInput" placeholder="Örn: Migros Yemek" style="flex:1; padding:8px; border:1px solid var(--border-color); border-radius:6px; font-size:13px;">
-              <button type="button" id="addPaymentMethodBtn" class="btn-primary" style="padding:8px 12px; font-size:12px;">EKLE</button>
-            </div>
-            <div id="paymentMethodsList" style="max-height:150px; overflow-y:auto; border:1px solid var(--border-color); padding:6px; border-radius:8px;"></div>
           </div>
 
           <div class="admin-list-card">
@@ -444,10 +422,9 @@
         </div>
       </section>
 
-      <!-- 4. SEKMELİ RAPORLAR SAYFASI -->
+      <!-- 4. RAPORLAR SAYFASI -->
       <section id="pageReports" style="display: none;">
         
-        <!-- TARİH FİLTRELEME ÇUBUĞU -->
         <div class="filter-bar">
           <label style="font-weight:bold; font-size:13px;">📅 Tarih Aralığı:</label>
           <input type="date" id="reportStartDate">
@@ -461,7 +438,6 @@
           <button type="button" id="runReportBtn" class="btn-primary" style="margin-left:auto;">📊 RAPORU GETİR</button>
         </div>
 
-        <!-- RAPOR SEKMELERİ -->
         <div class="report-tab-strip">
           <button type="button" class="report-tab-btn active-tab" onclick="switchReportTab('tabSummary')">📊 Genel Özet</button>
           <button type="button" class="report-tab-btn" onclick="switchReportTab('tabPayments')">💳 Ödeme Türleri</button>
@@ -469,7 +445,6 @@
           <button type="button" class="report-tab-btn" onclick="switchReportTab('tabProducts')">🍰 Ürün Performansı</button>
         </div>
 
-        <!-- 1. SEKME: GENEL ÖZET METRİKLERİ -->
         <div id="tabSummary" class="report-tab-content">
           <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:20px;">
             <div class="metric-box">
@@ -487,7 +462,6 @@
           </div>
         </div>
 
-        <!-- 2. SEKME: ÖDEME TÜRLERİ VE GRAFİĞİ -->
         <div id="tabPayments" class="report-tab-content" style="display:none;">
           <div class="admin-layout" style="grid-template-columns: 1fr 1fr;">
             <div class="report-card">
@@ -513,7 +487,6 @@
           </div>
         </div>
 
-        <!-- 3. SEKME: KATEGORİLER VE GRAFİĞİ -->
         <div id="tabCategories" class="report-tab-content" style="display:none;">
           <div class="report-card">
             <h3 style="font-size:15px; font-weight:bold; color:var(--primary); margin-bottom:10px;">Kategorilere Göre Ciro Dağılımı</h3>
@@ -523,11 +496,9 @@
           </div>
         </div>
 
-        <!-- 4. SEKME: ÜRÜN BAZLI PERFORMANS GRAFİĞİ VE TABLOSU -->
         <div id="tabProducts" class="report-tab-content" style="display:none;">
-          
           <div class="report-card" style="margin-bottom:20px;">
-            <h3 style="font-size:15px; font-weight:bold; color:var(--primary); margin-bottom:10px;">En Çok Satan Ürünler (Top 10 Ciro - Farklı Renkler)</h3>
+            <h3 style="font-size:15px; font-weight:bold; color:var(--primary); margin-bottom:10px;">En Çok Satan Ürünler (Top 10 Ciro)</h3>
             <div class="chart-container">
               <canvas id="productChart"></canvas>
             </div>
@@ -547,9 +518,45 @@
               <tbody id="productReportTbody"></tbody>
             </table>
           </div>
-
         </div>
 
+      </section>
+
+      <!-- 5. GENEL AYARLAR SAYFASI (TEMA VE ÖDEME KANALLARI YÖNETİMİ) -->
+      <section id="pageSettings" style="display: none;">
+        <div style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
+          
+          <!-- TEMA AYARLARI KARTI -->
+          <div class="admin-form-card" style="max-width: 100%;">
+            <h3>🎨 Site Tema ve Renk Paleti</h3>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Dükkanınızın kurumsal rengini seçin, tüm sistem anında o renge bürünsün.</p>
+            
+            <div class="form-group">
+              <label>Hazır Temalar</label>
+              <div class="theme-picker-box">
+                <button type="button" class="theme-color-btn" style="background:#2d5a27;" onclick="changeThemeColor('#2d5a27', '#1e3d1a')" title="Fıstık Yeşili"></button>
+                <button type="button" class="theme-color-btn" style="background:#0f766e;" onclick="changeThemeColor('#0f766e', '#115e59')" title="Artisan Teal"></button>
+                <button type="button" class="theme-color-btn" style="background:#78350f;" onclick="changeThemeColor('#78350f', '#451a03')" title="Çikolata Kahve"></button>
+                <button type="button" class="theme-color-btn" style="background:#1e3a8a;" onclick="changeThemeColor('#1e3a8a', '#172554')" title="Kraliyet Laciverti"></button>
+                <button type="button" class="theme-color-btn" style="background:#9d174d;" onclick="changeThemeColor('#9d174d', '#831843')" title="Bordo / Gül"></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ÖDEME KANALLARI YÖNETİM KARTI -->
+          <div class="admin-form-card" style="max-width: 100%;">
+            <h3>💳 Ödeme Kanalları Yönetimi</h3>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Masa kapatırken çıkan ödeme seçeneklerini buradan ekleyebilir veya silebilirsiniz.</p>
+            
+            <div style="display:flex; gap:8px; margin-bottom:15px;">
+              <input type="text" id="newPaymentMethodInput" placeholder="Örn: Migros Yemek, Sodexo" style="flex:1; padding:10px; border:1px solid var(--border-color); border-radius:8px; font-size:14px;">
+              <button type="button" id="addPaymentMethodBtn" class="btn-primary" style="padding:10px 18px;">KANAL EKLE</button>
+            </div>
+            
+            <div id="paymentMethodsList" style="max-height:220px; overflow-y:auto; border:1px solid var(--border-color); padding:10px; border-radius:10px;"></div>
+          </div>
+
+        </div>
       </section>
 
       <!-- DİĞER SAYFALAR -->
@@ -566,7 +573,6 @@
     <div class="recipe-modal-card">
       <h3 id="recipeModalTitle" style="color:var(--primary); margin-bottom:15px;">Ürün Reçetesi</h3>
       
-      <!-- EXCEL İŞLEM ÇUBUĞU (REÇETE) -->
       <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid var(--border-color);">
         <span style="font-size:11px; font-weight:bold; color:var(--primary);">Reçete Excel:</span>
         <div>
