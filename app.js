@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - SEKMELİ VE DÜZENLİ RAPOR SÜRÜMÜ */
+/* KAPTAN NİLİ BULUT POS - GRAFİK ÜZERİ DEĞER YAZMALI TAM SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -24,6 +24,7 @@ let selectedCategory = "Tümü";
 // Grafik Nesneleri
 let paymentChartInstance = null;
 let categoryChartInstance = null;
+let productChartInstance = null;
 
 const TABLE_STORAGE_KEY = "knpos_tables_v1";
 const DEFAULT_TABLES = [
@@ -853,8 +854,9 @@ function switchReportTab(tabId) {
   const targetContent = document.getElementById(tabId);
   if (targetContent) targetContent.style.display = "block";
 
-  // Tıklanan butona aktif class'ı ver
-  event.target.classList.add("active-tab");
+  if (event && event.target) {
+    event.target.classList.add("active-tab");
+  }
 }
 
 function initReportDates() {
@@ -880,8 +882,9 @@ function setReportDateRange(type) {
     const firstDay = new Date(now.setDate(now.getDate() - now.getDay() + 1));
     startInput.value = firstDay.toISOString().split("T")[0];
   } else if (type === "month") {
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-    startInput.value = firstDay.toISOString().split("T")[0];
+    // BU AY SORĞUSU DİNAMİK OLARAK AYIN İLK GÜNÜNE KURULUYOR (Örn: 2026-07-01)
+    const firstDayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    startInput.value = firstDayStr;
   }
   fetchAndRenderReports();
 }
@@ -1009,7 +1012,37 @@ function renderProductReportTable(saleItems) {
 }
 
 function renderReportCharts(sales, saleItems) {
-  // Ödeme Kanalları Grafiği
+  // Chart.js Datalabels Plugin Kaydı
+  Chart.register(ChartDataLabels);
+
+  // Ortak Grafik Ayarları (Değerlerin Sütun Üstünde Yazması İçin)
+  const commonOptions = (isVertical = true) => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      datalabels: {
+        anchor: isVertical ? 'end' : 'end',
+        align: isVertical ? 'top' : 'right',
+        formatter: (value) => value.toLocaleString("tr-TR") + " TL",
+        font: { weight: 'bold', size: 11 },
+        color: '#334155'
+      }
+    },
+    scales: isVertical ? {
+      y: {
+        beginAtZero: true,
+        ticks: { callback: (val) => val.toLocaleString("tr-TR") + " TL" }
+      }
+    } : {
+      x: {
+        beginAtZero: true,
+        ticks: { callback: (val) => val.toLocaleString("tr-TR") + " TL" }
+      }
+    }
+  });
+
+  // 1. ÖDEME KANALLARI GRAFİĞİ (DİKEY SÜTUN)
   const paymentMap = {};
   (sales || []).forEach(s => {
     const ch = s.payment_type || "Nakit";
@@ -1023,19 +1056,20 @@ function renderReportCharts(sales, saleItems) {
   if (ctxPay) {
     if (paymentChartInstance) paymentChartInstance.destroy();
     paymentChartInstance = new Chart(ctxPay, {
-      type: "doughnut",
+      type: "bar",
       data: {
         labels: payLabels,
         datasets: [{
           data: payValues,
-          backgroundColor: ["#0f766e", "#0284c7", "#d97706", "#ea580c", "#7c3aed", "#16a34a", "#dc2626"]
+          backgroundColor: ["#0f766e", "#0284c7", "#d97706", "#ea580c", "#7c3aed", "#16a34a", "#dc2626"],
+          borderRadius: 8
         }]
       },
-      options: { responsive: true, maintainAspectRatio: false }
+      options: commonOptions(true)
     });
   }
 
-  // Kategori Bazlı Grafik
+  // 2. KATEGORİ BAZLI GRAFİK (DİKEY SÜTUN)
   const categoryMap = {};
   (saleItems || []).forEach(item => {
     const cat = item.products?.category || "Diğer";
@@ -1054,12 +1088,43 @@ function renderReportCharts(sales, saleItems) {
       data: {
         labels: catLabels,
         datasets: [{
-          label: "Kategori Cirosu (TL)",
           data: catValues,
-          backgroundColor: "#0f766e"
+          backgroundColor: "#0f766e",
+          borderRadius: 8
         }]
       },
-      options: { responsive: true, maintainAspectRatio: false }
+      options: commonOptions(true)
+    });
+  }
+
+  // 3. ÜRÜN BAZLI PERFORMANS GRAFİĞİ (YATAY BAR)
+  const productMap = {};
+  (saleItems || []).forEach(item => {
+    const pName = item.products?.name || "Bilinmeyen Ürün";
+    const total = Number(item.line_total || (item.quantity * item.unit_price) || 0);
+    productMap[pName] = (productMap[pName] || 0) + total;
+  });
+
+  const sortedProdNames = Object.keys(productMap).sort((a,b) => productMap[b] - productMap[a]).slice(0, 10);
+  const prodValues = sortedProdNames.map(pName => productMap[pName]);
+
+  const ctxProd = document.getElementById("productChart")?.getContext("2d");
+  if (ctxProd) {
+    if (productChartInstance) productChartInstance.destroy();
+    productChartInstance = new Chart(ctxProd, {
+      type: "bar",
+      data: {
+        labels: sortedProdNames,
+        datasets: [{
+          data: prodValues,
+          backgroundColor: "#0284c7",
+          borderRadius: 6
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        ...commonOptions(false)
+      }
     });
   }
 }
