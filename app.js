@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - GRAFİK ÜZERİ DEĞER YAZMALI TAM SÜRÜM */
+/* KAPTAN NİLİ BULUT POS - EXCEL & RENDER MOTORU */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -606,7 +606,174 @@ async function adjustIngredientStock(id) {
   }
 }
 
-// 8. ÖDEME KANALLARI YÖNETİMİ
+// 8. EXCEL İŞLEMLERİ (MALZEMELER, ÜRÜNLER, REÇETELER)
+function exportIngredientsExcel() {
+  if (!allIngredients || allIngredients.length === 0) {
+    alert("İndirilecek malzeme bulunamadı.");
+    return;
+  }
+  const data = allIngredients.map(i => ({
+    "Malzeme Adı": i.name,
+    "Mevcut Stok": i.stock_quantity || 0,
+    "Birim": i.unit || "gr"
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Malzemeler");
+  XLSX.writeFile(wb, "KaptanNili_Malzemeler.xlsx");
+}
+
+async function importIngredientsExcel(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(evt) {
+    try {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(firstSheet);
+
+      for (const row of rows) {
+        const name = row["Malzeme Adı"] || row["name"];
+        const stock = Number(row["Mevcut Stok"] || row["stock_quantity"] || 0);
+        const unit = row["Birim"] || row["unit"] || "gr";
+
+        if (name) {
+          await client.from("ingredients").insert({ name, stock_quantity: stock, unit });
+        }
+      }
+      alert("Malzemeler Excel'den başarıyla içe aktarıldı!");
+      await loadIngredients();
+    } catch (err) {
+      alert("Excel yükleme hatası: " + err.message);
+    }
+    e.target.value = "";
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function exportProductsExcel() {
+  if (!allManagementProducts || allManagementProducts.length === 0) {
+    alert("İndirilecek ürün bulunamadı.");
+    return;
+  }
+  const data = allManagementProducts.map(p => ({
+    "Ürün Adı": p.name,
+    "Kategori": p.category || "Profiterol",
+    "Satış Fiyatı (TL)": p.price || 0,
+    "Resim URL": p.image_url || "",
+    "Aktif (True/False)": p.active ?? true
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Urunler");
+  XLSX.writeFile(wb, "KaptanNili_Urunler.xlsx");
+}
+
+async function importProductsExcel(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(evt) {
+    try {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(firstSheet);
+
+      for (const row of rows) {
+        const name = row["Ürün Adı"] || row["name"];
+        const category = row["Kategori"] || row["category"] || "Profiterol";
+        const price = Number(row["Satış Fiyatı (TL)"] || row["price"] || 0);
+        const image_url = row["Resim URL"] || row["image_url"] || null;
+        const active = row["Aktif (True/False)"] ?? true;
+
+        if (name) {
+          await client.from("products").insert({ name, category, price, image_url, active });
+        }
+      }
+      alert("Ürünler Excel'den başarıyla içe aktarıldı!");
+      await loadManagementProducts();
+      await loadProducts();
+    } catch (err) {
+      alert("Excel yükleme hatası: " + err.message);
+    }
+    e.target.value = "";
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function exportRecipeExcel() {
+  if (!selectedRecipeProductId) return;
+  try {
+    const { data: recipes } = await client
+      .from("recipes")
+      .select("*, ingredients(name), products(name)")
+      .eq("product_id", selectedRecipeProductId);
+
+    if (!recipes || recipes.length === 0) {
+      alert("Bu ürüne ait reçete bulunamadı.");
+      return;
+    }
+
+    const prodName = recipes[0].products?.name || "Reçete";
+    const excelData = recipes.map(r => ({
+      "Ürün Adı": prodName,
+      "Malzeme Adı": r.ingredients?.name || "",
+      "Gerekli Miktar": r.quantity_required || r.quantity || 0,
+      "Birim": r.unit || "gr"
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Recete");
+    XLSX.writeFile(wb, `${prodName}_Recete.xlsx`);
+  } catch (err) {
+    alert("Reçete indirilemedi: " + err.message);
+  }
+}
+
+async function importRecipeExcel(e) {
+  const file = e.target.files[0];
+  if (!file || !selectedRecipeProductId) return;
+  const reader = new FileReader();
+  reader.onload = async function(evt) {
+    try {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(firstSheet);
+
+      await loadIngredients();
+
+      for (const row of rows) {
+        const ingName = row["Malzeme Adı"] || row["malzeme"];
+        const qty = Number(row["Gerekli Miktar"] || row["miktar"] || 0);
+        const unit = row["Birim"] || row["birim"] || "gr";
+
+        const foundIng = allIngredients.find(i => i.name.toLowerCase() === String(ingName).toLowerCase());
+        if (foundIng && qty > 0) {
+          await client.from("recipes").insert({
+            product_id: selectedRecipeProductId,
+            ingredient_id: foundIng.id,
+            quantity: qty,
+            quantity_required: qty,
+            unit: unit
+          });
+        }
+      }
+      alert("Reçete maddeleri Excel'den yüklendi!");
+      await renderRecipeItemsList();
+    } catch (err) {
+      alert("Reçete yükleme hatası: " + err.message);
+    }
+    e.target.value = "";
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// 9. ÖDEME KANALLARI YÖNETİMİ
 async function loadPaymentMethods() {
   const defaultMethods = [
     { id: 1, name: "Nakit" },
@@ -674,7 +841,7 @@ async function deletePaymentMethod(id) {
   }
 }
 
-// 9. TEK TIKLA SADE ÖDEME MODALI
+// 10. TEK TIKLA SADE ÖDEME MODALI
 function openPaymentModal() {
   const table = getTables().find(t => t.id === selectedTableId);
   const paymentModal = document.getElementById("paymentModal");
@@ -707,7 +874,6 @@ function openPaymentModal() {
   paymentModal.style.display = "flex";
 }
 
-// TEK TIKLA SATIŞI BİTİRME VE STOK DÜŞME
 async function completePaymentWithChannel(channelName) {
   const tables = getTables();
   const table = tables.find(t => t.id === selectedTableId);
@@ -732,7 +898,6 @@ async function completePaymentWithChannel(channelName) {
 
     await client.from("sale_items").insert(saleItems);
 
-    // REÇETEDEN OTOMATİK STOK DÜŞÜMÜ
     await deductStockFromRecipe(table.orders);
 
     table.status = "closed";
@@ -755,7 +920,7 @@ async function completePaymentWithChannel(channelName) {
   }
 }
 
-// 10. ANLIK SATIŞLAR TABLOSU VE ADİSYON DETAYI BAKIŞ
+// 11. ANLIK SATIŞLAR TABLOSU VE ADİSYON DETAYI BAKIŞ
 async function renderSales() {
   const list = document.getElementById("salesList");
   const totalElem = document.getElementById("salesDailyTotal");
@@ -843,7 +1008,7 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
   }
 }
 
-// 11. RAPOR SEKMELERİ GEÇİŞ SİSTEMİ
+// 12. RAPOR SEKMELERİ VE AKTİF FİLTRE BUTONU YÖNETİMİ
 function switchReportTab(tabId) {
   const contents = document.querySelectorAll(".report-tab-content");
   contents.forEach(c => c.style.display = "none");
@@ -866,6 +1031,16 @@ function initReportDates() {
   const todayStr = new Date().toISOString().split("T")[0];
   if (startInput && !startInput.value) startInput.value = todayStr;
   if (endInput && !endInput.value) endInput.value = todayStr;
+
+  // Varsayılan olarak bugün aktif olsun
+  setActiveDateButton("reportFilterTodayBtn");
+}
+
+function setActiveDateButton(activeBtnId) {
+  const dateBtns = document.querySelectorAll(".btn-date-filter");
+  dateBtns.forEach(b => b.classList.remove("active-date-btn"));
+  const btn = document.getElementById(activeBtnId);
+  if (btn) btn.classList.add("active-date-btn");
 }
 
 function setReportDateRange(type) {
@@ -878,13 +1053,15 @@ function setReportDateRange(type) {
 
   if (type === "today") {
     startInput.value = todayStr;
+    setActiveDateButton("reportFilterTodayBtn");
   } else if (type === "week") {
     const firstDay = new Date(now.setDate(now.getDate() - now.getDay() + 1));
     startInput.value = firstDay.toISOString().split("T")[0];
+    setActiveDateButton("reportFilterWeekBtn");
   } else if (type === "month") {
-    // BU AY SORĞUSU DİNAMİK OLARAK AYIN İLK GÜNÜNE KURULUYOR (Örn: 2026-07-01)
     const firstDayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
     startInput.value = firstDayStr;
+    setActiveDateButton("reportFilterMonthBtn");
   }
   fetchAndRenderReports();
 }
@@ -1012,10 +1189,8 @@ function renderProductReportTable(saleItems) {
 }
 
 function renderReportCharts(sales, saleItems) {
-  // Chart.js Datalabels Plugin Kaydı
   Chart.register(ChartDataLabels);
 
-  // Ortak Grafik Ayarları (Değerlerin Sütun Üstünde Yazması İçin)
   const commonOptions = (isVertical = true) => ({
     responsive: true,
     maintainAspectRatio: false,
@@ -1097,7 +1272,7 @@ function renderReportCharts(sales, saleItems) {
     });
   }
 
-  // 3. ÜRÜN BAZLI PERFORMANS GRAFİĞİ (YATAY BAR)
+  // 3. ÜRÜN BAZLI PERFORMANS GRAFİĞİ (YATAY BAR - FARKLI RENKLER)
   const productMap = {};
   (saleItems || []).forEach(item => {
     const pName = item.products?.name || "Bilinmeyen Ürün";
@@ -1107,6 +1282,13 @@ function renderReportCharts(sales, saleItems) {
 
   const sortedProdNames = Object.keys(productMap).sort((a,b) => productMap[b] - productMap[a]).slice(0, 10);
   const prodValues = sortedProdNames.map(pName => productMap[pName]);
+  
+  // Farklı renk paleti oluşturma
+  const vibrantColors = [
+    "#0f766e", "#0284c7", "#d97706", "#ea580c", "#7c3aed", 
+    "#16a34a", "#dc2626", "#db2777", "#4f46e5", "#0891b2"
+  ];
+  const barColors = sortedProdNames.map((_, idx) => vibrantColors[idx % vibrantColors.length]);
 
   const ctxProd = document.getElementById("productChart")?.getContext("2d");
   if (ctxProd) {
@@ -1117,7 +1299,7 @@ function renderReportCharts(sales, saleItems) {
         labels: sortedProdNames,
         datasets: [{
           data: prodValues,
-          backgroundColor: "#0284c7",
+          backgroundColor: barColors,
           borderRadius: 6
         }]
       },
@@ -1129,7 +1311,7 @@ function renderReportCharts(sales, saleItems) {
   }
 }
 
-// 12. ÜRÜNLER & REÇETE İŞLEMLERİ
+// 13. ÜRÜNLER & REÇETE İŞLEMLERİ
 async function loadManagementProducts() {
   try {
     const { data, error } = await client.from("products").select("*").order("created_at", { ascending: false });
@@ -1438,25 +1620,9 @@ document.addEventListener("click", function(e) {
 
   if (target.id === "runReportBtn") {
     e.preventDefault();
+    // Manuel tarih seçilirse aktif butonu kaldır
+    document.querySelectorAll(".btn-date-filter").forEach(b => b.classList.remove("active-date-btn"));
     fetchAndRenderReports();
-    return;
-  }
-
-  if (target.id === "reportFilterTodayBtn") {
-    e.preventDefault();
-    setReportDateRange("today");
-    return;
-  }
-
-  if (target.id === "reportFilterWeekBtn") {
-    e.preventDefault();
-    setReportDateRange("week");
-    return;
-  }
-
-  if (target.id === "reportFilterMonthBtn") {
-    e.preventDefault();
-    setReportDateRange("month");
     return;
   }
 });
