@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - SADE VE TEK TIK ÖDEME KANALLARI SÜRÜMÜ */
+/* KAPTAN NİLİ BULUT POS - ADİSYON DETAYI BAKIŞ SÜRÜMÜ */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -601,7 +601,7 @@ async function adjustIngredientStock(id) {
   }
 }
 
-// 8. ÖDEME KANALLARI YÖNETİMİ (SADE & YEDEKLİ)
+// 8. ÖDEME KANALLARI YÖNETİMİ
 async function loadPaymentMethods() {
   const defaultMethods = [
     { id: 1, name: "Nakit" },
@@ -693,7 +693,6 @@ function openPaymentModal() {
     ];
   }
 
-  // SADECE TEK TIK BUTONLARI OLUŞTURULUYOR
   grid.innerHTML = paymentMethods.map(m => `
     <button type="button" class="btn-pay-channel-large" onclick="completePaymentWithChannel('${escapeHtml(m.name)}')">
       💳 ${escapeHtml(m.name)}
@@ -751,7 +750,97 @@ async function completePaymentWithChannel(channelName) {
   }
 }
 
-// 10. ÜRÜNLER & REÇETE İŞLEMLERİ
+// 10. ANLIK SATIŞLAR TABLOSU VE ADİSYON DETAYI BAKIŞ
+async function renderSales() {
+  const list = document.getElementById("salesList");
+  const totalElem = document.getElementById("salesDailyTotal");
+  if (!list) return;
+
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const { data: sales, error } = await client
+      .from("sales")
+      .select("*")
+      .gte("created_at", today)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    if (!sales || sales.length === 0) {
+      list.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Bugün henüz satış yapılmadı.</div>';
+      if (totalElem) totalElem.textContent = "0,00 TL";
+      return;
+    }
+
+    let sum = 0;
+    list.innerHTML = sales.map(s => {
+      sum += Number(s.total_amount || 0);
+      const timeStr = new Date(s.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+      return `
+        <div class="daily-sales-row" onclick="openReceiptDetailModal(${s.id}, '${timeStr}', '${escapeHtml(s.payment_type || "Nakit")}', ${s.total_amount})">
+          <div><strong>${timeStr}</strong></div>
+          <div><strong style="color:#0f766e;">${escapeHtml(s.payment_type || "Nakit")}</strong></div>
+          <div style="text-align:right;"><strong>${formatMoney(s.total_amount)} 🔍</strong></div>
+        </div>
+      `;
+    }).join("");
+
+    if (totalElem) totalElem.textContent = formatMoney(sum);
+  } catch (err) {
+    list.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Satışlar çekilemedi.</div>';
+  }
+}
+
+// ADİSYON İÇERİĞİNİ GÖSTEREN MODAL
+async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount) {
+  const modal = document.getElementById("receiptDetailModal");
+  const subtitle = document.getElementById("receiptSubtitle");
+  const container = document.getElementById("receiptItemsContainer");
+  const totalElem = document.getElementById("receiptTotalAmount");
+
+  if (!modal || !container) return;
+
+  if (subtitle) subtitle.textContent = `Saat: ${timeStr} • Kanal: ${paymentType}`;
+  if (totalElem) totalElem.textContent = formatMoney(totalAmount);
+  
+  container.innerHTML = '<div style="text-align:center; padding:15px; color:#64748b; font-size:12px;">Adisyon detayları yükleniyor...</div>';
+  modal.style.display = "flex";
+
+  try {
+    // sale_items tablosundan satılan ürün adlarını ve miktarlarını çekiyoruz
+    const { data: items, error } = await client
+      .from("sale_items")
+      .select("*, products(name)")
+      .eq("sale_id", saleId);
+
+    if (error) throw error;
+
+    if (!items || items.length === 0) {
+      container.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Bu adisyona ait detay bulunamadı.</div>';
+      return;
+    }
+
+    container.innerHTML = items.map(item => {
+      const prodName = item.products?.name || "Ürün";
+      const lineTotal = Number(item.line_total || (item.quantity * item.unit_price) || 0);
+      return `
+        <div class="receipt-detail-row">
+          <div>
+            <strong>${escapeHtml(prodName)}</strong><br>
+            <span style="font-size:11px; color:#64748b;">${item.quantity} Adet × ${formatMoney(item.unit_price)}</span>
+          </div>
+          <div style="font-weight:bold; color:#0f766e; align-self:center;">
+            ${formatMoney(lineTotal)}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+  } catch (err) {
+    container.innerHTML = '<div style="text-align:center; padding:15px; color:#dc2626; font-size:12px;">Adisyon içeriği çekilemedi.</div>';
+  }
+}
+
+// 11. ÜRÜNLER & REÇETE İŞLEMLERİ
 async function loadManagementProducts() {
   try {
     const { data, error } = await client.from("products").select("*").order("created_at", { ascending: false });
@@ -991,45 +1080,6 @@ async function deductStockFromRecipe(orders) {
   }
 }
 
-// 11. ANLIK SATIŞLAR TABLOSU
-async function renderSales() {
-  const list = document.getElementById("salesList");
-  const totalElem = document.getElementById("salesDailyTotal");
-  if (!list) return;
-
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const { data: sales, error } = await client
-      .from("sales")
-      .select("*")
-      .gte("created_at", today)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-    if (!sales || sales.length === 0) {
-      list.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Bugün henüz satış yapılmadı.</div>';
-      if (totalElem) totalElem.textContent = "0,00 TL";
-      return;
-    }
-
-    let sum = 0;
-    list.innerHTML = sales.map(s => {
-      sum += Number(s.total_amount || 0);
-      return `
-        <div class="daily-sales-row">
-          <div><strong>${new Date(s.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}</strong></div>
-          <div><strong style="color:#0f766e;">${escapeHtml(s.payment_type || "Nakit")}</strong></div>
-          <div><strong>${formatMoney(s.total_amount)}</strong></div>
-        </div>
-      `;
-    }).join("");
-
-    if (totalElem) totalElem.textContent = formatMoney(sum);
-  } catch (err) {
-    list.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Satışlar çekilemedi.</div>';
-  }
-}
-
 function formatMoney(val) {
   return Number(val || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
 }
@@ -1076,6 +1126,12 @@ document.addEventListener("click", function(e) {
   if (target.id === "closeRecipeModalBtn") {
     e.preventDefault();
     document.getElementById("recipeModal").style.display = "none";
+    return;
+  }
+
+  if (target.id === "closeReceiptDetailBtn") {
+    e.preventDefault();
+    document.getElementById("receiptDetailModal").style.display = "none";
     return;
   }
 
