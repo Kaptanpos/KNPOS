@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - DİNAMİK TEMA & EXCEL MOTORU */
+/* KAPTAN NİLİ BULUT POS - GENEL AYARLAR ENTEGRE SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -35,7 +35,6 @@ const DEFAULT_TABLES = [
   { id: 5, name: "Masa 05", status: "closed", orders: [], total: 0 }
 ];
 
-// REÇETE TABLOSU KONTROLÜ
 async function checkRecipeTable() {
   try {
     const { data: recipesData, error: recipeErr } = await client.from("recipes").select("*").limit(1);
@@ -60,7 +59,6 @@ async function loadThemeColor() {
 function applyThemeColor(primaryHex) {
   document.documentElement.style.setProperty('--primary', primaryHex);
   
-  // Koyu tonu türetme veya hafif koyulaştırma
   let darkHex = primaryHex;
   if (primaryHex === '#2d5a27') darkHex = '#1e3d1a';
   else if (primaryHex === '#0f766e') darkHex = '#115e59';
@@ -134,7 +132,8 @@ function showPage(pageName) {
     ingredients: document.getElementById("pageIngredients"),
     internet: document.getElementById("pageInternet"),
     products: document.getElementById("pageProducts"),
-    reports: document.getElementById("pageReports")
+    reports: document.getElementById("pageReports"),
+    settings: document.getElementById("pageSettings")
   };
 
   Object.keys(pages).forEach(key => {
@@ -153,6 +152,7 @@ function showPage(pageName) {
     if (pageName === "internet" && txt.includes("İNTERNET")) btn.classList.add("active-nav");
     if (pageName === "products" && txt.includes("ÜRÜNLER")) btn.classList.add("active-nav");
     if (pageName === "reports" && txt.includes("RAPORLAR")) btn.classList.add("active-nav");
+    if (pageName === "settings" && txt.includes("GENEL AYARLAR")) btn.classList.add("active-nav");
   });
 
   if (pageName === "tables") {
@@ -161,12 +161,13 @@ function showPage(pageName) {
     renderSales();
   } else if (pageName === "products") {
     loadManagementProducts();
-    loadPaymentMethods();
   } else if (pageName === "ingredients") {
     loadIngredients();
   } else if (pageName === "reports") {
     initReportDates();
     fetchAndRenderReports();
+  } else if (pageName === "settings") {
+    loadPaymentMethods();
   }
 }
 
@@ -182,6 +183,7 @@ function setupNavigation() {
       else if (txt.includes("İNTERNET")) showPage("internet");
       else if (txt.includes("ÜRÜNLER")) showPage("products");
       else if (txt.includes("RAPORLAR")) showPage("reports");
+      else if (txt.includes("GENEL AYARLAR")) showPage("settings");
     };
   });
 }
@@ -840,9 +842,9 @@ function renderPaymentMethodsList() {
   if (!container) return;
 
   container.innerHTML = paymentMethods.map(m => `
-    <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px solid var(--border-color); font-size:12px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border-color); font-size:13px;">
       <span><strong>${escapeHtml(m.name)}</strong></span>
-      <button type="button" style="background:#dc2626; color:white; border:none; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold; cursor:pointer;" onclick="deletePaymentMethod(${m.id})">Sil</button>
+      <button type="button" style="background:#dc2626; color:white; border:none; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="deletePaymentMethod(${m.id})">Sil</button>
     </div>
   `).join("");
 }
