@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - LOG LİSTELEME KESİN ÇÖZÜM SÜRÜMÜ */
+/* KAPTAN NİLİ BULUT POS - LOG LİSTELEME İLİŞKİSİZ %100 ÇÖZÜM SÜRÜMÜ */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -592,7 +592,6 @@ async function submitProductionEntry() {
 
     await loadIngredientsForDashboard();
     
-    // Eğer malzemeler sayfasındaysak hareketleri de anında güncelle
     if (document.getElementById("pageIngredients").style.display !== "none") {
       await loadIngredients();
       await loadStockMovements();
@@ -608,25 +607,34 @@ async function loadStockMovements() {
   if (!tbody) return;
 
   try {
-    const { data, error } = await client
+    // JOIN ilişkisi yerine veriyi doğrudan tek başına çekip local diziden eşleştiriyoruz (Sıfır Hata)
+    const { data: movements, error: movErr } = await client
       .from("stock_movements")
-      .select("*, ingredients(name, unit)")
+      .select("*")
       .order("created_at", { ascending: false })
       .limit(20);
 
-    if (error) throw error;
+    if (movErr) throw movErr;
 
-    if (!data || data.length === 0) {
+    if (!movements || movements.length === 0) {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:15px;">Henüz üretim hareketi bulunmuyor.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = data.map(m => {
+    // Eğer allIngredients boşsa önce malzemeleri çekelim
+    if (!allIngredients || allIngredients.length === 0) {
+      const { data: ingData } = await client.from("ingredients").select("*");
+      if (ingData) allIngredients = ingData;
+    }
+
+    tbody.innerHTML = movements.map(m => {
       const dateObj = new Date(m.created_at);
       const dateStr = dateObj.toLocaleDateString('tr-TR');
       const timeStr = dateObj.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
-      const ingName = m.ingredients?.name || "Bilinmeyen Malzeme";
-      const unit = m.ingredients?.unit || "gr";
+      
+      const foundIng = allIngredients.find(i => String(i.id) === String(m.ingredient_id));
+      const ingName = foundIng ? foundIng.name : "Malzeme #" + m.ingredient_id;
+      const unit = foundIng ? (foundIng.unit || "gr") : "gr";
 
       return `
         <tr>
@@ -639,7 +647,7 @@ async function loadStockMovements() {
     }).join("");
 
   } catch (err) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#dc2626;">Hareketler yüklenemedi.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#dc2626;">Hareketler yüklenemedi: ' + escapeHtml(err.message) + '</td></tr>';
   }
 }
 
