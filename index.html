@@ -85,13 +85,15 @@
     .table-number { font-size: 16px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 90%; }
     .table-total { font-size: 13px; margin-top: 2px; opacity: 0.9; }
 
-    /* SATIŞLAR TABLOSU */
+    /* SATIŞLAR TABLOSU VE KAYDIRMALI YAPI */
     .daily-sales-container { background: var(--card-bg); border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid var(--border-color); }
+    .sales-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .sales-total-badge { background: #f0fdf4; border: 1px solid #86efac; color: #166534; padding: 6px 14px; border-radius: 10px; font-weight: 800; font-size: 15px; }
+    
     .sales-table-header { display: grid; grid-template-columns: 80px 1fr 120px; padding: 10px 14px; background: #f3f4f6; border-radius: 8px; font-weight: bold; font-size: 12px; color: #4b5563; }
-    .sales-list { max-height: 200px; overflow-y: auto; }
+    .sales-list { max-height: 160px; overflow-y: auto; padding-right: 4px; }
     .daily-sales-row { display: grid; grid-template-columns: 80px 1fr 120px; padding: 12px 14px; border-bottom: 1px solid var(--border-color); font-size: 13px; cursor: pointer; transition: 0.15s; }
     .daily-sales-row:hover { background: #f0fdf4; }
-    .daily-sales-summary { margin-top: 14px; padding: 12px 16px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 10px; color: #166534; font-weight: bold; display: flex; justify-content: space-between; font-size: 15px; }
 
     /* MASA SİPARİŞ MODALI */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; }
@@ -211,7 +213,7 @@
     <header class="top-header">
       <div class="header-brand">
         <h2>KAPTAN NİLİ BULUT POS</h2>
-        <span class="version-tag">v3.3.0 • SETTINGS EDITION</span>
+        <span class="version-tag">v3.3.1 • SCROLLABLE EDITION</span>
       </div>
       
       <nav class="main-nav">
@@ -266,18 +268,22 @@
 
         </div>
 
+        <!-- BUGÜNKÜ ANLIK SATIŞLAR (SAĞDA TOPLAM ROZETİ VE SCROLL LİSTE) -->
         <div class="daily-sales-container">
-          <h3>Bugünkü Anlık Satışlar <span style="font-size:11px; color:var(--text-muted); font-weight:normal;">(Adisyon Detayı İçin Satıra Tıklayın)</span></h3>
+          <div class="sales-header-flex">
+            <div>
+              <h3 style="font-size:16px; font-weight:bold;">Bugünkü Anlık Satışlar</h3>
+              <span style="font-size:11px; color:var(--text-muted);">(Adisyon Detayı İçin Satıra Tıklayın)</span>
+            </div>
+            <div id="salesDailyTotal" class="sales-total-badge">0,00 TL</div>
+          </div>
+
           <div class="sales-table-header">
             <div>Saat</div>
             <div>Ödeme Türü / Kanal</div>
             <div style="text-align: right;">Tutar</div>
           </div>
           <div id="salesList" class="sales-list"></div>
-          <div class="daily-sales-summary">
-            <span>Günlük Toplam</span>
-            <span id="salesDailyTotal">0,00 TL</span>
-          </div>
         </div>
       </section>
 
@@ -522,7 +528,7 @@
 
       </section>
 
-      <!-- 5. GENEL AYARLAR SAYFASI (TEMA VE ÖDEME KANALLARI YÖNETİMİ) -->
+      <!-- 5. GENEL AYARLAR SAYFASI -->
       <section id="pageSettings" style="display: none;">
         <div style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
           
@@ -532,7 +538,7 @@
             <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Dükkanınızın kurumsal rengini seçin, tüm sistem anında o renge bürünsün.</p>
             
             <div class="form-group">
-              <label>Hazır Temalar</label>
+              <label>Hazır Temalar / Özel Renk Seç</label>
               <div class="theme-picker-box">
                 <button type="button" class="theme-color-btn" style="background:#2d5a27;" onclick="changeThemeColor('#2d5a27', '#1e3d1a')" title="Fıstık Yeşili"></button>
                 <button type="button" class="theme-color-btn" style="background:#0f766e;" onclick="changeThemeColor('#0f766e', '#115e59')" title="Artisan Teal"></button>
