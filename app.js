@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - TARİH FİLTRELİ ÜRETİM LOGLARI SÜRÜMÜ */
+/* KAPTAN NİLİ BULUT POS - AKTİF BUTON RENKLENDİRMELİ LOG SÜRÜMÜ */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -610,6 +610,17 @@ function initLogDates() {
   const todayStr = new Date().toISOString().split("T")[0];
   if (startInput && !startInput.value) startInput.value = todayStr;
   if (endInput && !endInput.value) endInput.value = todayStr;
+
+  setActiveLogDateButton("logFilterTodayBtn");
+}
+
+function setActiveLogDateButton(activeBtnId) {
+  ['logFilterTodayBtn', 'logFilterWeekBtn', 'logFilterMonthBtn'].forEach(btnId => {
+    const btn = document.getElementById(btnId);
+    if (btn) btn.classList.remove("active-date-btn");
+  });
+  const activeBtn = document.getElementById(activeBtnId);
+  if (activeBtn) activeBtn.classList.add("active-date-btn");
 }
 
 function setLogDateRange(type) {
@@ -622,12 +633,15 @@ function setLogDateRange(type) {
 
   if (type === "today") {
     startInput.value = todayStr;
+    setActiveLogDateButton("logFilterTodayBtn");
   } else if (type === "week") {
     const firstDay = new Date(now.setDate(now.getDate() - now.getDay() + 1));
     startInput.value = firstDay.toISOString().split("T")[0];
+    setActiveLogDateButton("logFilterWeekBtn");
   } else if (type === "month") {
     const firstDayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
     startInput.value = firstDayStr;
+    setActiveLogDateButton("logFilterMonthBtn");
   }
   loadStockMovements();
 }
@@ -1822,6 +1836,7 @@ document.addEventListener("click", function(e) {
 
   if (target.id === "runLogFilterBtn") {
     e.preventDefault();
+    setActiveLogDateButton(null);
     loadStockMovements();
     return;
   }
