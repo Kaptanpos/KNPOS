@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - ÜRÜNLER YÖNETİMİ ENTEGRELİ SÜRÜM */
+/* KAPTAN NİLİ BULUT POS - MASA EKLE, İSİM DEĞİŞTİR VE SİL ENTEGRELİ SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -20,11 +20,11 @@ let selectedCategory = "Tümü";
 
 const TABLE_STORAGE_KEY = "knpos_tables_v1";
 const DEFAULT_TABLES = [
-  { id: 1, name: "Masa 1", status: "closed", orders: [], total: 0 },
-  { id: 2, name: "Masa 2", status: "closed", orders: [], total: 0 },
-  { id: 3, name: "Masa 3", status: "closed", orders: [], total: 0 },
-  { id: 4, name: "Masa 4", status: "closed", orders: [], total: 0 },
-  { id: 5, name: "Masa 5", status: "closed", orders: [], total: 0 }
+  { id: 1, name: "Masa 01", status: "closed", orders: [], total: 0 },
+  { id: 2, name: "Masa 02", status: "closed", orders: [], total: 0 },
+  { id: 3, name: "Masa 03", status: "closed", orders: [], total: 0 },
+  { id: 4, name: "Masa 04", status: "closed", orders: [], total: 0 },
+  { id: 5, name: "Masa 05", status: "closed", orders: [], total: 0 }
 ];
 
 // 1. GİRİŞ İŞLEMİ
@@ -70,7 +70,7 @@ function logout() {
   }
 }
 
-// 2. SAYFA GEÇİŞLERİ VE AKTİF MENÜ VURGUSU
+// 2. SAYFA GEÇİŞLERİ
 function showPage(pageName) {
   const pages = {
     tables: document.getElementById("pageTables"),
@@ -87,7 +87,6 @@ function showPage(pageName) {
   const activePage = pages[pageName] || pages.tables;
   if (activePage) activePage.style.display = "block";
 
-  // Header Navigasyon Butonlarının Aktifliğini Güncelle
   const navBtns = document.querySelectorAll(".main-nav button");
   navBtns.forEach(btn => {
     const txt = (btn.textContent || "").trim().toUpperCase();
@@ -124,7 +123,7 @@ function setupNavigation() {
   });
 }
 
-// 3. MASA YÖNETİMİ
+// 3. MASA YÖNETİMİ (EKLE, İSİM DEĞİŞTİR, SİL)
 function getTables() {
   try {
     const saved = JSON.parse(localStorage.getItem(TABLE_STORAGE_KEY));
@@ -149,16 +148,65 @@ function renderTables() {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `table-card ${table.status || 'closed'}`;
-    const num = String(table.name || "").replace(/[^0-9]/g, "") || table.id;
     
     button.innerHTML = `
-      <div class="table-number">${String(num).padStart(2, "0")}</div>
+      <div class="table-number">${escapeHtml(table.name)}</div>
       ${table.status === "open" ? `<div class="table-total">${formatMoney(table.total)}</div>` : ""}
     `;
     
     button.onclick = () => openTableModal(table.id);
     grid.appendChild(button);
   });
+}
+
+function addNewTable() {
+  const tables = getTables();
+  const nextNum = tables.length + 1;
+  const newTable = {
+    id: Date.now(),
+    name: `Masa ${String(nextNum).padStart(2, "0")}`,
+    status: "closed",
+    orders: [],
+    total: 0
+  };
+
+  tables.push(newTable);
+  saveTables(tables);
+  renderTables();
+}
+
+function renameTable() {
+  if (!selectedTableId) return;
+  const tables = getTables();
+  const table = tables.find(t => t.id === selectedTableId);
+  if (!table) return;
+
+  const newName = prompt("Yeni Masa İsmini Giriniz:", table.name);
+  if (newName && newName.trim() !== "") {
+    table.name = newName.trim();
+    saveTables(tables);
+    document.getElementById("modalTableName").textContent = table.name;
+    renderTables();
+  }
+}
+
+function deleteTable() {
+  if (!selectedTableId) return;
+  const tables = getTables();
+  const table = tables.find(t => t.id === selectedTableId);
+  if (!table) return;
+
+  if (table.orders && table.orders.length > 0) {
+    alert("İçinde açık sipariş olan masayı silemezsiniz! Önce masayı boşaltın.");
+    return;
+  }
+
+  if (confirm(`'${table.name}' masasını tamamen silmek istediğinize emin misiniz?`)) {
+    const updated = tables.filter(t => t.id !== selectedTableId);
+    saveTables(updated);
+    closeTableModal();
+    renderTables();
+  }
 }
 
 // 4. KASA DURUMU VE KONTROLÜ
@@ -428,7 +476,7 @@ function changeQty(productId, delta) {
   renderTables();
 }
 
-// 7. ÜRÜN YÖNETİMİ YENİ BÖLÜMÜ (SUPABASE YÖNETİMİ)
+// 7. ÜRÜN YÖNETİMİ
 async function loadManagementProducts() {
   try {
     const { data, error } = await client
@@ -503,12 +551,10 @@ async function saveProductFromForm() {
 
   try {
     if (editId) {
-      // Güncelleme
       const { error } = await client.from("products").update(payload).eq("id", editId);
       if (error) throw error;
       alert("Ürün başarıyla güncellendi!");
     } else {
-      // Yeni Ekleme
       payload.active = true;
       const { error } = await client.from("products").insert(payload);
       if (error) throw error;
@@ -517,7 +563,7 @@ async function saveProductFromForm() {
 
     resetProductForm();
     await loadManagementProducts();
-    await loadProducts(); // Satış kataloğunu da güncelle
+    await loadProducts();
 
   } catch (err) {
     alert("Ürün kaydedilemedi: " + err.message);
@@ -663,13 +709,31 @@ document.addEventListener("click", function(e) {
     closeTableModal();
     return;
   }
+
+  if (target.id === "addNewTableBtn") {
+    e.preventDefault();
+    addNewTable();
+    return;
+  }
+
+  if (target.id === "renameTableBtn") {
+    e.preventDefault();
+    renameTable();
+    return;
+  }
+
+  if (target.id === "deleteTableBtn") {
+    e.preventDefault();
+    deleteTable();
+    return;
+  }
 });
 
 // TIKLAMA VE ETKİLEŞİM DİNLENMELERİ
 function bindEvents() {
   setupNavigation();
 
-  // Ürün Yönetimi Buton Dinleyicileri
+  // Ürün Yönetimi
   const saveProdBtn = document.getElementById("saveProductBtn");
   if (saveProdBtn) saveProdBtn.onclick = saveProductFromForm;
 
