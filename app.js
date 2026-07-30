@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - MASA EKLE, İSİM DEĞİŞTİR VE SİL ENTEGRELİ SÜRÜM */
+/* KAPTAN NİLİ BULUT POS - REÇETE TABLOSU KONTROLÜ EKLENMİŞ SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -16,6 +16,7 @@ let currentCashSession = null;
 let selectedTableId = null;
 let saleProducts = [];
 let allManagementProducts = [];
+let allIngredients = [];
 let selectedCategory = "Tümü";
 
 const TABLE_STORAGE_KEY = "knpos_tables_v1";
@@ -26,6 +27,37 @@ const DEFAULT_TABLES = [
   { id: 4, name: "Masa 04", status: "closed", orders: [], total: 0 },
   { id: 5, name: "Masa 05", status: "closed", orders: [], total: 0 }
 ];
+
+// REÇETE TABLOSU VAR MI KONTROL ETME FONKSİYONU
+async function checkRecipeTable() {
+  try {
+    const { data: recipesData, error: recipeErr } = await client
+      .from("recipes")
+      .select("*")
+      .limit(1);
+
+    if (!recipeErr) {
+      console.log("✅ 'recipes' tablosu Supabase veritabanında ZATEN VAR!", recipesData);
+      return "recipes";
+    }
+
+    const { data: piData, error: piErr } = await client
+      .from("product_ingredients")
+      .select("*")
+      .limit(1);
+
+    if (!piErr) {
+      console.log("✅ 'product_ingredients' tablosu Supabase veritabanında ZATEN VAR!", piData);
+      return "product_ingredients";
+    }
+
+    console.log("⚠️ Henüz veritabanında bir reçete tablosu yok.");
+    return null;
+
+  } catch (err) {
+    console.error("Tablo kontrol hatası:", err.message);
+  }
+}
 
 // 1. GİRİŞ İŞLEMİ
 async function login() {
@@ -55,6 +87,7 @@ async function login() {
     await loadCashStatus();
     await loadProducts();
     await renderSales();
+    await checkRecipeTable(); // Reçete tablosunu kontrol et
 
   } catch (err) {
     alert("Bağlantı hatası: " + err.message);
@@ -104,6 +137,8 @@ function showPage(pageName) {
     renderSales();
   } else if (pageName === "products") {
     loadManagementProducts();
+  } else if (pageName === "ingredients") {
+    loadIngredients();
   }
 }
 
@@ -123,7 +158,7 @@ function setupNavigation() {
   });
 }
 
-// 3. MASA YÖNETİMİ (EKLE, İSİM DEĞİŞTİR, SİL)
+// 3. MASA YÖNETİMİ
 function getTables() {
   try {
     const saved = JSON.parse(localStorage.getItem(TABLE_STORAGE_KEY));
@@ -476,7 +511,142 @@ function changeQty(productId, delta) {
   renderTables();
 }
 
-// 7. ÜRÜN YÖNETİMİ
+// 7. MALZEMELER MODÜLÜ
+async function loadIngredients() {
+  try {
+    const { data, error } = await client
+      .from("ingredients")
+      .select("*")
+      .order("name", { ascending: true });
+
+    if (error) throw error;
+    allIngredients = data || [];
+    renderIngredientsTable(allIngredients);
+  } catch (err) {
+    alert("Malzemeler yüklenirken hata oluştu: " + err.message);
+  }
+}
+
+function renderIngredientsTable(ingredients) {
+  const tbody = document.getElementById("ingredientsTbody");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+  if (ingredients.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:20px;">Kayıtlı malzeme bulunamadı.</td></tr>';
+    return;
+  }
+
+  ingredients.forEach(ing => {
+    const tr = document.createElement("tr");
+    const isCritical = Number(ing.stock_quantity) <= Number(ing.min_stock_level || 0);
+
+    tr.innerHTML = `
+      <td><strong>${escapeHtml(ing.name)}</strong></td>
+      <td><strong style="font-size:15px; color:${isCritical ? '#dc2626' : '#0f766e'};">${ing.stock_quantity}</strong></td>
+      <td>${escapeHtml(ing.unit || 'Kg')}</td>
+      <td>
+        ${isCritical ? '<span class="badge-critical">⚠️ Kritik Stok</span>' : '<span class="badge-active">Normal</span>'}
+      </td>
+      <td style="text-align: right;">
+        <button type="button" class="btn-edit" onclick="editIngredient(${ing.id})">Düzenle</button>
+        <button type="button" class="btn-toggle" onclick="adjustIngredientStock(${ing.id})">Stok Ekle/Düş</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function saveIngredientFromForm() {
+  const editId = document.getElementById("editIngId").value;
+  const name = document.getElementById("ingNameInput").value.trim();
+  const unit = document.getElementById("ingUnitSelect").value;
+  const stock = parseFloat(document.getElementById("ingStockInput").value);
+  const minStock = parseFloat(document.getElementById("ingMinInput").value);
+
+  if (!name || isNaN(stock) || stock < 0) {
+    alert("Lütfen geçerli bir malzeme adı ve stok miktarı giriniz.");
+    return;
+  }
+
+  const payload = {
+    name: name,
+    unit: unit,
+    stock_quantity: stock,
+    min_stock_level: isNaN(minStock) ? 0 : minStock
+  };
+
+  try {
+    if (editId) {
+      const { error } = await client.from("ingredients").update(payload).eq("id", editId);
+      if (error) throw error;
+      alert("Malzeme başarıyla güncellendi!");
+    } else {
+      const { error } = await client.from("ingredients").insert(payload);
+      if (error) throw error;
+      alert("Yeni malzeme eklendi!");
+    }
+
+    resetIngForm();
+    await loadIngredients();
+
+  } catch (err) {
+    alert("Malzeme kaydedilemedi: " + err.message);
+  }
+}
+
+function editIngredient(id) {
+  const ing = allIngredients.find(i => i.id === id);
+  if (!ing) return;
+
+  document.getElementById("editIngId").value = ing.id;
+  document.getElementById("ingNameInput").value = ing.name;
+  document.getElementById("ingUnitSelect").value = ing.unit || "Kg";
+  document.getElementById("ingStockInput").value = ing.stock_quantity;
+  document.getElementById("ingMinInput").value = ing.min_stock_level || 0;
+
+  document.getElementById("ingFormTitle").textContent = "Malzeme Düzenle";
+  document.getElementById("resetIngFormBtn").style.display = "inline-block";
+}
+
+function resetIngForm() {
+  document.getElementById("editIngId").value = "";
+  document.getElementById("ingNameInput").value = "";
+  document.getElementById("ingStockInput").value = "";
+  document.getElementById("ingMinInput").value = "";
+  document.getElementById("ingFormTitle").textContent = "Yeni Malzeme Ekle";
+  document.getElementById("resetIngFormBtn").style.display = "none";
+}
+
+async function adjustIngredientStock(id) {
+  const ing = allIngredients.find(i => i.id === id);
+  if (!ing) return;
+
+  const amountStr = prompt(`'${ing.name}' için eklenecek (+) veya düşülecek (-) miktarı giriniz (Örn: 5 veya -2):`);
+  if (!amountStr) return;
+
+  const delta = parseFloat(amountStr);
+  if (isNaN(delta)) {
+    alert("Geçersiz miktar girdiniz.");
+    return;
+  }
+
+  const newStock = Math.max(0, Number(ing.stock_quantity) + delta);
+
+  try {
+    const { error } = await client
+      .from("ingredients")
+      .update({ stock_quantity: newStock })
+      .eq("id", id);
+
+    if (error) throw error;
+    await loadIngredients();
+  } catch (err) {
+    alert("Stok güncellenemedi: " + err.message);
+  }
+}
+
+// 8. ÜRÜN YÖNETİMİ
 async function loadManagementProducts() {
   try {
     const { data, error } = await client
@@ -608,7 +778,7 @@ async function toggleProductActive(id, currentActive) {
   }
 }
 
-// 8. ÖDEME MODALI VE KAPATMA
+// 9. ÖDEME MODALI VE KAPATMA
 function openPaymentModal() {
   const table = getTables().find(t => t.id === selectedTableId);
   const paymentModal = document.getElementById("paymentModal");
@@ -646,7 +816,7 @@ function updatePaymentSummary() {
   }
 }
 
-// 9. ANLIK SATIŞLAR TABLOSU
+// 10. ANLIK SATIŞLAR TABLOSU
 async function renderSales() {
   const list = document.getElementById("salesList");
   const totalElem = document.getElementById("salesDailyTotal");
@@ -733,7 +903,23 @@ document.addEventListener("click", function(e) {
 function bindEvents() {
   setupNavigation();
 
-  // Ürün Yönetimi
+  // Malzemeler
+  const saveIngBtn = document.getElementById("saveIngBtn");
+  if (saveIngBtn) saveIngBtn.onclick = saveIngredientFromForm;
+
+  const resetIngBtn = document.getElementById("resetIngFormBtn");
+  if (resetIngBtn) resetIngBtn.onclick = resetIngForm;
+
+  const searchIngInput = document.getElementById("searchIngInput");
+  if (searchIngInput) {
+    searchIngInput.oninput = (e) => {
+      const q = e.target.value.toLowerCase();
+      const filtered = allIngredients.filter(i => i.name.toLowerCase().includes(q));
+      renderIngredientsTable(filtered);
+    };
+  }
+
+  // Ürünler
   const saveProdBtn = document.getElementById("saveProductBtn");
   if (saveProdBtn) saveProdBtn.onclick = saveProductFromForm;
 
@@ -786,7 +972,7 @@ function bindEvents() {
   if (allCardBtn) {
     allCardBtn.onclick = () => {
       const table = getTables().find(t => t.id === selectedTableId);
-      if (table && payCardInput) {
+      if (table && payCashInput) {
         payCardInput.value = Number(table.total || 0).toFixed(2);
         if (payCashInput) payCashInput.value = "0";
         updatePaymentSummary();
