@@ -10,6 +10,8 @@
   <!-- Chart.js ve DataLabels Eklentisi CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <!-- SheetJS (Excel Import / Export) CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -138,12 +140,21 @@
     .btn-recipe { background: #8b5cf6; color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; margin-left:4px; }
     .btn-toggle { background: #64748b; color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; margin-left: 4px; }
 
+    /* EXCEL BUTONLARI */
+    .excel-bar { display: flex; gap: 10px; margin-bottom: 15px; background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0; align-items: center; }
+    .btn-excel-export { background: #16a34a; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px; }
+    .btn-excel-import { background: #2563eb; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
+
     /* RAPORLAR ÖZEL VE SEKMELİ STİL */
     .report-card { background: white; border-radius: 14px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
     .chart-container { position: relative; height: 340px; width: 100%; margin-top: 15px; }
     .filter-bar { display: flex; gap: 10px; align-items: center; background: white; padding: 14px; border-radius: 12px; margin-bottom: 15px; flex-wrap: wrap; }
     .filter-bar input, .filter-bar select { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; }
     
+    /* FİLTRE BUTONLARI AKTİF / PASİF DURUMU */
+    .btn-date-filter { background: #64748b; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer; transition: 0.2s; }
+    .btn-date-filter.active-date-btn { background: #0f766e !important; box-shadow: 0 2px 6px rgba(15, 118, 110, 0.3); }
+
     /* RAPOR SEKMELERİ */
     .report-tab-strip { display: flex; gap: 10px; margin-bottom: 20px; }
     .report-tab-btn { flex: 1; padding: 12px; background: white; border: 2px solid #e2e8f0; border-radius: 12px; font-weight: bold; font-size: 14px; color: #64748b; cursor: pointer; transition: 0.2s; text-align: center; }
@@ -253,6 +264,16 @@
 
       <!-- 2. MALZEMELER / YARI MAMUL SAYFASI -->
       <section id="pageIngredients" style="display: none;">
+        
+        <!-- EXCEL İŞLEM ÇUBUĞU -->
+        <div class="excel-bar">
+          <span style="font-size:13px; font-weight:bold; color:#0f766e;">📥 Excel İşlemleri (Malzemeler):</span>
+          <button type="button" class="btn-excel-export" onclick="exportIngredientsExcel()">Excel'e Aktar (İndir)</button>
+          <label class="btn-excel-import">
+            📂 Excel'den Yükle <input type="file" id="importIngredientsFile" accept=".xlsx, .xls" style="display:none;" onchange="importIngredientsExcel(event)">
+          </label>
+        </div>
+
         <div class="admin-layout">
           
           <div class="admin-form-card">
@@ -311,6 +332,16 @@
 
       <!-- 3. ÜRÜNLER VE ÖDEME KANALLARI SAYFASI -->
       <section id="pageProducts" style="display: none;">
+        
+        <!-- EXCEL İŞLEM ÇUBUĞU -->
+        <div class="excel-bar">
+          <span style="font-size:13px; font-weight:bold; color:#0f766e;">📥 Excel İşlemleri (Ürünler & Fiyatlar):</span>
+          <button type="button" class="btn-excel-export" onclick="exportProductsExcel()">Excel'e Aktar (İndir)</button>
+          <label class="btn-excel-import">
+            📂 Excel'den Yükle <input type="file" id="importProductsFile" accept=".xlsx, .xls" style="display:none;" onchange="importProductsExcel(event)">
+          </label>
+        </div>
+
         <div class="admin-layout">
           
           <div class="admin-form-card">
@@ -393,9 +424,9 @@
           <span>-</span>
           <input type="date" id="reportEndDate">
 
-          <button type="button" id="reportFilterTodayBtn" class="btn-secondary" style="padding:6px 12px; font-size:12px;">Bugün</button>
-          <button type="button" id="reportFilterWeekBtn" class="btn-secondary" style="padding:6px 12px; font-size:12px;">Bu Hafta</button>
-          <button type="button" id="reportFilterMonthBtn" class="btn-secondary" style="padding:6px 12px; font-size:12px;">Bu Ay</button>
+          <button type="button" id="reportFilterTodayBtn" class="btn-date-filter" onclick="setReportDateRange('today')">Bugün</button>
+          <button type="button" id="reportFilterWeekBtn" class="btn-date-filter" onclick="setReportDateRange('week')">Bu Hafta</button>
+          <button type="button" id="reportFilterMonthBtn" class="btn-date-filter" onclick="setReportDateRange('month')">Bu Ay</button>
           
           <button type="button" id="runReportBtn" class="btn-primary" style="margin-left:auto;">📊 RAPORU GETİR</button>
         </div>
@@ -466,7 +497,7 @@
         <div id="tabProducts" class="report-tab-content" style="display:none;">
           
           <div class="report-card" style="margin-bottom:20px;">
-            <h3 style="font-size:15px; font-weight:bold; color:#0f766e; margin-bottom:10px;">En Çok Satan Ürünler (Top 10 Ciro)</h3>
+            <h3 style="font-size:15px; font-weight:bold; color:#0f766e; margin-bottom:10px;">En Çok Satan Ürünler (Top 10 Ciro - Farklı Renkler)</h3>
             <div class="chart-container">
               <canvas id="productChart"></canvas>
             </div>
@@ -505,6 +536,17 @@
     <div class="recipe-modal-card">
       <h3 id="recipeModalTitle" style="color:#0f766e; margin-bottom:15px;">Ürün Reçetesi</h3>
       
+      <!-- EXCEL İŞLEM ÇUBUĞU (REÇETE) -->
+      <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid #e2e8f0;">
+        <span style="font-size:11px; font-weight:bold; color:#0f766e;">Reçete Excel:</span>
+        <div>
+          <button type="button" class="btn-excel-export" style="padding:4px 8px; font-size:11px;" onclick="exportRecipeExcel()">İndir</button>
+          <label class="btn-excel-import" style="padding:4px 8px; font-size:11px; display:inline-block; cursor:pointer;">
+            Yükle <input type="file" id="importRecipeFile" accept=".xlsx, .xls" style="display:none;" onchange="importRecipeExcel(event)">
+          </label>
+        </div>
+      </div>
+
       <div style="background:#f8fafc; padding:12px; border-radius:10px; margin-bottom:15px; border:1px solid #e2e8f0;">
         <label style="font-size:12px; font-weight:bold; color:#475569;">Reçeteye Malzeme Ekle:</label>
         <div style="display:flex; gap:8px; margin-top:6px;">
@@ -515,7 +557,7 @@
       </div>
 
       <h4 style="font-size:13px; font-weight:bold; color:#64748b; margin-bottom:8px;">Reçetedeki Mevcut Bileşenler:</h4>
-      <div id="recipeItemsList" style="max-height:200px; overflow-y:auto; margin-bottom:20px;"></div>
+      <div id="recipeItemsList" style="max-height:180px; overflow-y:auto; margin-bottom:20px;"></div>
 
       <div style="text-align:right;">
         <button type="button" id="closeRecipeModalBtn" class="btn-secondary">KAPAT</button>
