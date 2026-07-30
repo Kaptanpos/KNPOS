@@ -109,16 +109,11 @@
     .cart-controls { display: flex; align-items: center; gap: 6px; }
     .qty-button { width: 26px; height: 26px; border: none; border-radius: 6px; background: #e2e8f0; font-weight: bold; cursor: pointer; }
     
-    /* DİNAMİK ÖDEME MODALI STİLLERİ */
-    .payment-modal-card { background: white; padding: 24px; border-radius: 16px; width: 460px; max-width: 95vw; text-align: center; }
-    .dynamic-payment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; margin: 15px 0; max-height: 280px; overflow-y: auto; padding-right: 4px; }
-    .payment-item label { font-size: 11px; font-weight: bold; color: #475569; display: block; margin-bottom: 2px; }
-    .payment-item input { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: bold; font-size: 13px; }
-    .btn-quick-pay { width: 100%; padding: 6px; margin-top: 4px; cursor: pointer; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 11px; font-weight: bold; color: #0f766e; }
-    .btn-quick-pay:hover { background: #e2e8f0; }
-    .payment-totals { display: flex; justify-content: space-between; font-weight: bold; margin: 15px 0; background: #f8fafc; padding: 12px; border-radius: 8px; }
-    .modal-actions { display: flex; gap: 10px; }
-    .modal-actions button { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    /* SADE TEK TIK ÖDEME MODALI STİLLERİ */
+    .payment-modal-card { background: white; padding: 24px; border-radius: 20px; width: 440px; max-width: 95vw; text-align: center; }
+    .quick-payment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0; max-height: 320px; overflow-y: auto; padding-right: 4px; }
+    .btn-pay-channel-large { width: 100%; padding: 16px 10px; background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 12px; font-size: 15px; font-weight: 800; color: #0f766e; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-pay-channel-large:hover { background: #0f766e; color: white; border-color: #0f766e; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(15, 118, 110, 0.2); }
 
     /* YÖNETİM SAYFALARI STİLLERİ */
     .admin-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start; }
@@ -447,23 +442,17 @@
     </div>
   </div>
 
-  <!-- DİNAMİK ÖDEME MODALI -->
+  <!-- SADE & TEK TIK ÖDEME MODALI -->
   <div id="paymentModal" class="modal-overlay" style="display: none;">
     <div class="payment-modal-card">
-      <h3 style="margin-bottom:4px; color:#0f766e;">Hesap Kapatma / Ödeme Kanalı</h3>
-      <p id="paymentTotalTitle" style="margin-bottom:12px; font-size:13px; color:#475569;"></p>
+      <h3 style="margin-bottom:4px; color:#0f766e;">Ödeme Türünü Seçiniz</h3>
+      <p id="paymentTotalTitle" style="margin-bottom:12px; font-size:14px; color:#475569;"></p>
       
-      <!-- Veritabanından gelen kanallarla dolacak grid -->
-      <div id="dynamicPaymentGrid" class="dynamic-payment-grid"></div>
+      <!-- Tek Tıkla Ödeme Butonlarının Dizileceği Grid -->
+      <div id="quickPaymentGrid" class="quick-payment-grid"></div>
 
-      <div class="payment-totals">
-        <div>Alınan: <span id="collectedAmount" style="color:#166534;">0,00 TL</span></div>
-        <div>Kalan: <span id="remainingAmount" style="color:#dc2626;">0,00 TL</span></div>
-      </div>
-
-      <div class="modal-actions">
-        <button type="button" id="completePaymentButton" class="btn-primary">SATIŞI TAMAMLA</button>
-        <button type="button" id="cancelPaymentButton" class="btn-secondary">İPTAL</button>
+      <div style="text-align:center; margin-top:10px;">
+        <button type="button" id="cancelPaymentButton" class="btn-secondary" style="width:100%; padding:10px;">İPTAL / VAZGEÇ</button>
       </div>
     </div>
   </div>
