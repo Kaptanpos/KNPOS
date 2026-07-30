@@ -109,12 +109,16 @@
     .cart-controls { display: flex; align-items: center; gap: 6px; }
     .qty-button { width: 26px; height: 26px; border: none; border-radius: 6px; background: #e2e8f0; font-weight: bold; cursor: pointer; }
     
-    .payment-modal-card { background: white; padding: 24px; border-radius: 16px; width: 380px; text-align: center; }
-    .payment-inputs { text-align: left; margin: 15px 0; }
-    .payment-inputs input { width: 100%; padding: 10px; margin: 4px 0 8px 0; border: 1px solid #cbd5e1; border-radius: 8px; }
-    .payment-totals { display: flex; justify-content: space-between; font-weight: bold; margin: 15px 0; }
+    /* DİNAMİK ÖDEME MODALI STİLLERİ */
+    .payment-modal-card { background: white; padding: 24px; border-radius: 16px; width: 460px; max-width: 95vw; text-align: center; }
+    .dynamic-payment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; margin: 15px 0; max-height: 280px; overflow-y: auto; padding-right: 4px; }
+    .payment-item label { font-size: 11px; font-weight: bold; color: #475569; display: block; margin-bottom: 2px; }
+    .payment-item input { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: bold; font-size: 13px; }
+    .btn-quick-pay { width: 100%; padding: 6px; margin-top: 4px; cursor: pointer; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 11px; font-weight: bold; color: #0f766e; }
+    .btn-quick-pay:hover { background: #e2e8f0; }
+    .payment-totals { display: flex; justify-content: space-between; font-weight: bold; margin: 15px 0; background: #f8fafc; padding: 12px; border-radius: 8px; }
     .modal-actions { display: flex; gap: 10px; }
-    .modal-actions button { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .modal-actions button { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
     /* YÖNETİM SAYFALARI STİLLERİ */
     .admin-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start; }
@@ -223,7 +227,7 @@
           <h3>Bugünkü Anlık Satışlar</h3>
           <div class="sales-table-header">
             <div>Saat</div>
-            <div>Ödeme Türü</div>
+            <div>Ödeme Türü / Kanal</div>
             <div style="text-align: right;">Tutar</div>
           </div>
           <div id="salesList" class="sales-list"></div>
@@ -234,7 +238,7 @@
         </div>
       </section>
 
-      <!-- 2. MALZEMELER / YARI MAMUL SAYFASI (VERİTABANI KISITLAMASINA TAM UYUMLU BİRİMLER) -->
+      <!-- 2. MALZEMELER / YARI MAMUL SAYFASI -->
       <section id="pageIngredients" style="display: none;">
         <div class="admin-layout">
           
@@ -292,7 +296,7 @@
         </div>
       </section>
 
-      <!-- 3. ÜRÜNLER SAYFASI -->
+      <!-- 3. ÜRÜNLER VE ÖDEME KANALLARI SAYFASI -->
       <section id="pageProducts" style="display: none;">
         <div class="admin-layout">
           
@@ -331,6 +335,15 @@
               <button type="button" id="saveProductBtn" class="btn-primary" style="flex:1;">KAYDET</button>
               <button type="button" id="resetProductFormBtn" class="btn-secondary" style="display:none;">İPTAL</button>
             </div>
+
+            <!-- ÖDEME KANALLARI YÖNETİMİ ALANI -->
+            <hr style="margin:20px 0; border:none; border-top:1px dashed #cbd5e1;">
+            <h3 style="font-size:15px; font-weight:bold; color:#0f766e; margin-bottom:10px;">💳 Ödeme Kanalları Yönetimi</h3>
+            <div style="display:flex; gap:6px; margin-bottom:10px;">
+              <input type="text" id="newPaymentMethodInput" placeholder="Örn: Migros Yemek" style="flex:1; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+              <button type="button" id="addPaymentMethodBtn" class="btn-primary" style="padding:8px 12px; font-size:12px;">EKLE</button>
+            </div>
+            <div id="paymentMethodsList" style="max-height:150px; overflow-y:auto; border:1px solid #f1f5f9; padding:6px; border-radius:8px;"></div>
           </div>
 
           <div class="admin-list-card">
@@ -434,21 +447,14 @@
     </div>
   </div>
 
-  <!-- ÖDEME MODALI -->
+  <!-- DİNAMİK ÖDEME MODALI -->
   <div id="paymentModal" class="modal-overlay" style="display: none;">
     <div class="payment-modal-card">
-      <h3 style="margin-bottom:8px;">Hesap Kapatma / Ödeme</h3>
-      <p id="paymentTotalTitle" style="margin-bottom:15px; font-size:14px; color:#475569;"></p>
+      <h3 style="margin-bottom:4px; color:#0f766e;">Hesap Kapatma / Ödeme Kanalı</h3>
+      <p id="paymentTotalTitle" style="margin-bottom:12px; font-size:13px; color:#475569;"></p>
       
-      <div class="payment-inputs">
-        <label style="font-size:12px; font-weight:bold; color:#64748b;">Nakit Tutarı:</label>
-        <input type="number" id="payCash" value="0" step="0.01">
-        <button type="button" id="allCashButton" style="width:100%; padding:8px; margin-bottom:12px; cursor:pointer; background:#e2e8f0; border:none; border-radius:6px; font-weight:bold;">Tümü Nakit</button>
-        
-        <label style="font-size:12px; font-weight:bold; color:#64748b;">Kredi Kartı Tutarı:</label>
-        <input type="number" id="payCard" value="0" step="0.01">
-        <button type="button" id="allCardButton" style="width:100%; padding:8px; cursor:pointer; background:#e2e8f0; border:none; border-radius:6px; font-weight:bold;">Tümü Kart</button>
-      </div>
+      <!-- Veritabanından gelen kanallarla dolacak grid -->
+      <div id="dynamicPaymentGrid" class="dynamic-payment-grid"></div>
 
       <div class="payment-totals">
         <div>Alınan: <span id="collectedAmount" style="color:#166534;">0,00 TL</span></div>
