@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - REÇETE YÖNETİMİ & OTOMATİK STOK DÜŞÜMLÜ SÜRÜM */
+/* KAPTAN NİLİ BULUT POS - ESNEK STOK & REÇETE ENTEGRELİ TAM SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -472,7 +472,7 @@ function changeQty(productId, delta) {
   renderTables();
 }
 
-// 7. MALZEMELER MODÜLÜ
+// 7. MALZEMELER / YARI MAMUL MODÜLÜ (DÜZELTİLMİŞ)
 async function loadIngredients() {
   try {
     const { data, error } = await client.from("ingredients").select("*").order("name", { ascending: true });
@@ -496,11 +496,15 @@ function renderIngredientsTable(ingredients) {
 
   ingredients.forEach(ing => {
     const tr = document.createElement("tr");
-    const isCritical = Number(ing.stock_quantity) <= Number(ing.min_stock_level || 0);
+    
+    // Esnek Stok Kolonu Okuyucu
+    const currentStock = ing.stock_quantity ?? ing.stock ?? ing.quantity ?? 0;
+    const minStock = ing.min_stock_level ?? ing.min_stock ?? 0;
+    const isCritical = Number(currentStock) <= Number(minStock);
 
     tr.innerHTML = `
       <td><strong>${escapeHtml(ing.name)}</strong></td>
-      <td><strong style="font-size:15px; color:${isCritical ? '#dc2626' : '#0f766e'};">${ing.stock_quantity}</strong></td>
+      <td><strong style="font-size:15px; color:${isCritical ? '#dc2626' : '#0f766e'};">${currentStock}</strong></td>
       <td>${escapeHtml(ing.unit || 'Gram')}</td>
       <td>${isCritical ? '<span class="badge-critical">⚠️ Kritik Stok</span>' : '<span class="badge-active">Normal</span>'}</td>
       <td style="text-align: right;">
@@ -524,13 +528,19 @@ async function saveIngredientFromForm() {
     return;
   }
 
-  const payload = { name: name, unit: unit, stock_quantity: stock, min_stock_level: isNaN(minStock) ? 0 : minStock };
+  const payload = {
+    name: name,
+    unit: unit,
+    stock_quantity: stock,
+    stock: stock,
+    min_stock_level: isNaN(minStock) ? 0 : minStock
+  };
 
   try {
     if (editId) {
       const { error } = await client.from("ingredients").update(payload).eq("id", editId);
       if (error) throw error;
-      alert("Malzeme başarıyla güncellendi!");
+      alert("Malzeme ve birim başarıyla güncellendi!");
     } else {
       const { error } = await client.from("ingredients").insert(payload);
       if (error) throw error;
@@ -549,11 +559,19 @@ function editIngredient(id) {
   const ing = allIngredients.find(i => i.id === id);
   if (!ing) return;
 
+  const currentStock = ing.stock_quantity ?? ing.stock ?? ing.quantity ?? 0;
+  const minStock = ing.min_stock_level ?? ing.min_stock ?? 0;
+
   document.getElementById("editIngId").value = ing.id;
   document.getElementById("ingNameInput").value = ing.name;
-  document.getElementById("ingUnitSelect").value = ing.unit || "Gram";
-  document.getElementById("ingStockInput").value = ing.stock_quantity;
-  document.getElementById("ingMinInput").value = ing.min_stock_level || 0;
+  
+  const unitSelect = document.getElementById("ingUnitSelect");
+  if (unitSelect) {
+    unitSelect.value = ing.unit || "Gram";
+  }
+
+  document.getElementById("ingStockInput").value = currentStock;
+  document.getElementById("ingMinInput").value = minStock;
 
   document.getElementById("ingFormTitle").textContent = "Malzeme Düzenle";
   document.getElementById("resetIngFormBtn").style.display = "inline-block";
@@ -572,6 +590,7 @@ async function adjustIngredientStock(id) {
   const ing = allIngredients.find(i => i.id === id);
   if (!ing) return;
 
+  const currentStock = ing.stock_quantity ?? ing.stock ?? ing.quantity ?? 0;
   const amountStr = prompt(`'${ing.name}' için eklenecek (+) veya düşülecek (-) miktarı giriniz (Örn: 500 veya -250):`);
   if (!amountStr) return;
 
@@ -581,10 +600,10 @@ async function adjustIngredientStock(id) {
     return;
   }
 
-  const newStock = Math.max(0, Number(ing.stock_quantity) + delta);
+  const newStock = Math.max(0, Number(currentStock) + delta);
 
   try {
-    const { error } = await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", id);
+    const { error } = await client.from("ingredients").update({ stock_quantity: newStock, stock: newStock }).eq("id", id);
     if (error) throw error;
     await loadIngredients();
   } catch (err) {
@@ -706,7 +725,7 @@ async function toggleProductActive(id, currentActive) {
   }
 }
 
-// --- REÇETE DÜZENLEME MODAL FONKSİYONLARI ---
+// REÇETE DÜZENLEME MODAL FONKSİYONLARI
 async function openRecipeModal(productId) {
   selectedRecipeProductId = productId;
   const product = allManagementProducts.find(p => p.id === productId);
@@ -714,7 +733,6 @@ async function openRecipeModal(productId) {
 
   document.getElementById("recipeModalTitle").textContent = `🧪 ${product.name} Reçetesi`;
 
-  // Malzeme seçeneklerini yükle
   await loadIngredients();
   const select = document.getElementById("recipeIngSelect");
   if (select) {
@@ -831,11 +849,9 @@ function updatePaymentSummary() {
   }
 }
 
-// SATIŞI TAMAMLAYIP REÇETEDEN STOK DÜŞME ENTEGRASYONU
 async function deductStockFromRecipe(orders) {
   try {
     for (const item of orders) {
-      // Satılan her ürünün reçetesini çek
       const { data: recipeItems, error } = await client
         .from("recipes")
         .select("ingredient_id, quantity_required")
@@ -844,22 +860,20 @@ async function deductStockFromRecipe(orders) {
       if (error || !recipeItems) continue;
 
       for (const r of recipeItems) {
-        // Satılan adet x Reçetede gereken miktar
         const totalDeduct = Number(r.quantity_required) * Number(item.quantity);
 
-        // Mevcut stok verisini çek
         const { data: ingData } = await client
           .from("ingredients")
-          .select("stock_quantity")
+          .select("stock_quantity, stock")
           .eq("id", r.ingredient_id)
           .single();
 
         if (ingData) {
-          const newStock = Math.max(0, Number(ingData.stock_quantity) - totalDeduct);
-          // Stoğu güncelle
+          const currentStock = ingData.stock_quantity ?? ingData.stock ?? 0;
+          const newStock = Math.max(0, Number(currentStock) - totalDeduct);
           await client
             .from("ingredients")
-            .update({ stock_quantity: newStock })
+            .update({ stock_quantity: newStock, stock: newStock })
             .eq("id", r.ingredient_id);
         }
       }
@@ -1072,7 +1086,7 @@ function bindEvents() {
 
         await client.from("sale_items").insert(saleItems);
 
-        // REÇETEDEN OTOMATİK GRAMAJ DÜŞ
+        // REÇETEDEN OTOMATİK GRAMAJ DÜŞÜMÜ
         await deductStockFromRecipe(table.orders);
 
         table.status = "closed";
