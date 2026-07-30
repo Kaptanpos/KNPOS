@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - MALZEME GÜNCELLEME HATASI DÜZELTİLMİŞ SÜRÜM */
+/* KAPTAN NİLİ BULUT POS - MALZEME PAYLOAD DÜZELTİLMİŞ SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -472,7 +472,7 @@ function changeQty(productId, delta) {
   renderTables();
 }
 
-// 7. MALZEMELER / YARI MAMUL MODÜLÜ (HATA DÜZELTİLDİ)
+// 7. MALZEMELER / YARI MAMUL MODÜLÜ (TAMEMEN TEMİZLENMİŞ PAYLOAD)
 async function loadIngredients() {
   try {
     const { data, error } = await client.from("ingredients").select("*").order("name", { ascending: true });
@@ -497,7 +497,8 @@ function renderIngredientsTable(ingredients) {
   ingredients.forEach(ing => {
     const tr = document.createElement("tr");
     
-    const currentStock = ing.stock_quantity ?? ing.stock ?? ing.quantity ?? 0;
+    // Yalnızca Supabase'de var olan stock_quantity kolonu okunuyor
+    const currentStock = ing.stock_quantity ?? 0;
     const isCritical = Number(currentStock) <= 0;
 
     tr.innerHTML = `
@@ -514,7 +515,7 @@ function renderIngredientsTable(ingredients) {
   });
 }
 
-// BİRİM GÜNCELLEME SIFIR HATA FONKSİYONU
+// SADECE MEVCUT SÜTUNLAR GÖNDERİLİYOR
 async function saveIngredientFromForm() {
   const editId = document.getElementById("editIngId").value;
   const name = document.getElementById("ingNameInput").value.trim();
@@ -526,12 +527,11 @@ async function saveIngredientFromForm() {
     return;
   }
 
-  // Yalnızca veritabanında varlığı kesin sütunlar (min_stock_level gönderilmiyor)
+  // Sadece Supabase'deki kesin var olan alanlar: name, unit, stock_quantity
   const payload = {
     name: name,
     unit: unit,
-    stock_quantity: stock,
-    stock: stock
+    stock_quantity: stock
   };
 
   try {
@@ -557,7 +557,7 @@ function editIngredient(id) {
   const ing = allIngredients.find(i => i.id === id);
   if (!ing) return;
 
-  const currentStock = ing.stock_quantity ?? ing.stock ?? ing.quantity ?? 0;
+  const currentStock = ing.stock_quantity ?? 0;
 
   document.getElementById("editIngId").value = ing.id;
   document.getElementById("ingNameInput").value = ing.name;
@@ -585,7 +585,7 @@ async function adjustIngredientStock(id) {
   const ing = allIngredients.find(i => i.id === id);
   if (!ing) return;
 
-  const currentStock = ing.stock_quantity ?? ing.stock ?? ing.quantity ?? 0;
+  const currentStock = ing.stock_quantity ?? 0;
   const amountStr = prompt(`'${ing.name}' için eklenecek (+) veya düşülecek (-) miktarı giriniz (Örn: 500 veya -250):`);
   if (!amountStr) return;
 
@@ -598,7 +598,7 @@ async function adjustIngredientStock(id) {
   const newStock = Math.max(0, Number(currentStock) + delta);
 
   try {
-    const { error } = await client.from("ingredients").update({ stock_quantity: newStock, stock: newStock }).eq("id", id);
+    const { error } = await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", id);
     if (error) throw error;
     await loadIngredients();
   } catch (err) {
@@ -859,16 +859,16 @@ async function deductStockFromRecipe(orders) {
 
         const { data: ingData } = await client
           .from("ingredients")
-          .select("stock_quantity, stock")
+          .select("stock_quantity")
           .eq("id", r.ingredient_id)
           .single();
 
         if (ingData) {
-          const currentStock = ingData.stock_quantity ?? ingData.stock ?? 0;
+          const currentStock = ingData.stock_quantity ?? 0;
           const newStock = Math.max(0, Number(currentStock) - totalDeduct);
           await client
             .from("ingredients")
-            .update({ stock_quantity: newStock, stock: newStock })
+            .update({ stock_quantity: newStock })
             .eq("id", r.ingredient_id);
         }
       }
