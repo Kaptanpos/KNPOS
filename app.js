@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - ADİSYON DETAYI BAKIŞ SÜRÜMÜ */
+/* KAPTAN NİLİ BULUT POS - SORGULAMALI VE GRAFİKLİ RAPORLAR SÜRÜMÜ */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -21,6 +21,10 @@ let allIngredients = [];
 let paymentMethods = [];
 let selectedCategory = "Tümü";
 
+// Grafik Nesneleri
+let paymentChartInstance = null;
+let categoryChartInstance = null;
+
 const TABLE_STORAGE_KEY = "knpos_tables_v1";
 const DEFAULT_TABLES = [
   { id: 1, name: "Masa 01", status: "closed", orders: [], total: 0 },
@@ -34,10 +38,7 @@ const DEFAULT_TABLES = [
 async function checkRecipeTable() {
   try {
     const { data: recipesData, error: recipeErr } = await client.from("recipes").select("*").limit(1);
-    if (!recipeErr) {
-      console.log("✅ 'recipes' tablosu Supabase veritabanında ZATEN VAR!");
-      return "recipes";
-    }
+    if (!recipeErr) return "recipes";
   } catch (err) {
     console.error("Tablo hatası:", err.message);
   }
@@ -125,6 +126,9 @@ function showPage(pageName) {
     loadPaymentMethods();
   } else if (pageName === "ingredients") {
     loadIngredients();
+  } else if (pageName === "reports") {
+    initReportDates();
+    fetchAndRenderReports();
   }
 }
 
@@ -790,7 +794,6 @@ async function renderSales() {
   }
 }
 
-// ADİSYON İÇERİĞİNİ GÖSTEREN MODAL
 async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount) {
   const modal = document.getElementById("receiptDetailModal");
   const subtitle = document.getElementById("receiptSubtitle");
@@ -806,7 +809,6 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
   modal.style.display = "flex";
 
   try {
-    // sale_items tablosundan satılan ürün adlarını ve miktarlarını çekiyoruz
     const { data: items, error } = await client
       .from("sale_items")
       .select("*, products(name)")
@@ -840,7 +842,218 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
   }
 }
 
-// 11. ÜRÜNLER & REÇETE İŞLEMLERİ
+// 11. RAPORLAR MODÜLÜ VE MOTORU
+function initReportDates() {
+  const startInput = document.getElementById("reportStartDate");
+  const endInput = document.getElementById("reportEndDate");
+  
+  const todayStr = new Date().toISOString().split("T")[0];
+  if (startInput && !startInput.value) startInput.value = todayStr;
+  if (endInput && !endInput.value) endInput.value = todayStr;
+}
+
+function setReportDateRange(type) {
+  const startInput = document.getElementById("reportStartDate");
+  const endInput = document.getElementById("reportEndDate");
+  const now = new Date();
+  
+  const todayStr = now.toISOString().split("T")[0];
+  endInput.value = todayStr;
+
+  if (type === "today") {
+    startInput.value = todayStr;
+  } else if (type === "week") {
+    const firstDay = new Date(now.setDate(now.getDate() - now.getDay() + 1));
+    startInput.value = firstDay.toISOString().split("T")[0];
+  } else if (type === "month") {
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    startInput.value = firstDay.toISOString().split("T")[0];
+  }
+  fetchAndRenderReports();
+}
+
+async function fetchAndRenderReports() {
+  const startDate = document.getElementById("reportStartDate").value;
+  const endDate = document.getElementById("reportEndDate").value;
+
+  if (!startDate || !endDate) {
+    alert("Lütfen geçerli bir tarih aralığı seçiniz.");
+    return;
+  }
+
+  const startIso = `${startDate}T00:00:00.000Z`;
+  const endIso = `${endDate}T23:59:59.999Z`;
+
+  try {
+    // 1. Tarih Aralığındaki Satışları Çek
+    const { data: sales, error: salesErr } = await client
+      .from("sales")
+      .select("*")
+      .gte("created_at", startIso)
+      .lte("created_at", endIso);
+
+    if (salesErr) throw salesErr;
+
+    // 2. Tarih Aralığındaki Satılan Ürün Kalemlerini Çek
+    const saleIds = (sales || []).map(s => s.id);
+    let saleItems = [];
+
+    if (saleIds.length > 0) {
+      const { data: itemsData, error: itemsErr } = await client
+        .from("sale_items")
+        .select("*, products(name, category)")
+        .in("sale_id", saleIds);
+
+      if (!itemsErr) saleItems = itemsData || [];
+    }
+
+    renderReportMetrics(sales, saleItems);
+    renderPaymentReportTable(sales);
+    renderProductReportTable(saleItems);
+    renderReportCharts(sales, saleItems);
+
+  } catch (err) {
+    alert("Rapor verileri çekilemedi: " + err.message);
+  }
+}
+
+function renderReportMetrics(sales, saleItems) {
+  const totalRevElem = document.getElementById("metricTotalRevenue");
+  const totalSalesElem = document.getElementById("metricTotalSalesCount");
+  const totalItemsElem = document.getElementById("metricTotalItemsSold");
+
+  const totalRev = (sales || []).reduce((sum, s) => sum + Number(s.total_amount || 0), 0);
+  const totalSalesCount = (sales || []).length;
+  const totalItemsQty = (saleItems || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+
+  if (totalRevElem) totalRevElem.textContent = formatMoney(totalRev);
+  if (totalSalesElem) totalSalesElem.textContent = totalSalesCount.toString();
+  if (totalItemsElem) totalItemsElem.textContent = `${totalItemsQty} Adet`;
+}
+
+function renderPaymentReportTable(sales) {
+  const tbody = document.getElementById("paymentReportTbody");
+  if (!tbody) return;
+
+  const paymentMap = {};
+  (sales || []).forEach(s => {
+    const channel = s.payment_type || "Nakit";
+    if (!paymentMap[channel]) {
+      paymentMap[channel] = { count: 0, total: 0 };
+    }
+    paymentMap[channel].count += 1;
+    paymentMap[channel].total += Number(s.total_amount || 0);
+  });
+
+  const channels = Object.keys(paymentMap);
+  if (channels.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#94a3b8; padding:15px;">Bu aralıkta satış bulunamadı.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = channels.map(ch => `
+    <tr>
+      <td><strong style="color:#0f766e;">${escapeHtml(ch)}</strong></td>
+      <td><strong>${paymentMap[ch].count}</strong> işlem</td>
+      <td style="text-align:right;"><strong>${formatMoney(paymentMap[ch].total)}</strong></td>
+    </tr>
+  `).join("");
+}
+
+function renderProductReportTable(saleItems) {
+  const tbody = document.getElementById("productReportTbody");
+  if (!tbody) return;
+
+  const productMap = {};
+  (saleItems || []).forEach(item => {
+    const pName = item.products?.name || "Bilinmeyen Ürün";
+    const pCat = item.products?.category || "Diğer";
+    const qty = Number(item.quantity || 0);
+    const total = Number(item.line_total || (qty * item.unit_price) || 0);
+
+    if (!productMap[pName]) {
+      productMap[pName] = { category: pCat, qty: 0, total: 0 };
+    }
+    productMap[pName].qty += qty;
+    productMap[pName].total += total;
+  });
+
+  const productNames = Object.keys(productMap);
+  if (productNames.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:15px;">Satılan ürün bulunamadı.</td></tr>';
+    return;
+  }
+
+  // En çok ciro getirene göre sıralayalım
+  productNames.sort((a, b) => productMap[b].total - productMap[a].total);
+
+  tbody.innerHTML = productNames.map(pName => `
+    <tr>
+      <td><strong>${escapeHtml(pName)}</strong></td>
+      <td>${escapeHtml(productMap[pName].category)}</td>
+      <td><strong style="color:#2563eb;">${productMap[pName].qty}</strong> adet</td>
+      <td style="text-align:right;"><strong>${formatMoney(productMap[pName].total)}</strong></td>
+    </tr>
+  `).join("");
+}
+
+function renderReportCharts(sales, saleItems) {
+  // 1. Ödeme Kanalları Grafiği (Doughnut / Pasta)
+  const paymentMap = {};
+  (sales || []).forEach(s => {
+    const ch = s.payment_type || "Nakit";
+    paymentMap[ch] = (paymentMap[ch] || 0) + Number(s.total_amount || 0);
+  });
+
+  const payLabels = Object.keys(paymentMap);
+  const payValues = Object.values(paymentMap);
+
+  const ctxPay = document.getElementById("paymentChart")?.getContext("2d");
+  if (ctxPay) {
+    if (paymentChartInstance) paymentChartInstance.destroy();
+    paymentChartInstance = new Chart(ctxPay, {
+      type: "doughnut",
+      data: {
+        labels: payLabels,
+        datasets: [{
+          data: payValues,
+          backgroundColor: ["#0f766e", "#0284c7", "#d97706", "#ea580c", "#7c3aed", "#16a34a", "#dc2626"]
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+
+  // 2. Kategori Bazlı Grafik (Bar / Sütun)
+  const categoryMap = {};
+  (saleItems || []).forEach(item => {
+    const cat = item.products?.category || "Diğer";
+    const total = Number(item.line_total || (item.quantity * item.unit_price) || 0);
+    categoryMap[cat] = (categoryMap[cat] || 0) + total;
+  });
+
+  const catLabels = Object.keys(categoryMap);
+  const catValues = Object.values(categoryMap);
+
+  const ctxCat = document.getElementById("categoryChart")?.getContext("2d");
+  if (ctxCat) {
+    if (categoryChartInstance) categoryChartInstance.destroy();
+    categoryChartInstance = new Chart(ctxCat, {
+      type: "bar",
+      data: {
+        labels: catLabels,
+        datasets: [{
+          label: "Kategori Cirosu (TL)",
+          data: catValues,
+          backgroundColor: "#0f766e"
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+}
+
+// 12. ÜRÜNLER & REÇETE İŞLEMLERİ
 async function loadManagementProducts() {
   try {
     const { data, error } = await client.from("products").select("*").order("created_at", { ascending: false });
@@ -1144,6 +1357,30 @@ document.addEventListener("click", function(e) {
   if (target.id === "addPaymentMethodBtn") {
     e.preventDefault();
     addPaymentMethod();
+    return;
+  }
+
+  if (target.id === "runReportBtn") {
+    e.preventDefault();
+    fetchAndRenderReports();
+    return;
+  }
+
+  if (target.id === "reportFilterTodayBtn") {
+    e.preventDefault();
+    setReportDateRange("today");
+    return;
+  }
+
+  if (target.id === "reportFilterWeekBtn") {
+    e.preventDefault();
+    setReportDateRange("week");
+    return;
+  }
+
+  if (target.id === "reportFilterMonthBtn") {
+    e.preventDefault();
+    setReportDateRange("month");
     return;
   }
 });
