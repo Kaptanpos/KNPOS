@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - HATA GİDERİLMİŞ FİNAL SÜRÜMÜ */
+/* KAPTAN NİLİ BULUT POS - DASHBOARD ÜRETİM & DROPFIX SÜRÜMÜ */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -109,6 +109,7 @@ async function login() {
     await loadProducts();
     await loadPaymentMethods();
     await renderSales();
+    await loadIngredientsForDashboard(); // Ana ekran için malzemeleri çek
     await checkRecipeTable();
 
   } catch (err) {
@@ -159,12 +160,12 @@ function showPage(pageName) {
     renderTables();
     loadCashStatus();
     renderSales();
+    loadIngredientsForDashboard();
   } else if (pageName === "products") {
     loadManagementProducts();
   } else if (pageName === "ingredients") {
     loadIngredients();
     loadStockMovements();
-    populateProductionDropdown();
   } else if (pageName === "reports") {
     initReportDates();
     fetchAndRenderReports();
@@ -521,13 +522,26 @@ function changeQty(productId, delta) {
   renderTables();
 }
 
-// 7. MALZEMELER VE PROFESYONEL ÜRETİM GİRİŞİ
+// 7. MALZEMELER VE ANA EKRAN ÜRETİM GİRİŞİ
+async function loadIngredientsForDashboard() {
+  try {
+    const { data, error } = await client.from("ingredients").select("*").order("name", { ascending: true });
+    if (!error && data) {
+      allIngredients = data;
+      populateProductionDropdown();
+    }
+  } catch (err) {
+    console.error("Malzemeler yüklenemedi:", err.message);
+  }
+}
+
 async function loadIngredients() {
   try {
     const { data, error } = await client.from("ingredients").select("*").order("name", { ascending: true });
     if (error) throw error;
     allIngredients = data || [];
     renderIngredientsTable(allIngredients);
+    populateProductionDropdown();
   } catch (err) {
     alert("Malzemeler yüklenirken hata oluştu: " + err.message);
   }
@@ -567,13 +581,16 @@ async function submitProductionEntry() {
     });
     if (logErr) throw logErr;
 
-    alert(`✅ Üretim başarıyla kaydedildi! ${ingObj.name} stoğuna +${qtyToAdd} ${ingObj.unit || 'gr'} eklendi.`);
+    alert(`✅ Üretim kaydedildi! ${ingObj.name} stoğuna +${qtyToAdd} ${ingObj.unit || 'gr'} eklendi.`);
     
     document.getElementById("prodInputQty").value = "";
     document.getElementById("prodInputNote").value = "";
 
-    await loadIngredients();
-    await loadStockMovements();
+    await loadIngredientsForDashboard();
+    if (document.getElementById("pageIngredients").style.display !== "none") {
+      await loadIngredients();
+      await loadStockMovements();
+    }
 
   } catch (err) {
     alert("Üretim kaydedilemedi: " + err.message);
@@ -675,7 +692,7 @@ async function saveIngredientFromForm() {
 
     resetIngForm();
     await loadIngredients();
-    populateProductionDropdown();
+    await loadIngredientsForDashboard();
 
   } catch (err) {
     alert("Malzeme kaydedilemedi: " + err.message);
@@ -730,6 +747,7 @@ async function adjustIngredientStock(id) {
     const { error } = await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", id);
     if (error) throw error;
     await loadIngredients();
+    await loadIngredientsForDashboard();
   } catch (err) {
     alert("Stok güncellenemedi: " + err.message);
   }
@@ -774,7 +792,7 @@ async function importIngredientsExcel(e) {
       }
       alert("Malzemeler Excel'den başarıyla içe aktarıldı!");
       await loadIngredients();
-      populateProductionDropdown();
+      await loadIngredientsForDashboard();
     } catch (err) {
       alert("Excel yükleme hatası: " + err.message);
     }
@@ -1785,7 +1803,7 @@ function bindEvents() {
   if (saveProdBtn) saveProdBtn.onclick = saveProductFromForm;
 
   const resetProdBtn = document.getElementById("resetProductFormBtn");
-  if (resetProdBtn) resetProdBtn.onclick = resetProductForm;
+  if (resetProdBtn) resetProdBtn.onclick = resetProdForm;
 
   const searchProdInput = document.getElementById("searchProductInput");
   if (searchProdInput) {
