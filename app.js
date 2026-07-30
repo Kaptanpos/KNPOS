@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - GÜNCELLENMİŞ KAYDIRMALI & ÜST SAĞ TOPLAM MOTORU */
+/* KAPTAN NİLİ BULUT POS - PROFESYONEL ÜRETİM VE HAREKET TAKİP SÜRÜMÜ */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -163,6 +163,8 @@ function showPage(pageName) {
     loadManagementProducts();
   } else if (pageName === "ingredients") {
     loadIngredients();
+    loadStockMovements();
+    populateProductionDropdown();
   } else if (pageName === "reports") {
     initReportDates();
     fetchAndRenderReports();
@@ -519,7 +521,7 @@ function changeQty(productId, delta) {
   renderTables();
 }
 
-// 7. MALZEMELER / YARI MAMUL MODÜLÜ
+// 7. MALZEMELER VE PROFESYONEL ÜRETİM GİRİŞİ
 async function loadIngredients() {
   try {
     const { data, error } = await client.from("ingredients").select("*").order("name", { ascending: true });
@@ -528,6 +530,95 @@ async function loadIngredients() {
     renderIngredientsTable(allIngredients);
   } catch (err) {
     alert("Malzemeler yüklenirken hata oluştu: " + err.message);
+  }
+}
+
+function populateProductionDropdown() {
+  const select = document.getElementById("prodInputIngSelect");
+  if (!select) return;
+  select.innerHTML = allIngredients.map(i => `<option value="${i.id}">${escapeHtml(i.name)} (${i.unit || 'gr'})</option>`).join("");
+}
+
+async function submitProductionEntry() {
+  const ingId = document.getElementById("prodInputIngSelect").value;
+  const qtyToAdd = parseFloat(document.getElementById("prodInputQty").value);
+  const note = document.getElementById("prodInputNote").value.trim() || "Üretim Girişi";
+
+  if (!ingId || isNaN(qtyToAdd) || qtyToAdd <= 0) {
+    alert("Lütfen geçerli bir malzeme seçin ve artış miktarı girin.");
+    return;
+  }
+
+  const ingObj = allIngredients.find(i => String(i.id) === String(ingId));
+  if (!ingObj) return;
+
+  const currentStock = Number(ingObj.stock_quantity || 0);
+  const newStock = currentStock + qtyToAdd;
+
+  try {
+    // 1. Stok miktarını güncelle
+    const { error: updateErr } = await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", ingId);
+    if (updateErr) throw updateErr;
+
+    // 2. Hareketler tablosuna log at (Tarih ve saat otomatik NOW())
+    const { error: logErr } = await client.from("stock_movements").insert({
+      ingredient_id: ingId,
+      quantity_changed: qtyToAdd,
+      movement_type: "Uretim Girisi",
+      note: note
+    });
+    if (logErr) throw logErr;
+
+    alert(`✅ Üretim başarıyla kaydedildi! ${ingObj.name} stoğuna +${qtyToAdd} ${ingObj.unit || 'gr'} eklendi.`);
+    
+    document.getElementById("prodInputQty").value = "";
+    document.getElementById("prodInputNote").value = "";
+
+    await loadIngredients();
+    await loadStockMovements();
+
+  } catch (err) {
+    alert("Üretim kaydedilemedi: " + err.message);
+  }
+}
+
+async function loadStockMovements() {
+  const tbody = document.getElementById("stockMovementsTbody");
+  if (!tbody) return;
+
+  try {
+    const { data, error } = await client
+      .from("stock_movements")
+      .select("*, ingredients(name, unit)")
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:15px;">Henüz üretim hareketi bulunmuyor.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = data.map(m => {
+      const dateObj = new Date(m.created_at);
+      const dateStr = dateObj.toLocaleDateString('tr-TR');
+      const timeStr = dateObj.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+      const ingName = m.ingredients?.name || "Bilinmeyen Malzeme";
+      const unit = m.ingredients?.unit || "gr";
+
+      return `
+        <tr>
+          <td><strong>${dateStr}</strong> <span style="color:var(--text-muted);">${timeStr}</span></td>
+          <td>${escapeHtml(ingName)}</td>
+          <td><strong style="color:#16a34a;">+${m.quantity_changed} ${unit}</strong></td>
+          <td>${escapeHtml(m.note || '-')}</td>
+        </tr>
+      `;
+    }).join("");
+
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#dc2626;">Hareketler yüklenemedi.</td></tr>';
   }
 }
 
@@ -586,6 +677,7 @@ async function saveIngredientFromForm() {
 
     resetIngForm();
     await loadIngredients();
+    populateProductionDropdown();
 
   } catch (err) {
     alert("Malzeme kaydedilemedi: " + err.message);
@@ -684,6 +776,7 @@ async function importIngredientsExcel(e) {
       }
       alert("Malzemeler Excel'den başarıyla içe aktarıldı!");
       await loadIngredients();
+      populateProductionDropdown();
     } catch (err) {
       alert("Excel yükleme hatası: " + err.message);
     }
@@ -959,7 +1052,7 @@ async function completePaymentWithChannel(channelName) {
   }
 }
 
-// 11. ANLIK SATIŞLAR TABLOSU (ÜST SAĞ TOPLAM ROZETİ VE SCROLL LİSTE)
+// 11. ANLIK SATIŞLAR TABLOSU
 async function renderSales() {
   const list = document.getElementById("salesList");
   const totalElem = document.getElementById("salesDailyTotal");
@@ -1048,7 +1141,7 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
   }
 }
 
-// 12. RAPOR SEKMELERİ VE AKTİF FİLTRE BUTONU YÖNETİMİ
+// 12. RAPOR SEKMELERİ
 function switchReportTab(tabId) {
   const contents = document.querySelectorAll(".report-tab-content");
   contents.forEach(c => c.style.display = "none");
@@ -1258,7 +1351,6 @@ function renderReportCharts(sales, saleItems) {
     }
   });
 
-  // 1. ÖDEME KANALLARI GRAFİĞİ
   const paymentMap = {};
   (sales || []).forEach(s => {
     const ch = s.payment_type || "Nakit";
@@ -1285,7 +1377,6 @@ function renderReportCharts(sales, saleItems) {
     });
   }
 
-  // 2. KATEGORİ BAZLI GRAFİK
   const categoryMap = {};
   (saleItems || []).forEach(item => {
     const cat = item.products?.category || "Diğer";
@@ -1313,7 +1404,6 @@ function renderReportCharts(sales, saleItems) {
     });
   }
 
-  // 3. ÜRÜN BAZLI PERFORMANS GRAFİĞİ (TOP 10 - RENKLİ)
   const productMap = {};
   (saleItems || []).forEach(item => {
     const pName = item.products?.name || "Bilinmeyen Ürün";
@@ -1658,6 +1748,12 @@ document.addEventListener("click", function(e) {
     return;
   }
 
+  if (target.id === "submitProductionBtn") {
+    e.preventDefault();
+    submitProductionEntry();
+    return;
+  }
+
   if (target.id === "runReportBtn") {
     e.preventDefault();
     document.querySelectorAll(".btn-date-filter").forEach(b => b.classList.remove("active-date-btn"));
@@ -1691,7 +1787,7 @@ function bindEvents() {
   if (saveProdBtn) saveProdBtn.onclick = saveProductFromForm;
 
   const resetProdBtn = document.getElementById("resetProductFormBtn");
-  if (resetProdBtn) resetProdBtn.onclick = resetProductForm;
+  if (resetProdBtn) resetProdBtn.onclick = resetProdForm;
 
   const searchProdInput = document.getElementById("searchProductInput");
   if (searchProdInput) {
