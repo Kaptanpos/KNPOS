@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - ESNEK STOK & REÇETE ENTEGRELİ TAM SÜRÜM */
+/* KAPTAN NİLİ BULUT POS - MALZEME GÜNCELLEME HATASI DÜZELTİLMİŞ SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -472,7 +472,7 @@ function changeQty(productId, delta) {
   renderTables();
 }
 
-// 7. MALZEMELER / YARI MAMUL MODÜLÜ (DÜZELTİLMİŞ)
+// 7. MALZEMELER / YARI MAMUL MODÜLÜ (HATA DÜZELTİLDİ)
 async function loadIngredients() {
   try {
     const { data, error } = await client.from("ingredients").select("*").order("name", { ascending: true });
@@ -497,10 +497,8 @@ function renderIngredientsTable(ingredients) {
   ingredients.forEach(ing => {
     const tr = document.createElement("tr");
     
-    // Esnek Stok Kolonu Okuyucu
     const currentStock = ing.stock_quantity ?? ing.stock ?? ing.quantity ?? 0;
-    const minStock = ing.min_stock_level ?? ing.min_stock ?? 0;
-    const isCritical = Number(currentStock) <= Number(minStock);
+    const isCritical = Number(currentStock) <= 0;
 
     tr.innerHTML = `
       <td><strong>${escapeHtml(ing.name)}</strong></td>
@@ -516,24 +514,24 @@ function renderIngredientsTable(ingredients) {
   });
 }
 
+// BİRİM GÜNCELLEME SIFIR HATA FONKSİYONU
 async function saveIngredientFromForm() {
   const editId = document.getElementById("editIngId").value;
   const name = document.getElementById("ingNameInput").value.trim();
   const unit = document.getElementById("ingUnitSelect").value;
   const stock = parseFloat(document.getElementById("ingStockInput").value);
-  const minStock = parseFloat(document.getElementById("ingMinInput").value);
 
   if (!name || isNaN(stock) || stock < 0) {
     alert("Lütfen geçerli bir malzeme adı ve stok miktarı giriniz.");
     return;
   }
 
+  // Yalnızca veritabanında varlığı kesin sütunlar (min_stock_level gönderilmiyor)
   const payload = {
     name: name,
     unit: unit,
     stock_quantity: stock,
-    stock: stock,
-    min_stock_level: isNaN(minStock) ? 0 : minStock
+    stock: stock
   };
 
   try {
@@ -560,7 +558,6 @@ function editIngredient(id) {
   if (!ing) return;
 
   const currentStock = ing.stock_quantity ?? ing.stock ?? ing.quantity ?? 0;
-  const minStock = ing.min_stock_level ?? ing.min_stock ?? 0;
 
   document.getElementById("editIngId").value = ing.id;
   document.getElementById("ingNameInput").value = ing.name;
@@ -571,7 +568,6 @@ function editIngredient(id) {
   }
 
   document.getElementById("ingStockInput").value = currentStock;
-  document.getElementById("ingMinInput").value = minStock;
 
   document.getElementById("ingFormTitle").textContent = "Malzeme Düzenle";
   document.getElementById("resetIngFormBtn").style.display = "inline-block";
@@ -581,7 +577,6 @@ function resetIngForm() {
   document.getElementById("editIngId").value = "";
   document.getElementById("ingNameInput").value = "";
   document.getElementById("ingStockInput").value = "";
-  document.getElementById("ingMinInput").value = "";
   document.getElementById("ingFormTitle").textContent = "Yeni Malzeme Ekle";
   document.getElementById("resetIngFormBtn").style.display = "none";
 }
