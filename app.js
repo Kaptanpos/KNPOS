@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - REÇETE TABLOSU KONTROLÜ EKLENMİŞ SÜRÜM */
+/* KAPTAN NİLİ BULUT POS - REÇETE YÖNETİMİ & OTOMATİK STOK DÜŞÜMLÜ SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -14,6 +14,7 @@ const logoutButton = document.getElementById("logoutButton");
 
 let currentCashSession = null;
 let selectedTableId = null;
+let selectedRecipeProductId = null;
 let saleProducts = [];
 let allManagementProducts = [];
 let allIngredients = [];
@@ -28,34 +29,16 @@ const DEFAULT_TABLES = [
   { id: 5, name: "Masa 05", status: "closed", orders: [], total: 0 }
 ];
 
-// REÇETE TABLOSU VAR MI KONTROL ETME FONKSİYONU
+// REÇETE TABLOSU KONTROLÜ
 async function checkRecipeTable() {
   try {
-    const { data: recipesData, error: recipeErr } = await client
-      .from("recipes")
-      .select("*")
-      .limit(1);
-
+    const { data: recipesData, error: recipeErr } = await client.from("recipes").select("*").limit(1);
     if (!recipeErr) {
-      console.log("✅ 'recipes' tablosu Supabase veritabanında ZATEN VAR!", recipesData);
+      console.log("✅ 'recipes' tablosu Supabase veritabanında ZATEN VAR!");
       return "recipes";
     }
-
-    const { data: piData, error: piErr } = await client
-      .from("product_ingredients")
-      .select("*")
-      .limit(1);
-
-    if (!piErr) {
-      console.log("✅ 'product_ingredients' tablosu Supabase veritabanında ZATEN VAR!", piData);
-      return "product_ingredients";
-    }
-
-    console.log("⚠️ Henüz veritabanında bir reçete tablosu yok.");
-    return null;
-
   } catch (err) {
-    console.error("Tablo kontrol hatası:", err.message);
+    console.error("Tablo hatası:", err.message);
   }
 }
 
@@ -87,7 +70,7 @@ async function login() {
     await loadCashStatus();
     await loadProducts();
     await renderSales();
-    await checkRecipeTable(); // Reçete tablosunu kontrol et
+    await checkRecipeTable();
 
   } catch (err) {
     alert("Bağlantı hatası: " + err.message);
@@ -197,14 +180,7 @@ function renderTables() {
 function addNewTable() {
   const tables = getTables();
   const nextNum = tables.length + 1;
-  const newTable = {
-    id: Date.now(),
-    name: `Masa ${String(nextNum).padStart(2, "0")}`,
-    status: "closed",
-    orders: [],
-    total: 0
-  };
-
+  const newTable = { id: Date.now(), name: `Masa ${String(nextNum).padStart(2, "0")}`, status: "closed", orders: [], total: 0 };
   tables.push(newTable);
   saveTables(tables);
   renderTables();
@@ -244,7 +220,7 @@ function deleteTable() {
   }
 }
 
-// 4. KASA DURUMU VE KONTROLÜ
+// 4. KASA DURUMU
 async function loadCashStatus() {
   const cashStatus = document.getElementById("cashStatus");
   const openPanel = document.getElementById("openCashPanel");
@@ -253,13 +229,7 @@ async function loadCashStatus() {
   if (!cashStatus) return;
 
   try {
-    const { data, error } = await client
-      .from("cash_sessions")
-      .select("*")
-      .eq("status", "open")
-      .order("id", { ascending: false })
-      .limit(1);
-
+    const { data, error } = await client.from("cash_sessions").select("*").eq("status", "open").order("id", { ascending: false }).limit(1);
     if (error) throw error;
     currentCashSession = data && data.length > 0 ? data[0] : null;
 
@@ -314,16 +284,12 @@ async function openTableModal(tableId) {
   await loadProducts();
   renderCart();
   
-  if (tableModal) {
-    tableModal.style.display = "flex";
-  }
+  if (tableModal) tableModal.style.display = "flex";
 }
 
 function closeTableModal() {
   const tableModal = document.getElementById("tableModal");
-  if (tableModal) {
-    tableModal.style.display = "none";
-  }
+  if (tableModal) tableModal.style.display = "none";
   renderTables();
 }
 
@@ -349,12 +315,7 @@ function clearCurrentTable() {
 // 6. ÜRÜNLER (SATIŞ KATALOĞU)
 async function loadProducts() {
   try {
-    const { data, error } = await client
-      .from("products")
-      .select("*")
-      .eq("active", true)
-      .order("name", { ascending: true });
-
+    const { data, error } = await client.from("products").select("*").eq("active", true).order("name", { ascending: true });
     if (error) throw error;
     saleProducts = data || [];
     renderCategories();
@@ -514,11 +475,7 @@ function changeQty(productId, delta) {
 // 7. MALZEMELER MODÜLÜ
 async function loadIngredients() {
   try {
-    const { data, error } = await client
-      .from("ingredients")
-      .select("*")
-      .order("name", { ascending: true });
-
+    const { data, error } = await client.from("ingredients").select("*").order("name", { ascending: true });
     if (error) throw error;
     allIngredients = data || [];
     renderIngredientsTable(allIngredients);
@@ -544,10 +501,8 @@ function renderIngredientsTable(ingredients) {
     tr.innerHTML = `
       <td><strong>${escapeHtml(ing.name)}</strong></td>
       <td><strong style="font-size:15px; color:${isCritical ? '#dc2626' : '#0f766e'};">${ing.stock_quantity}</strong></td>
-      <td>${escapeHtml(ing.unit || 'Kg')}</td>
-      <td>
-        ${isCritical ? '<span class="badge-critical">⚠️ Kritik Stok</span>' : '<span class="badge-active">Normal</span>'}
-      </td>
+      <td>${escapeHtml(ing.unit || 'Gram')}</td>
+      <td>${isCritical ? '<span class="badge-critical">⚠️ Kritik Stok</span>' : '<span class="badge-active">Normal</span>'}</td>
       <td style="text-align: right;">
         <button type="button" class="btn-edit" onclick="editIngredient(${ing.id})">Düzenle</button>
         <button type="button" class="btn-toggle" onclick="adjustIngredientStock(${ing.id})">Stok Ekle/Düş</button>
@@ -569,12 +524,7 @@ async function saveIngredientFromForm() {
     return;
   }
 
-  const payload = {
-    name: name,
-    unit: unit,
-    stock_quantity: stock,
-    min_stock_level: isNaN(minStock) ? 0 : minStock
-  };
+  const payload = { name: name, unit: unit, stock_quantity: stock, min_stock_level: isNaN(minStock) ? 0 : minStock };
 
   try {
     if (editId) {
@@ -601,7 +551,7 @@ function editIngredient(id) {
 
   document.getElementById("editIngId").value = ing.id;
   document.getElementById("ingNameInput").value = ing.name;
-  document.getElementById("ingUnitSelect").value = ing.unit || "Kg";
+  document.getElementById("ingUnitSelect").value = ing.unit || "Gram";
   document.getElementById("ingStockInput").value = ing.stock_quantity;
   document.getElementById("ingMinInput").value = ing.min_stock_level || 0;
 
@@ -622,7 +572,7 @@ async function adjustIngredientStock(id) {
   const ing = allIngredients.find(i => i.id === id);
   if (!ing) return;
 
-  const amountStr = prompt(`'${ing.name}' için eklenecek (+) veya düşülecek (-) miktarı giriniz (Örn: 5 veya -2):`);
+  const amountStr = prompt(`'${ing.name}' için eklenecek (+) veya düşülecek (-) miktarı giriniz (Örn: 500 veya -250):`);
   if (!amountStr) return;
 
   const delta = parseFloat(amountStr);
@@ -634,11 +584,7 @@ async function adjustIngredientStock(id) {
   const newStock = Math.max(0, Number(ing.stock_quantity) + delta);
 
   try {
-    const { error } = await client
-      .from("ingredients")
-      .update({ stock_quantity: newStock })
-      .eq("id", id);
-
+    const { error } = await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", id);
     if (error) throw error;
     await loadIngredients();
   } catch (err) {
@@ -646,14 +592,10 @@ async function adjustIngredientStock(id) {
   }
 }
 
-// 8. ÜRÜN YÖNETİMİ
+// 8. ÜRÜN YÖNETİMİ & REÇETE YÖNETİMİ
 async function loadManagementProducts() {
   try {
-    const { data, error } = await client
-      .from("products")
-      .select("*")
-      .order("created_at", { ascending: false });
-
+    const { data, error } = await client.from("products").select("*").order("created_at", { ascending: false });
     if (error) throw error;
     allManagementProducts = data || [];
     renderManagementProductsTable(allManagementProducts);
@@ -684,16 +626,11 @@ function renderManagementProductsTable(products) {
       <td><strong>${escapeHtml(p.name)}</strong></td>
       <td>${escapeHtml(p.category || 'Diğer')}</td>
       <td><strong>${formatMoney(p.price)}</strong></td>
-      <td>
-        <span class="${p.active ? 'badge-active' : 'badge-passive'}">
-          ${p.active ? 'Aktif' : 'Pasif'}
-        </span>
-      </td>
+      <td><span class="${p.active ? 'badge-active' : 'badge-passive'}">${p.active ? 'Aktif' : 'Pasif'}</span></td>
       <td style="text-align: right;">
         <button type="button" class="btn-edit" onclick="editProduct(${p.id})">Düzenle</button>
-        <button type="button" class="btn-toggle" onclick="toggleProductActive(${p.id}, ${p.active})">
-          ${p.active ? 'Pasif Yap' : 'Aktif Yap'}
-        </button>
+        <button type="button" class="btn-recipe" onclick="openRecipeModal(${p.id})">🧪 Reçete</button>
+        <button type="button" class="btn-toggle" onclick="toggleProductActive(${p.id}, ${p.active})">${p.active ? 'Pasif Yap' : 'Aktif Yap'}</button>
       </td>
     `;
     tbody.appendChild(tr);
@@ -712,12 +649,7 @@ async function saveProductFromForm() {
     return;
   }
 
-  const payload = {
-    name: name,
-    category: category,
-    price: price,
-    image_url: imageUrl || null
-  };
+  const payload = { name: name, category: category, price: price, image_url: imageUrl || null };
 
   try {
     if (editId) {
@@ -765,11 +697,7 @@ function resetProductForm() {
 
 async function toggleProductActive(id, currentActive) {
   try {
-    const { error } = await client
-      .from("products")
-      .update({ active: !currentActive })
-      .eq("id", id);
-
+    const { error } = await client.from("products").update({ active: !currentActive }).eq("id", id);
     if (error) throw error;
     await loadManagementProducts();
     await loadProducts();
@@ -778,7 +706,94 @@ async function toggleProductActive(id, currentActive) {
   }
 }
 
-// 9. ÖDEME MODALI VE KAPATMA
+// --- REÇETE DÜZENLEME MODAL FONKSİYONLARI ---
+async function openRecipeModal(productId) {
+  selectedRecipeProductId = productId;
+  const product = allManagementProducts.find(p => p.id === productId);
+  if (!product) return;
+
+  document.getElementById("recipeModalTitle").textContent = `🧪 ${product.name} Reçetesi`;
+
+  // Malzeme seçeneklerini yükle
+  await loadIngredients();
+  const select = document.getElementById("recipeIngSelect");
+  if (select) {
+    select.innerHTML = allIngredients.map(i => `<option value="${i.id}">${escapeHtml(i.name)} (${escapeHtml(i.unit || 'gr')})</option>`).join("");
+  }
+
+  await renderRecipeItemsList();
+  document.getElementById("recipeModal").style.display = "flex";
+}
+
+async function renderRecipeItemsList() {
+  const container = document.getElementById("recipeItemsList");
+  if (!container || !selectedRecipeProductId) return;
+
+  try {
+    const { data: recipes, error } = await client
+      .from("recipes")
+      .select("*, ingredients(name, unit)")
+      .eq("product_id", selectedRecipeProductId);
+
+    if (error) throw error;
+
+    if (!recipes || recipes.length === 0) {
+      container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:15px; font-size:13px;">Bu ürüne henüz reçete bileşeni eklenmedi.</div>';
+      return;
+    }
+
+    container.innerHTML = recipes.map(r => `
+      <div class="recipe-item-row">
+        <div>
+          <strong>${escapeHtml(r.ingredients?.name || 'Malzeme')}</strong>: 
+          <span style="color:#0f766e; font-weight:bold;">${r.quantity_required} ${escapeHtml(r.ingredients?.unit || 'gr')}</span>
+        </div>
+        <button type="button" style="background:#dc2626; color:white; border:none; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:bold;" onclick="deleteRecipeItem(${r.id})">Sil</button>
+      </div>
+    `).join("");
+
+  } catch (err) {
+    container.innerHTML = '<div style="color:#dc2626;">Reçete yüklenemedi.</div>';
+  }
+}
+
+async function addRecipeItem() {
+  const ingId = document.getElementById("recipeIngSelect").value;
+  const qty = parseFloat(document.getElementById("recipeQtyInput").value);
+
+  if (!ingId || isNaN(qty) || qty <= 0) {
+    alert("Lütfen geçerli bir miktar giriniz.");
+    return;
+  }
+
+  try {
+    const { error } = await client.from("recipes").insert({
+      product_id: selectedRecipeProductId,
+      ingredient_id: ingId,
+      quantity_required: qty
+    });
+
+    if (error) throw error;
+
+    document.getElementById("recipeQtyInput").value = "";
+    await renderRecipeItemsList();
+
+  } catch (err) {
+    alert("Reçete malzemesi eklenemedi: " + err.message);
+  }
+}
+
+async function deleteRecipeItem(recipeId) {
+  try {
+    const { error } = await client.from("recipes").delete().eq("id", recipeId);
+    if (error) throw error;
+    await renderRecipeItemsList();
+  } catch (err) {
+    alert("Silinemedi: " + err.message);
+  }
+}
+
+// 9. ÖDEME VE OTOMATİK STOK DÜŞÜMÜ
 function openPaymentModal() {
   const table = getTables().find(t => t.id === selectedTableId);
   const paymentModal = document.getElementById("paymentModal");
@@ -813,6 +828,44 @@ function updatePaymentSummary() {
   if (remainingElem) {
     const remaining = Math.max(tableTotal - totalCollected, 0);
     remainingElem.textContent = formatMoney(remaining);
+  }
+}
+
+// SATIŞI TAMAMLAYIP REÇETEDEN STOK DÜŞME ENTEGRASYONU
+async function deductStockFromRecipe(orders) {
+  try {
+    for (const item of orders) {
+      // Satılan her ürünün reçetesini çek
+      const { data: recipeItems, error } = await client
+        .from("recipes")
+        .select("ingredient_id, quantity_required")
+        .eq("product_id", item.productId);
+
+      if (error || !recipeItems) continue;
+
+      for (const r of recipeItems) {
+        // Satılan adet x Reçetede gereken miktar
+        const totalDeduct = Number(r.quantity_required) * Number(item.quantity);
+
+        // Mevcut stok verisini çek
+        const { data: ingData } = await client
+          .from("ingredients")
+          .select("stock_quantity")
+          .eq("id", r.ingredient_id)
+          .single();
+
+        if (ingData) {
+          const newStock = Math.max(0, Number(ingData.stock_quantity) - totalDeduct);
+          // Stoğu güncelle
+          await client
+            .from("ingredients")
+            .update({ stock_quantity: newStock })
+            .eq("id", r.ingredient_id);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Stok düşüş hatası:", err.message);
   }
 }
 
@@ -897,6 +950,18 @@ document.addEventListener("click", function(e) {
     deleteTable();
     return;
   }
+
+  if (target.id === "closeRecipeModalBtn") {
+    e.preventDefault();
+    document.getElementById("recipeModal").style.display = "none";
+    return;
+  }
+
+  if (target.id === "addRecipeItemBtn") {
+    e.preventDefault();
+    addRecipeItem();
+    return;
+  }
 });
 
 // TIKLAMA VE ETKİLEŞİM DİNLENMELERİ
@@ -972,7 +1037,7 @@ function bindEvents() {
   if (allCardBtn) {
     allCardBtn.onclick = () => {
       const table = getTables().find(t => t.id === selectedTableId);
-      if (table && payCashInput) {
+      if (table && payCardInput) {
         payCardInput.value = Number(table.total || 0).toFixed(2);
         if (payCashInput) payCashInput.value = "0";
         updatePaymentSummary();
@@ -980,7 +1045,7 @@ function bindEvents() {
     };
   }
 
-  // SATIŞI TAMAMLA
+  // SATIŞI TAMAMLA & OTOMATİK STOK DÜŞÜMÜ
   const completeBtn = document.getElementById("completePaymentButton");
   if (completeBtn) {
     completeBtn.onclick = async () => {
@@ -1007,6 +1072,9 @@ function bindEvents() {
 
         await client.from("sale_items").insert(saleItems);
 
+        // REÇETEDEN OTOMATİK GRAMAJ DÜŞ
+        await deductStockFromRecipe(table.orders);
+
         table.status = "closed";
         table.openedAt = null;
         table.total = 0;
@@ -1020,7 +1088,7 @@ function bindEvents() {
         renderTables();
         await renderSales();
 
-        alert("Satış başarıyla kaydedildi!");
+        alert("Satış tamamlandı ve reçetedeki malzemeler stoktan otomatik düşüldü!");
 
       } catch (err) {
         alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
