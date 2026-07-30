@@ -57,12 +57,14 @@
 
     /* MASALAR */
     .tables-card { background: white; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); min-height: 250px; }
-    .tables-header h3 { font-size: 16px; margin-bottom: 12px; font-weight: bold; }
+    .tables-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .tables-header h3 { font-size: 16px; font-weight: bold; }
+    .btn-add-table { background: #0f766e; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
     .tables-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
     .table-card { width: 100%; height: 75px; border: none; border-radius: 12px; font-weight: bold; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     .table-card.closed { background: #dc2626; }
     .table-card.open { background: #16a34a; }
-    .table-number { font-size: 22px; }
+    .table-number { font-size: 16px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 90%; }
 
     /* SATIŞLAR TABLOSU */
     .daily-sales-container { background: white; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
@@ -98,9 +100,10 @@
     .cart-summary strong { color: #0f766e; }
     
     .cart-footer-buttons { display: flex; flex-direction: column; gap: 8px; }
-    .btn-danger-large { width: 100%; padding: 13px; background: #dc2626; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; }
-    .btn-secondary-large { width: 100%; padding: 11px; background: #64748b; color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: bold; cursor: pointer; }
-    .btn-cancel-large { width: 100%; padding: 10px; background: #991b1b; color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: bold; cursor: pointer; }
+    .btn-danger-large { width: 100%; padding: 12px; background: #dc2626; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; }
+    .btn-secondary-large { width: 100%; padding: 10px; background: #64748b; color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: bold; cursor: pointer; }
+    .btn-cancel-large { width: 100%; padding: 8px; background: #991b1b; color: white; border: none; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; }
+    .btn-delete-table { width: 100%; padding: 8px; background: #475569; color: white; border: none; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; }
     .btn-secondary { background: #64748b; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
     .quantity-badge { position: absolute; top: -6px; right: -6px; background: #2563eb; color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 11px; display: none; align-items: center; justify-content: center; font-weight: bold; }
@@ -115,7 +118,7 @@
     .modal-actions { display: flex; gap: 10px; }
     .modal-actions button { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
-    /* --- ÜRÜNLER YÖNETİM SAYFASI ÖZEL STİLLERİ --- */
+    /* ÜRÜNLER YÖNETİM SAYFASI */
     .products-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start; }
     .product-form-card { background: white; border-radius: 14px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
     .product-form-card h3 { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #0f766e; }
@@ -207,6 +210,7 @@
           <div class="tables-card">
             <div class="tables-header">
               <h3>Masalar</h3>
+              <button type="button" id="addNewTableBtn" class="btn-add-table">+ YENİ MASA EKLE</button>
             </div>
             <div id="tablesGrid" class="tables-grid"></div>
           </div>
@@ -229,11 +233,10 @@
         </div>
       </section>
 
-      <!-- 2. ÜRÜNLER SAYFASI (TAM ENTEGRE YENİ ARAYÜZ) -->
+      <!-- 2. ÜRÜNLER SAYFASI -->
       <section id="pageProducts" style="display: none;">
         <div class="products-layout">
           
-          <!-- Sol Form: Ürün Ekle / Düzenle -->
           <div class="product-form-card">
             <h3 id="productFormTitle">Yeni Ürün Ekle</h3>
             <input type="hidden" id="editProductId" value="">
@@ -261,7 +264,7 @@
             </div>
 
             <div class="form-group">
-              <label>Resim Bağlantısı (URL - İsteğe Bağlı)</label>
+              <label>Resim Bağlantısı (URL)</label>
               <input type="text" id="prodImageInput" placeholder="https://...">
             </div>
 
@@ -271,7 +274,6 @@
             </div>
           </div>
 
-          <!-- Sağ Liste: Mevcut Ürünler Tablosu -->
           <div class="products-list-card">
             <div class="products-list-header">
               <h3 style="font-size:18px; font-weight:bold;">Tüm Ürünler</h3>
@@ -289,28 +291,24 @@
                   <th style="text-align: right;">İşlemler</th>
                 </tr>
               </thead>
-              <tbody id="managementProductsTbody">
-                <!-- JS Dinamik Yükleyecek -->
-              </tbody>
+              <tbody id="managementProductsTbody"></tbody>
             </table>
           </div>
 
         </div>
       </section>
 
-      <!-- 3. MALZEMELER SAYFASI -->
+      <!-- DİĞER SAYFALAR -->
       <section id="pageIngredients" style="display: none; padding:20px; background:white; border-radius:14px;">
         <h2>Malzeme Yönetimi</h2>
         <p style="margin-top:10px; color:#64748b;">Yakında aktif edilecek.</p>
       </section>
 
-      <!-- 4. İNTERNET PANELİ SAYFASI -->
       <section id="pageInternet" style="display: none; padding:20px; background:white; border-radius:14px;">
         <h2>İnternet Sipariş Paneli</h2>
         <p style="margin-top:10px; color:#64748b;">Yakında aktif edilecek.</p>
       </section>
 
-      <!-- 5. RAPORLAR SAYFASI -->
       <section id="pageReports" style="display: none; padding:20px; background:white; border-radius:14px;">
         <h2>Satış Raporları</h2>
         <p style="margin-top:10px; color:#64748b;">Yakında aktif edilecek.</p>
@@ -323,19 +321,20 @@
   <div id="tableModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
       <div class="modal-header">
-        <h2 id="modalTableName">Masa 1</h2>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <h2 id="modalTableName">Masa 1</h2>
+          <button type="button" id="renameTableBtn" style="background:#e2e8f0; border:none; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">✏️ İsim Değiştir</button>
+        </div>
         <button type="button" id="topClosePanelButton" class="btn-secondary">← ANA MENÜYE DÖN</button>
       </div>
 
       <div id="modalOpenView" class="pos-order-layout">
         
-        <!-- SOL ÜRÜN KATALOĞU -->
         <div class="catalog-side">
           <div id="categoryStrip" class="category-strip"></div>
           <div id="saleProductsGrid" class="sale-products-grid"></div>
         </div>
 
-        <!-- SAĞ SEPET & ÇAKILI ALT ALAN -->
         <div class="cart-side">
           <h3 style="flex-shrink:0;">Sipariş</h3>
           
@@ -351,6 +350,7 @@
               <button type="button" id="closeTableButton" class="btn-danger-large">MASAYI KAPAT / ÖDEME AL</button>
               <button type="button" id="cancelTableButton" class="btn-secondary-large">KAYDET VE ANA MENÜ</button>
               <button type="button" id="clearTableButton" class="btn-cancel-large">SİPARİŞİ İPTAL ET / MASAYI BOŞALT</button>
+              <button type="button" id="deleteTableBtn" class="btn-delete-table">🗑️ MASAYI SİL</button>
             </div>
           </div>
         </div>
