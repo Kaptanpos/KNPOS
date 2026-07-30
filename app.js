@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - GENEL AYARLAR ENTEGRE SÜRÜM */
+/* KAPTAN NİLİ BULUT POS - GÜNCELLENMİŞ KAYDIRMALI & ÜST SAĞ TOPLAM MOTORU */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -959,7 +959,7 @@ async function completePaymentWithChannel(channelName) {
   }
 }
 
-// 11. ANLIK SATIŞLAR TABLOSU VE ADİSYON DETAYI BAKIŞ
+// 11. ANLIK SATIŞLAR TABLOSU (ÜST SAĞ TOPLAM ROZETİ VE SCROLL LİSTE)
 async function renderSales() {
   const list = document.getElementById("salesList");
   const totalElem = document.getElementById("salesDailyTotal");
@@ -976,7 +976,7 @@ async function renderSales() {
     if (error) throw error;
     if (!sales || sales.length === 0) {
       list.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Bugün henüz satış yapılmadı.</div>';
-      if (totalElem) totalElem.textContent = "0,00 TL";
+      if (totalElem) totalElem.textContent = formatMoney(0);
       return;
     }
 
@@ -996,6 +996,7 @@ async function renderSales() {
     if (totalElem) totalElem.textContent = formatMoney(sum);
   } catch (err) {
     list.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Satışlar çekilemedi.</div>';
+    if (totalElem) totalElem.textContent = formatMoney(0);
   }
 }
 
