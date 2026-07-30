@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - RESPRODFORM FIX FİNAL SÜRÜMÜ */
+/* KAPTAN NİLİ BULUT POS - LOG LİSTELEME KESİN ÇÖZÜM SÜRÜMÜ */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -591,6 +591,8 @@ async function submitProductionEntry() {
     document.getElementById("prodInputNote").value = "";
 
     await loadIngredientsForDashboard();
+    
+    // Eğer malzemeler sayfasındaysak hareketleri de anında güncelle
     if (document.getElementById("pageIngredients").style.display !== "none") {
       await loadIngredients();
       await loadStockMovements();
@@ -670,9 +672,7 @@ function renderIngredientsTable(ingredients) {
   });
 }
 
-function resetProdForm() {
-  // Eski ürün formu çağrıları için boş güvenli fonksiyon
-}
+function resetProdForm() {}
 
 async function saveIngredientFromForm() {
   const editId = document.getElementById("editIngId").value;
