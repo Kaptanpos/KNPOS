@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - SORGULAMALI VE GRAFİKLİ RAPORLAR SÜRÜMÜ */
+/* KAPTAN NİLİ BULUT POS - SEKMELİ VE DÜZENLİ RAPOR SÜRÜMÜ */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -842,7 +842,21 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
   }
 }
 
-// 11. RAPORLAR MODÜLÜ VE MOTORU
+// 11. RAPOR SEKMELERİ GEÇİŞ SİSTEMİ
+function switchReportTab(tabId) {
+  const contents = document.querySelectorAll(".report-tab-content");
+  contents.forEach(c => c.style.display = "none");
+
+  const tabBtns = document.querySelectorAll(".report-tab-btn");
+  tabBtns.forEach(b => b.classList.remove("active-tab"));
+
+  const targetContent = document.getElementById(tabId);
+  if (targetContent) targetContent.style.display = "block";
+
+  // Tıklanan butona aktif class'ı ver
+  event.target.classList.add("active-tab");
+}
+
 function initReportDates() {
   const startInput = document.getElementById("reportStartDate");
   const endInput = document.getElementById("reportEndDate");
@@ -885,7 +899,6 @@ async function fetchAndRenderReports() {
   const endIso = `${endDate}T23:59:59.999Z`;
 
   try {
-    // 1. Tarih Aralığındaki Satışları Çek
     const { data: sales, error: salesErr } = await client
       .from("sales")
       .select("*")
@@ -894,7 +907,6 @@ async function fetchAndRenderReports() {
 
     if (salesErr) throw salesErr;
 
-    // 2. Tarih Aralığındaki Satılan Ürün Kalemlerini Çek
     const saleIds = (sales || []).map(s => s.id);
     let saleItems = [];
 
@@ -984,7 +996,6 @@ function renderProductReportTable(saleItems) {
     return;
   }
 
-  // En çok ciro getirene göre sıralayalım
   productNames.sort((a, b) => productMap[b].total - productMap[a].total);
 
   tbody.innerHTML = productNames.map(pName => `
@@ -998,7 +1009,7 @@ function renderProductReportTable(saleItems) {
 }
 
 function renderReportCharts(sales, saleItems) {
-  // 1. Ödeme Kanalları Grafiği (Doughnut / Pasta)
+  // Ödeme Kanalları Grafiği
   const paymentMap = {};
   (sales || []).forEach(s => {
     const ch = s.payment_type || "Nakit";
@@ -1024,7 +1035,7 @@ function renderReportCharts(sales, saleItems) {
     });
   }
 
-  // 2. Kategori Bazlı Grafik (Bar / Sütun)
+  // Kategori Bazlı Grafik
   const categoryMap = {};
   (saleItems || []).forEach(item => {
     const cat = item.products?.category || "Diğer";
