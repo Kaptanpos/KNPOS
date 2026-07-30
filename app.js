@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - DROP DOWN DOLDURMA KESİN ÇÖZÜM SÜRÜMÜ */
+/* KAPTAN NİLİ BULUT POS - RESPRODFORM FIX FİNAL SÜRÜMÜ */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -109,7 +109,7 @@ async function login() {
     await loadProducts();
     await loadPaymentMethods();
     await renderSales();
-    await loadIngredientsForDashboard(); // Malzemeleri anında çekip dropdown'ı dolduruyoruz
+    await loadIngredientsForDashboard();
     await checkRecipeTable();
 
   } catch (err) {
@@ -668,6 +668,10 @@ function renderIngredientsTable(ingredients) {
     `;
     tbody.appendChild(tr);
   });
+}
+
+function resetProdForm() {
+  // Eski ürün formu çağrıları için boş güvenli fonksiyon
 }
 
 async function saveIngredientFromForm() {
