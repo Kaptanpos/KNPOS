@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - PROFESYONEL ÜRETİM VE HAREKET TAKİP SÜRÜMÜ */
+/* KAPTAN NİLİ BULUT POS - HATA GİDERİLMİŞ FİNAL SÜRÜMÜ */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -556,11 +556,9 @@ async function submitProductionEntry() {
   const newStock = currentStock + qtyToAdd;
 
   try {
-    // 1. Stok miktarını güncelle
     const { error: updateErr } = await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", ingId);
     if (updateErr) throw updateErr;
 
-    // 2. Hareketler tablosuna log at (Tarih ve saat otomatik NOW())
     const { error: logErr } = await client.from("stock_movements").insert({
       ingredient_id: ingId,
       quantity_changed: qtyToAdd,
@@ -1787,7 +1785,7 @@ function bindEvents() {
   if (saveProdBtn) saveProdBtn.onclick = saveProductFromForm;
 
   const resetProdBtn = document.getElementById("resetProductFormBtn");
-  if (resetProdBtn) resetProdBtn.onclick = resetProdForm;
+  if (resetProdBtn) resetProdBtn.onclick = resetProductForm;
 
   const searchProdInput = document.getElementById("searchProductInput");
   if (searchProdInput) {
