@@ -7,8 +7,9 @@
   
   <!-- Supabase JS CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Chart.js CDN (Grafikler İçin) -->
+  <!-- Chart.js ve DataLabels Eklentisi CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -139,7 +140,7 @@
 
     /* RAPORLAR ÖZEL VE SEKMELİ STİL */
     .report-card { background: white; border-radius: 14px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
-    .chart-container { position: relative; height: 320px; width: 100%; margin-top: 15px; }
+    .chart-container { position: relative; height: 340px; width: 100%; margin-top: 15px; }
     .filter-bar { display: flex; gap: 10px; align-items: center; background: white; padding: 14px; border-radius: 12px; margin-bottom: 15px; flex-wrap: wrap; }
     .filter-bar input, .filter-bar select { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; }
     
@@ -425,7 +426,7 @@
           </div>
         </div>
 
-        <!-- 2. SEKME: ÖDEME TÜRLERİ VE GRAFİĞİ -->
+        <!-- 2. SEKME: ÖDEME TÜRLERİ VE DİKEY BAR GRAFİĞİ -->
         <div id="tabPayments" class="report-tab-content" style="display:none;">
           <div class="admin-layout" style="grid-template-columns: 1fr 1fr;">
             <div class="report-card">
@@ -461,10 +462,18 @@
           </div>
         </div>
 
-        <!-- 4. SEKME: ÜRÜN BAZLI PERFORMANS TABLOSU -->
+        <!-- 4. SEKME: ÜRÜN BAZLI PERFORMANS GRAFİĞİ VE TABLOSU -->
         <div id="tabProducts" class="report-tab-content" style="display:none;">
+          
+          <div class="report-card" style="margin-bottom:20px;">
+            <h3 style="font-size:15px; font-weight:bold; color:#0f766e; margin-bottom:10px;">En Çok Satan Ürünler (Top 10 Ciro)</h3>
+            <div class="chart-container">
+              <canvas id="productChart"></canvas>
+            </div>
+          </div>
+
           <div class="admin-list-card">
-            <h3 style="font-size:16px; font-weight:bold; margin-bottom:12px;">Ürün Satış Performansı (Adet & Tutar)</h3>
+            <h3 style="font-size:16px; font-weight:bold; margin-bottom:12px;">Tüm Ürünlerin Satış Detayları (Adet & Tutar)</h3>
             <table class="admin-table">
               <thead>
                 <tr>
@@ -477,6 +486,7 @@
               <tbody id="productReportTbody"></tbody>
             </table>
           </div>
+
         </div>
 
       </section>
