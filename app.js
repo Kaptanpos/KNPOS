@@ -1,8 +1,12 @@
 // ==========================================
 // SUPABASE BAĞLANTISI VE GLOBAL DEĞİŞKENLER
 // ==========================================
-NEXT_PUBLIC_SUPABASE_URL=https://stytmmafrrtqaxobihap.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu
+// ==========================================
+// SUPABASE BAĞLANTISI VE GLOBAL DEĞİŞKENLER
+// ==========================================
+const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
+const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
+
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ADİSYO API BİLGİLERİ (Geldikçe kendi anahtarlarını buraya yazabilirsin)
