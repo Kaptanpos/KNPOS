@@ -41,13 +41,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function handleLogin() {
   const pass = document.getElementById("loginPassword").value;
-  if (pass === "1234" || pass === "nili2026") { // Kendi şifren neyse
+  // Şimdilik hangi şifreyi girersen gir direkt içeri alsın kanka
+  if (pass.length > 0) { 
     localStorage.setItem("kaptan_nili_auth", "true");
     document.getElementById("loginScreen").style.display = "none";
     document.getElementById("appShell").style.display = "flex";
     initializeAppData();
   } else {
-    alert("Yanlış şifre kanka!");
+    alert("Lütfen şifre gir kanka!");
   }
 }
 
