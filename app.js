@@ -1,7 +1,12 @@
-/* KAPTAN NİLİ BULUT POS - AKTİF BUTON RENKLENDİRMELİ LOG SÜRÜMÜ */
+/* KAPTAN NİLİ BULUT POS - ADİSYO ENTEGRASYONLU FULL TEMİZ SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
+
+// ADİSYO API ENTEGRASYON BİLGİLERİ (Kendi anahtarlarını buraya yazacaksın kanka)
+const ADISYO_MOBILE_APP_KEY = "932ab8c-8846-ad07-sca0-6b70af18cb6f-d6c524f3-9ea3-42ce-90b0-89973d0c0d2";
+const ADISYO_WEB_APP_KEY = "25b80b3556ca3a15353dd2fd312062fad27adcf5a1de51b75bdadea1fa8214ab";
+const ADISYO_API_SECRET_KEY = "766ce226-a646-4557-903e-32e6aae9f072";
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -817,7 +822,7 @@ async function adjustIngredientStock(id) {
   }
 }
 
-// 8. EXCEL İŞLEMLERİ
+// 8. EXCEL İŞLEMLERİ (UPSERT DESTEKLİ)
 function exportIngredientsExcel() {
   if (!allIngredients || allIngredients.length === 0) {
     alert("İndirilecek malzeme bulunamadı.");
@@ -851,22 +856,11 @@ async function importIngredientsExcel(e) {
         const unit = row["Birim"] || row["unit"] || "gr";
 
         if (name) {
-          // Önce bu isimde bir malzeme var mı diye kontrol edelim
           const existing = allIngredients.find(i => i.name.toLowerCase() === String(name).toLowerCase());
-
           if (existing) {
-            // Varsa güncelleyelim (UPDATE)
-            await client.from("ingredients").update({ 
-              stock_quantity: stock, 
-              unit: unit 
-            }).eq("id", existing.id);
+            await client.from("ingredients").update({ stock_quantity: stock, unit: unit }).eq("id", existing.id);
           } else {
-            // Yoksa yeni ekleyelim (INSERT)
-            await client.from("ingredients").insert({ 
-              name: name, 
-              stock_quantity: stock, 
-              unit: unit 
-            });
+            await client.from("ingredients").insert({ name: name, stock_quantity: stock, unit: unit });
           }
         }
       }
@@ -880,6 +874,7 @@ async function importIngredientsExcel(e) {
   };
   reader.readAsArrayBuffer(file);
 }
+
 function exportProductsExcel() {
   if (!allManagementProducts || allManagementProducts.length === 0) {
     alert("İndirilecek ürün bulunamadı.");
@@ -1068,7 +1063,76 @@ async function deletePaymentMethod(id) {
   }
 }
 
-// 10. TEK TIKLA SADE ÖDEME MODALI
+// 10. ADİSYON ENTEGRASYON KÖPRÜSÜ (ADİSYO'DAN SİPARİŞ ÇEKME)
+async function fetchAdisyoOrders() {
+  try {
+    const response = await fetch("https://api.adisyo.com/v1/orders/pending", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "MobileAppKey": ADISYO_MOBILE_APP_KEY,
+        "WebAppKey": ADISYO_WEB_APP_KEY,
+        "ApiSecretKey": ADISYO_API_SECRET_KEY
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error("Adisyo sunucusundan veri alınamadı. HTTP Kod: " + response.status);
+    }
+
+    const result = await response.json();
+    const adisyoOrders = result.data || result;
+
+    if (!adisyoOrders || adisyoOrders.length === 0) {
+      alert("Adisyo'da bekleyen yeni bir sipariş bulunmuyor kanka.");
+      return;
+    }
+
+    for (const order of adisyoOrders) {
+      const totalAmount = Number(order.totalAmount || order.total || 0);
+      const paymentChannel = order.channel || order.paymentType || "Adisyo / Online";
+
+      const { data: saleRecord, error: saleErr } = await client
+        .from("sales")
+        .insert({ 
+          total_amount: totalAmount, 
+          payment_type: paymentChannel 
+        })
+        .select("id")
+        .single();
+
+      if (saleErr) throw saleErr;
+
+      if (order.items && order.items.length > 0) {
+        const saleItemsPayload = order.items.map(item => ({
+          sale_id: saleRecord.id,
+          product_id: item.productId || 1,
+          quantity: Number(item.quantity || 1),
+          unit_price: Number(item.price || 0),
+          line_total: Number(item.quantity || 1) * Number(item.price || 0)
+        }));
+
+        await client.from("sale_items").insert(saleItemsPayload);
+
+        await deductStockFromRecipe(order.items.map(i => ({
+          productId: i.productId || 1,
+          quantity: Number(i.quantity || 1)
+        })));
+      }
+    }
+
+    alert("🎉 Adisyo'daki siparişler başarıyla Kaptan Nili POS sistemine aktarıldı, kasaya işlendi ve stoklar düşüldü!");
+    
+    await renderSales();
+    await loadIngredients();
+
+  } catch (err) {
+    console.error("Adisyo Entegrasyon Hatası:", err);
+    alert("Adisyo siparişleri çekilirken bir hata oluştu: " + err.message);
+  }
+}
+
+// 11. TEK TIKLA SADE ÖDEME MODALI
 function openPaymentModal() {
   const table = getTables().find(t => t.id === selectedTableId);
   const paymentModal = document.getElementById("paymentModal");
@@ -1147,7 +1211,7 @@ async function completePaymentWithChannel(channelName) {
   }
 }
 
-// 11. ANLIK SATIŞLAR TABLOSU
+// 12. ANLIK SATIŞLAR TABLOSU
 async function renderSales() {
   const list = document.getElementById("salesList");
   const totalElem = document.getElementById("salesDailyTotal");
@@ -1236,7 +1300,7 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
   }
 }
 
-// 12. RAPOR SEKMELERİ
+// 13. RAPOR SEKMELERİ
 function switchReportTab(tabId) {
   const contents = document.querySelectorAll(".report-tab-content");
   contents.forEach(c => c.style.display = "none");
@@ -1536,7 +1600,7 @@ function renderReportCharts(sales, saleItems) {
   }
 }
 
-// 13. ÜRÜNLER & REÇETE İŞLEMLERİ
+// 14. ÜRÜNLER & REÇETE İŞLEMLERİ
 async function loadManagementProducts() {
   try {
     const { data, error } = await client.from("products").select("*").order("created_at", { ascending: false });
