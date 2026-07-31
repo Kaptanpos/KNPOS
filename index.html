@@ -231,7 +231,7 @@
       <nav class="main-nav">
         <button type="button" class="nav-button active-nav">ANA MENÜ</button>
         <button type="button" class="nav-button">MALZEMELER</button>
-        <button type="button" class="nav-button">İNTERNET PANELİ</button>
+        <button type="button" class="nav-button" onclick="showPage('internet')">İNTERNET PANELİ</button>
         <button type="button" class="nav-button">ÜRÜNLER</button>
         <button type="button" class="nav-button">RAPORLAR</button>
         <button type="button" class="nav-button">GENEL AYARLAR</button>
@@ -520,6 +520,27 @@
           
           <button type="button" id="runReportBtn" class="btn-primary" style="margin-left:auto;">📊 RAPORU GETİR</button>
         </div>
+
+        <!-- İNTERNET PANELİ -->
+<div id="pageInternet" style="display:none; width:100%;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+    <h2>🌍 İnternet & Adisyo Sipariş Paneli</h2>
+  </div>
+
+  <div style="background:white; padding:25px; border-radius:12px; border:1px solid var(--border-color); text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+    <p style="color:var(--text-muted); margin-bottom:20px; font-size:14px;">
+      Adisyo havuzunda bekleyen siparişleri tek tıkla çekebilir, otomatik olarak kasaya işleyip reçetelerden stok düşebilirsiniz kanka.
+    </p>
+
+    <button type="button" onclick="fetchAdisyoOrders()" style="background:var(--primary); color:white; border:none; padding:14px 28px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:15px; box-shadow:0 4px 12px rgba(45,90,39,0.2);">
+      🔄 Adisyo'dan Bekleyen Siparişleri Çek ve Eşitle
+    </button>
+
+    <div id="internetOrdersContainer" style="margin-top:25px; text-align:left;">
+      <div style="text-align:center; padding:20px; color:#94a3b8; font-size:13px;">Henüz senkronizasyon yapılmadı. Yukarıdaki butona basarak Adisyo'yu yoklayabilirsin.</div>
+    </div>
+  </div>
+</div>
 
         <div class="report-tab-strip">
           <button type="button" class="report-tab-btn active-tab" onclick="switchReportTab('tabSummary')">📊 Genel Özet</button>
