@@ -851,10 +851,26 @@ async function importIngredientsExcel(e) {
         const unit = row["Birim"] || row["unit"] || "gr";
 
         if (name) {
-          await client.from("ingredients").insert({ name, stock_quantity: stock, unit });
+          // Önce bu isimde bir malzeme var mı diye kontrol edelim
+          const existing = allIngredients.find(i => i.name.toLowerCase() === String(name).toLowerCase());
+
+          if (existing) {
+            // Varsa güncelleyelim (UPDATE)
+            await client.from("ingredients").update({ 
+              stock_quantity: stock, 
+              unit: unit 
+            }).eq("id", existing.id);
+          } else {
+            // Yoksa yeni ekleyelim (INSERT)
+            await client.from("ingredients").insert({ 
+              name: name, 
+              stock_quantity: stock, 
+              unit: unit 
+            });
+          }
         }
       }
-      alert("Malzemeler Excel'den başarıyla içe aktarıldı!");
+      alert("Malzemeler Excel'den başarıyla güncellendi ve içeri aktarıldı!");
       await loadIngredients();
       await loadIngredientsForDashboard();
     } catch (err) {
@@ -864,7 +880,6 @@ async function importIngredientsExcel(e) {
   };
   reader.readAsArrayBuffer(file);
 }
-
 function exportProductsExcel() {
   if (!allManagementProducts || allManagementProducts.length === 0) {
     alert("İndirilecek ürün bulunamadı.");
