@@ -1,8 +1,8 @@
 // ==========================================
 // SUPABASE BAĞLANTISI VE GLOBAL DEĞİŞKENLER
 // ==========================================
-const SUPABASE_URL = "SENIN_SUPABASE_URL_ADRESIN";
-const SUPABASE_KEY = "SENIN_SUPABASE_ANON_KEY_DEGERIN";
+NEXT_PUBLIC_SUPABASE_URL=https://stytmmafrrtqaxobihap.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ADİSYO API BİLGİLERİ (Geldikçe kendi anahtarlarını buraya yazabilirsin)
