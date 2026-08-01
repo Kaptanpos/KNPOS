@@ -1,62 +1,61 @@
 /* ==========================================================
-   KAPTAN NİLİ - BULUT POS FULL & KESİN ÇÖZÜM APP.JS
+   KAPTAN NİLİ - BULUT POS GARANTİ ÇÖZÜM APP.JS
    ========================================================== */
 
-document.addEventListener("DOMContentLoaded", async () => {
-    console.log("Kaptan Nili POS Yükleniyor... 🚀");
+// Global Supabase İstemcisi
+if (typeof supabase !== 'undefined' && typeof window.client === 'undefined') {
+    window.client = supabase.createClient(
+        "https://stytmmafrrtqaxobihap.supabase.co",
+        "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu"
+    );
+}
 
-    // Supabase İstemci Başlatma
-    if (typeof supabase !== 'undefined' && typeof window.client === 'undefined') {
-        window.client = supabase.createClient(
-            "https://stytmmafrrtqaxobihap.supabase.co",
-            "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu"
-        );
-    }
-
-    // Senin HTML'indeki doğru ID'ler (loginPassword ve loginBtn)
-    const loginBtn = document.getElementById("loginBtn");
+// Global Giriş Fonksiyonu (HTML'deki onclick ile doğrudan tetiklenebilir)
+window.kaptanGirisYap = function() {
     const passwordInput = document.getElementById("loginPassword");
     const loginScreen = document.getElementById("loginScreen");
     const appShell = document.getElementById("appShell");
 
+    const pass = passwordInput ? passwordInput.value.trim() : "";
+    
+    if (pass === "") {
+        alert("Lütfen şifreni gir kanka!");
+        return;
+    }
+
+    console.log("Giriş yapılıyor...");
+    
+    if (loginScreen) loginScreen.style.display = "none";
+    if (appShell) appShell.style.display = "block";
+
+    if (typeof window.kaptanCanliSatislarıTazele === 'function') {
+        window.kaptanCanliSatislarıTazele();
+    }
+    if (typeof renderSales === 'function') {
+        renderSales();
+    }
+
+    console.log("✅ Giriş başarılı!");
+};
+
+// Sayfa yüklendiğinde butonları ve Enter tuşunu otomatik bağla
+document.addEventListener("DOMContentLoaded", () => {
+    console.log("Kaptan Nili POS Yükleniyor... 🚀");
+
+    const loginBtn = document.getElementById("loginBtn");
+    const passwordInput = document.getElementById("loginPassword");
+
     if (loginBtn) {
-        loginBtn.addEventListener("click", handleLogin);
+        // Eski dinleyicileri ezmek için onclick kullanıyoruz
+        loginBtn.onclick = window.kaptanGirisYap;
     }
 
     if (passwordInput) {
         passwordInput.addEventListener("keypress", (e) => {
-            if (e.key === "Enter") handleLogin();
+            if (e.key === "Enter") {
+                window.kaptanGirisYap();
+            }
         });
-    }
-
-    async function handleLogin() {
-        const pass = passwordInput ? passwordInput.value.trim() : "";
-        
-        if (pass === "") {
-            alert("Lütfen şifreni gir kanka!");
-            return;
-        }
-
-        try {
-            console.log("Giriş yapılıyor...");
-            
-            // Paneli aç
-            if (loginScreen) loginScreen.style.display = "none";
-            if (appShell) appShell.style.display = "block";
-
-            // Verileri tazele
-            if (typeof window.kaptanCanliSatislarıTazele === 'function') {
-                window.kaptanCanliSatislarıTazele();
-            }
-            if (typeof renderSales === 'function') {
-                renderSales();
-            }
-
-            console.log("✅ Giriş başarılı!");
-        } catch (err) {
-            console.error("Giriş hatası:", err);
-            alert("Giriş sırasında hata oluştu: " + err.message);
-        }
     }
 });
 
@@ -88,7 +87,7 @@ window.renderSales = async function() {
 
 
 /* ==========================================================
-   KAPTAN NİLİ - CANLI SUPABASE DİNLEME & CİRO MODÜLÜ v10.0
+   KAPTAN NİLİ - CANLI SUPABASE DİNLEME & CİRO MODÜLÜ
    ========================================================== */
 
 (function() {
