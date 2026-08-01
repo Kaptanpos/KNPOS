@@ -2082,6 +2082,10 @@ function bindEvents() {
 }
 
 // İLK AÇILIŞ
+document.addEventListener("DOMContentLoaded", () => {
+  loadThemeColor(); // Sayfa açılır açılmaz son temayı patlat
+});
+
 if (loginButton) loginButton.addEventListener("click", login);
 if (logoutButton) logoutButton.addEventListener("click", logout);
 if (loginPassword) {
