@@ -2050,50 +2050,32 @@ if (loginPassword) {
   });
 }
 /* ==========================================================
-   KAPTAN NİLİ - BROADCAST DİNLEME MODÜLÜ v8.0
+   KAPTAN NİLİ - PRATİK HIZLI ADİSYO SİPARİŞ EKLEME MODÜLÜ
    ========================================================== */
 
 (function() {
     'use strict';
-    console.log("Kaptan Nili Broadcast Dinleme Modülü v8.0 Aktif! 🚀");
+    console.log("Kaptan Nili Hızlı Adisyo Modülü Aktif! 🚀");
 
-    const kaptanKanal = new BroadcastChannel('kaptan_nili_pos_kanali');
-    let bekleyenAdisyoSiparisleri = [];
-
-    function kaptanZilSesiCal() {
-        try {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); 
-            osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15); 
-            
-            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.6);
-            
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.6);
-        } catch(e) {}
-    }
-
-    function kaptanPaneliOlustur() {
-        if (document.getElementById("kaptan-adisyo-panel-alani")) return;
+    function kaptanHizliPanelOlustur() {
+        if (document.getElementById("kaptan-hizli-adisyo-alani")) return;
 
         const panelAlani = document.createElement('div');
-        panelAlani.id = "kaptan-adisyo-panel-alani";
-        panelAlani.style.cssText = "margin: 15px; background: #fff8f8; border: 2px dashed #ff6b6b; padding: 15px; border-radius: 8px; font-family: Arial, sans-serif;";
+        panelAlani.id = "kaptan-hizli-adisyo-alani";
+        panelAlani.style.cssText = "margin: 15px; background: #f0fdf4; border: 2px dashed #22c55e; padding: 15px; border-radius: 8px; font-family: Arial, sans-serif;";
         panelAlani.innerHTML = `
-            <h4 style="margin: 0 0 10px 0; color: #ff6b6b; display: flex; justify-content: space-between; align-items: center;">
-                <span>🍰 Adisyo Canlı Gelen Siparişler</span>
-                <span style="font-size: 11px; background: #ff6b6b; color: white; padding: 2px 6px; border-radius: 10px;">Aktif</span>
+            <h4 style="margin: 0 0 10px 0; color: #16a34a; display: flex; justify-content: space-between; align-items: center;">
+                <span>⚡ Pratik Adisyo Sipariş Ekle</span>
+                <span style="font-size: 11px; background: #22c55e; color: white; padding: 2px 6px; border-radius: 10px;">Hızlı Giriş</span>
             </h4>
-            <div id="kaptan-adisyo-liste" style="font-size: 13px; color: #333; max-height: 180px; overflow-y: auto;">
-                <p style="color: #888; margin: 0;">Sipariş bekleniyor, Adisyo dinleniyor...</p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <input type="number" id="kaptan-adisyo-tutar" placeholder="Tutar (örn: 250)" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 140px; font-size: 13px;" />
+                <select id="kaptan-adisyo-odeme" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
+                    <option value="Nakit">Nakit</option>
+                    <option value="Kredi Kartı">Kredi Kartı</option>
+                    <option value="Adisyo Online">Adisyo Online</option>
+                </select>
+                <button type="button" onclick="kaptanHizliSiparisKaydet()" style="background: #16a34a; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px;">Siparişi Ciroya İşle</button>
             </div>
         `;
 
@@ -2101,76 +2083,44 @@ if (loginPassword) {
         if (appShellElem) appShellElem.prepend(panelAlani);
     }
 
-    window.kaptanAdisyoPaneliGuncelle = function() {
-        const listeDiv = document.getElementById("kaptan-adisyo-liste");
-        if (!listeDiv) return;
-
-        if (bekleyenAdisyoSiparisleri.length === 0) {
-            listeDiv.innerHTML = '<p style="color: #888; margin: 0;">Henüz bekleyen Adisyo siparişi yok...</p>';
+    window.kaptanHizliSiparisKaydet = async function() {
+        const tutarInput = document.getElementById("kaptan-adisyo-tutar");
+        const odemeSelect = document.getElementById("kaptan-adisyo-odeme");
+        
+        if (!tutarInput || !tutarInput.value) {
+            alert("Lütfen geçerli bir tutar gir kanka!");
             return;
         }
 
-        let html = '';
-        bekleyenAdisyoSiparisleri.forEach((s, index) => {
-            html += `
-                <div style="background: white; border: 1px solid #ddd; padding: 10px 12px; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <b>Müşteri:</b> ${s.musteri} | <b>Sipariş No:</b> ${s.siparisNo}<br>
-                        <b>Ödeme:</b> ${s.odeme} • <span style="color: #2e7d32; font-weight: bold;">Tutar: ${s.tutar}</span> 
-                    </div>
-                    <button type="button" onclick="kaptanAdisyoSiparisiniOnayla(${index})" style="background: #2e7d32; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;">Tamamla & Arşivle</button>
-                </div>
-            `;
-        });
-        listeDiv.innerHTML = html;
-    };
-
-    window.kaptanAdisyoSiparisiniOnayla = async function(index) {
-        const tamamlanan = bekleyenAdisyoSiparisleri.splice(index, 1)[0];
-        if (!tamamlanan) return;
+        let temizTutar = parseFloat(tutarInput.value) || 0;
+        let odemeTuru = `Adisyo (${odemeSelect.value})`;
 
         try {
-            let temizTutar = parseFloat(tamamlanan.tutar.replace(/[^0-9,.]/g, '').replace(',', '.')) || 0;
-
             if (typeof client !== 'undefined') {
                 const { error: saleErr } = await client
                     .from("sales")
                     .insert({ 
                         total_amount: temizTutar, 
-                        payment_type: `${tamamlanan.odeme} (${tamamlanan.siparisNo} - ${tamamlanan.musteri})` 
+                        payment_type: odemeTuru 
                     });
 
                 if (saleErr) throw saleErr;
             }
 
-            window.kaptanAdisyoPaneliGuncelle();
+            tutarInput.value = "";
             if (typeof renderSales === 'function') await renderSales();
 
-            alert("🎉 Sipariş başarıyla onaylandı ve günlük satışlara işlendi!");
+            alert("🎉 Sipariş başarıyla ciroya ve günlük satışlara işlendi!");
         } catch (err) {
             alert("Kayıt hatası: " + err.message);
         }
     };
 
-    // Adisyo sekmesinden telsizle gelen sinyali anında yakala!
-    kaptanKanal.onmessage = (event) => {
-        const yeniSiparis = event.data;
-        if (yeniSiparis && yeniSiparis.siparisNo) {
-            if (!bekleyenAdisyoSiparisleri.some(s => s.siparisNo === yeniSiparis.siparisNo)) {
-                bekleyenAdisyoSiparisleri.unshift(yeniSiparis);
-                kaptanZilSesiCal();
-                kaptanPaneliOlustur();
-                window.kaptanAdisyoPaneliGuncelle();
-                console.log("🎯 Vercel Paneli Sinyali Aldı:", yeniSiparis);
-            }
-        }
-    };
-
-    // Arayüz kontrolü
+    // Arayüze paneli yerleştir
     setInterval(() => {
         const appShell = document.getElementById("appShell");
         if (appShell && appShell.style.display !== "none") {
-            kaptanPaneliOlustur();
+            kaptanHizliPanelOlustur();
         }
     }, 1500);
 
