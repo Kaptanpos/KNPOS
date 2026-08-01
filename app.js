@@ -1670,7 +1670,8 @@ function renderManagementProductsTable(products) {
 
 async function saveProductFromForm() {
   const editId = document.getElementById("editProductId").value;
-  const name = document.getElementById("prodNameInput").value.trim();
+  const rawName = document.getElementById("prodNameInput").value;
+  const name = rawName ? rawName.trim().replace(/\s+/g, ' ') : "";
   const category = document.getElementById("prodCategorySelect").value;
   const price = parseFloat(document.getElementById("prodPriceInput").value);
   const imageUrl = document.getElementById("prodImageInput").value.trim();
@@ -1680,12 +1681,15 @@ async function saveProductFromForm() {
     return;
   }
 
-  // 🛑 AYNI İSİM KONTROLÜ: Yeni ekleniyorsa veya ismi değiştirilmişse listede var mı diye bak
+  // 🛑 KESİN ÇAKIŞMA KONTROLÜ (Büyük/küçük harf ve boşluk duyarsız)
   const nameLower = name.toLowerCase();
-  const duplicate = allManagementProducts.find(p => p.name.toLowerCase() === nameLower && String(p.id) !== String(editId));
+  const duplicate = allManagementProducts.find(p => {
+    const pNameClean = (p.name || "").trim().replace(/\s+/g, ' ').toLowerCase();
+    return pNameClean === nameLower && String(p.id) !== String(editId);
+  });
   
   if (duplicate) {
-    alert(`⚠️ '${name}' adında bir ürün zaten mevcut! Aynı isimle ikinci bir ürün kaydedemezsin.`);
+    alert(`⚠️ '${name}' adında bir ürün zaten sistemde kayıtlı! Aynı isimle ikinci bir ürün ekleyemezsin.`);
     return;
   }
 
