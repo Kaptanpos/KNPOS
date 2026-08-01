@@ -2050,12 +2050,15 @@ if (loginPassword) {
   });
 }
 /* ==========================================================
-   KAPTAN NİLİ - KESİN ÇÖZÜM KÖPRÜ MODÜLÜ v7.0
+   KAPTAN NİLİ - BROADCAST DİNLEME MODÜLÜ v8.0
    ========================================================== */
 
 (function() {
     'use strict';
-    console.log("Kaptan Nili Köprü Modülü v7.0 Aktif! 🚀");
+    console.log("Kaptan Nili Broadcast Dinleme Modülü v8.0 Aktif! 🚀");
+
+    const kaptanKanal = new BroadcastChannel('kaptan_nili_pos_kanali');
+    let bekleyenAdisyoSiparisleri = [];
 
     function kaptanZilSesiCal() {
         try {
@@ -2098,18 +2101,17 @@ if (loginPassword) {
         if (appShellElem) appShellElem.prepend(panelAlani);
     }
 
-    window.kaptanAdisyoPaneliGuncelle = async function() {
+    window.kaptanAdisyoPaneliGuncelle = function() {
         const listeDiv = document.getElementById("kaptan-adisyo-liste");
         if (!listeDiv) return;
 
-        const kayitli = JSON.parse(localStorage.getItem('kaptan_bulut_siparisler') || '[]');
-        if (kayitli.length === 0) {
+        if (bekleyenAdisyoSiparisleri.length === 0) {
             listeDiv.innerHTML = '<p style="color: #888; margin: 0;">Henüz bekleyen Adisyo siparişi yok...</p>';
             return;
         }
 
         let html = '';
-        kayitli.forEach((s, index) => {
+        bekleyenAdisyoSiparisleri.forEach((s, index) => {
             html += `
                 <div style="background: white; border: 1px solid #ddd; padding: 10px 12px; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
                     <div>
@@ -2123,11 +2125,8 @@ if (loginPassword) {
         listeDiv.innerHTML = html;
     };
 
-    // Siparişi onaylayıp Supabase'e güvenle yazan fonksiyon
     window.kaptanAdisyoSiparisiniOnayla = async function(index) {
-        let kayitliSiparisler = JSON.parse(localStorage.getItem('kaptan_bulut_siparisler') || '[]');
-        const tamamlanan = kayitliSiparisler.splice(index, 1)[0];
-        
+        const tamamlanan = bekleyenAdisyoSiparisleri.splice(index, 1)[0];
         if (!tamamlanan) return;
 
         try {
@@ -2144,7 +2143,6 @@ if (loginPassword) {
                 if (saleErr) throw saleErr;
             }
 
-            localStorage.setItem('kaptan_bulut_siparisler', JSON.stringify(kayitliSiparisler));
             window.kaptanAdisyoPaneliGuncelle();
             if (typeof renderSales === 'function') await renderSales();
 
@@ -2154,20 +2152,26 @@ if (loginPassword) {
         }
     };
 
-    // Dinleyiciler
+    // Adisyo sekmesinden telsizle gelen sinyali anında yakala!
+    kaptanKanal.onmessage = (event) => {
+        const yeniSiparis = event.data;
+        if (yeniSiparis && yeniSiparis.siparisNo) {
+            if (!bekleyenAdisyoSiparisleri.some(s => s.siparisNo === yeniSiparis.siparisNo)) {
+                bekleyenAdisyoSiparisleri.unshift(yeniSiparis);
+                kaptanZilSesiCal();
+                kaptanPaneliOlustur();
+                window.kaptanAdisyoPaneliGuncelle();
+                console.log("🎯 Vercel Paneli Sinyali Aldı:", yeniSiparis);
+            }
+        }
+    };
+
+    // Arayüz kontrolü
     setInterval(() => {
         const appShell = document.getElementById("appShell");
         if (appShell && appShell.style.display !== "none") {
             kaptanPaneliOlustur();
-            window.kaptanAdisyoPaneliGuncelle();
         }
     }, 1500);
-
-    window.addEventListener('storage', (e) => {
-        if (e.key === 'kaptan_bulut_siparisler' || e.key === 'kaptan_son_tetik') {
-            kaptanZilSesiCal();
-            window.kaptanAdisyoPaneliGuncelle();
-        }
-    });
 
 })();
