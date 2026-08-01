@@ -49,7 +49,7 @@ async function checkRecipeTable() {
   }
 }
 
-// TEMA RENK YÖNETİMİ
+// TEMA RENK YÖNETİMİ (Kalıcı ve Kesin Çözüm)
 async function loadThemeColor() {
   try {
     const { data, error } = await client.from("app_settings").select("value").eq("key", "primary_color").single();
@@ -58,6 +58,31 @@ async function loadThemeColor() {
     }
   } catch (err) {
     console.log("Tema yüklenemedi, varsayılan kullanılıyor.");
+  }
+}
+
+function applyThemeColor(primaryHex) {
+  document.documentElement.style.setProperty('--primary', primaryHex);
+  
+  let darkHex = primaryHex;
+  if (primaryHex === '#2d5a27') darkHex = '#1e3d1a';
+  else if (primaryHex === '#0f766e') darkHex = '#115e59';
+  else if (primaryHex === '#78350f') darkHex = '#451a03';
+  else if (primaryHex === '#1e3a8a') darkHex = '#172554';
+  else if (primaryHex === '#9d174d') darkHex = '#831843';
+
+  document.documentElement.style.setProperty('--primary-dark', darkHex);
+}
+
+async function changeThemeColor(primaryHex, darkHex) {
+  applyThemeColor(primaryHex);
+  try {
+    // Supabase app_settings tablosuna kaydediyoruz
+    const { error } = await client.from("app_settings").upsert({ key: "primary_color", value: primaryHex }, { onConflict: 'key' });
+    if (error) throw error;
+    alert("Tema rengi başarıyla güncellendi ve kalıcı olarak kaydedildi!");
+  } catch (err) {
+    alert("Tema kaydedilemedi: " + err.message);
   }
 }
 
