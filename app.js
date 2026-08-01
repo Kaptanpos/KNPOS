@@ -2089,39 +2089,3 @@ if (loginPassword) {
         
         if (!tutarInput || !tutarInput.value) {
             alert("Lütfen geçerli bir tutar gir kanka!");
-            return;
-        }
-
-        let temizTutar = parseFloat(tutarInput.value) || 0;
-        let odemeTuru = `Adisyo (${odemeSelect.value})`;
-
-        try {
-            if (typeof client !== 'undefined') {
-                const { error: saleErr } = await client
-                    .from("sales")
-                    .insert({ 
-                        total_amount: temizTutar, 
-                        payment_type: odemeTuru 
-                    });
-
-                if (saleErr) throw saleErr;
-            }
-
-            tutarInput.value = "";
-            if (typeof renderSales === 'function') await renderSales();
-
-            alert("🎉 Sipariş başarıyla ciroya ve günlük satışlara işlendi!");
-        } catch (err) {
-            alert("Kayıt hatası: " + err.message);
-        }
-    };
-
-    // Arayüze paneli yerleştir
-    setInterval(() => {
-        const appShell = document.getElementById("appShell");
-        if (appShell && appShell.style.display !== "none") {
-            kaptanHizliPanelOlustur();
-        }
-    }, 1500);
-
-})();
