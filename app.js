@@ -1680,6 +1680,15 @@ async function saveProductFromForm() {
     return;
   }
 
+  // 🛑 AYNI İSİM KONTROLÜ: Yeni ekleniyorsa veya ismi değiştirilmişse listede var mı diye bak
+  const nameLower = name.toLowerCase();
+  const duplicate = allManagementProducts.find(p => p.name.toLowerCase() === nameLower && String(p.id) !== String(editId));
+  
+  if (duplicate) {
+    alert(`⚠️ '${name}' adında bir ürün zaten mevcut! Aynı isimle ikinci bir ürün kaydedemezsin.`);
+    return;
+  }
+
   const payload = { name: name, category: category, price: price, image_url: imageUrl || null };
 
   try {
