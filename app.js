@@ -2050,68 +2050,124 @@ if (loginPassword) {
   });
 }
 /* ==========================================================
-   KAPTAN NİLİ - SUPABASE CANLI DİNLEME MODÜLÜ v6.0
+   KAPTAN NİLİ - KESİN ÇÖZÜM KÖPRÜ MODÜLÜ v7.0
    ========================================================== */
 
 (function() {
     'use strict';
-    console.log("Kaptan Nili Canlı Dinleme Modülü v6.0 Aktif! 🚀");
+    console.log("Kaptan Nili Köprü Modülü v7.0 Aktif! 🚀");
 
-    // 1. Supabase'den Anlık Satışları Çekip Tabloyu ve Ciro Penceresini Güncelleyen Fonksiyon
-    window.kaptanCanliSatislarıTazele = async function() {
-        if (typeof client === 'undefined') return;
+    function kaptanZilSesiCal() {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); 
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15); 
+            
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.6);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.6);
+        } catch(e) {}
+    }
+
+    function kaptanPaneliOlustur() {
+        if (document.getElementById("kaptan-adisyo-panel-alani")) return;
+
+        const panelAlani = document.createElement('div');
+        panelAlani.id = "kaptan-adisyo-panel-alani";
+        panelAlani.style.cssText = "margin: 15px; background: #fff8f8; border: 2px dashed #ff6b6b; padding: 15px; border-radius: 8px; font-family: Arial, sans-serif;";
+        panelAlani.innerHTML = `
+            <h4 style="margin: 0 0 10px 0; color: #ff6b6b; display: flex; justify-content: space-between; align-items: center;">
+                <span>🍰 Adisyo Canlı Gelen Siparişler</span>
+                <span style="font-size: 11px; background: #ff6b6b; color: white; padding: 2px 6px; border-radius: 10px;">Aktif</span>
+            </h4>
+            <div id="kaptan-adisyo-liste" style="font-size: 13px; color: #333; max-height: 180px; overflow-y: auto;">
+                <p style="color: #888; margin: 0;">Sipariş bekleniyor, Adisyo dinleniyor...</p>
+            </div>
+        `;
+
+        const appShellElem = document.getElementById("appShell");
+        if (appShellElem) appShellElem.prepend(panelAlani);
+    }
+
+    window.kaptanAdisyoPaneliGuncelle = async function() {
+        const listeDiv = document.getElementById("kaptan-adisyo-liste");
+        if (!listeDiv) return;
+
+        const kayitli = JSON.parse(localStorage.getItem('kaptan_bulut_siparisler') || '[]');
+        if (kayitli.length === 0) {
+            listeDiv.innerHTML = '<p style="color: #888; margin: 0;">Henüz bekleyen Adisyo siparişi yok...</p>';
+            return;
+        }
+
+        let html = '';
+        kayitli.forEach((s, index) => {
+            html += `
+                <div style="background: white; border: 1px solid #ddd; padding: 10px 12px; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <b>Müşteri:</b> ${s.musteri} | <b>Sipariş No:</b> ${s.siparisNo}<br>
+                        <b>Ödeme:</b> ${s.odeme} • <span style="color: #2e7d32; font-weight: bold;">Tutar: ${s.tutar}</span> 
+                    </div>
+                    <button type="button" onclick="kaptanAdisyoSiparisiniOnayla(${index})" style="background: #2e7d32; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;">Tamamla & Arşivle</button>
+                </div>
+            `;
+        });
+        listeDiv.innerHTML = html;
+    };
+
+    // Siparişi onaylayıp Supabase'e güvenle yazan fonksiyon
+    window.kaptanAdisyoSiparisiniOnayla = async function(index) {
+        let kayitliSiparisler = JSON.parse(localStorage.getItem('kaptan_bulut_siparisler') || '[]');
+        const tamamlanan = kayitliSiparisler.splice(index, 1)[0];
+        
+        if (!tamamlanan) return;
 
         try {
-            const today = new Date().toISOString().split('T')[0];
-            const { data: sales, error } = await client
-                .from("sales")
-                .select("*")
-                .gte("created_at", today)
-                .order("created_at", { ascending: false });
+            let temizTutar = parseFloat(tamamlanan.tutar.replace(/[^0-9,.]/g, '').replace(',', '.')) || 0;
 
-            if (error) throw error;
+            if (typeof client !== 'undefined') {
+                const { error: saleErr } = await client
+                    .from("sales")
+                    .insert({ 
+                        total_amount: temizTutar, 
+                        payment_type: `${tamamlanan.odeme} (${tamamlanan.siparisNo} - ${tamamlanan.musteri})` 
+                    });
 
-            const list = document.getElementById("salesList");
-            const totalElem = document.getElementById("salesDailyTotal");
-            if (!list) return;
-
-            if (!sales || sales.length === 0) {
-                list.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Bugün henüz satış yapılmadı.</div>';
-                if (totalElem) totalElem.textContent = "0,00 TL";
-                return;
+                if (saleErr) throw saleErr;
             }
 
-            let sum = 0;
-            list.innerHTML = sales.map(s => {
-                sum += Number(s.total_amount || 0);
-                const timeStr = new Date(s.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
-                return `
-                    <div class="daily-sales-row" style="display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #eee; font-size: 13px;">
-                        <div><strong>${timeStr}</strong></div>
-                        <div><strong style="color:var(--primary);">${escapeHtml(s.payment_type || "Nakit")}</strong></div>
-                        <div style="text-align:right;"><strong>${Number(s.total_amount).toLocaleString("tr-TR", {minimumFractionDigits: 2})} TL</strong></div>
-                    </div>
-                `;
-            }).join("");
+            localStorage.setItem('kaptan_bulut_siparisler', JSON.stringify(kayitliSiparisler));
+            window.kaptanAdisyoPaneliGuncelle();
+            if (typeof renderSales === 'function') await renderSales();
 
-            if (totalElem) {
-                totalElem.textContent = sum.toLocaleString("tr-TR", {minimumFractionDigits: 2}) + " TL";
-            }
-
+            alert("🎉 Sipariş başarıyla onaylandı ve günlük satışlara işlendi!");
         } catch (err) {
-            console.error("Canlı satışlar güncellenirken hata:", err.message);
+            alert("Kayıt hatası: " + err.message);
         }
     };
 
-    // 2. Her 3 saniyede bir Supabase'i yokla ve ekranı güncelle
+    // Dinleyiciler
     setInterval(() => {
         const appShell = document.getElementById("appShell");
         if (appShell && appShell.style.display !== "none") {
-            window.kaptanCanliSatislarıTazele();
+            kaptanPaneliOlustur();
+            window.kaptanAdisyoPaneliGuncelle();
         }
-    }, 3000);
+    }, 1500);
 
-    // İlk açılışta bir kez çalıştır
-    setTimeout(window.kaptanCanliSatislarıTazele, 1000);
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'kaptan_bulut_siparisler' || e.key === 'kaptan_son_tetik') {
+            kaptanZilSesiCal();
+            window.kaptanAdisyoPaneliGuncelle();
+        }
+    });
 
 })();
