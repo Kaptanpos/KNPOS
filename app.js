@@ -2182,6 +2182,13 @@ if (loginPassword) {
         }
     }, 2000);
 
+  // Adisyo sekmesinden gelen anlık tetik sinyalini dinle ve paneli anında patlat!
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'kaptan_bulut_siparisler' || e.key === 'kaptan_son_tetik') {
+            window.kaptanAdisyoPaneliGuncelle();
+        }
+    });
+
     // Dışarıdan (Tampermonkey aracılığıyla Adisyo sekmesinden) veri geldiğinde zili çal ve paneli güncelle
     window.addEventListener('storage', (e) => {
         if (e.key === 'kaptan_bulut_siparisler') {
