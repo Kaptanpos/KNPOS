@@ -49,7 +49,7 @@ async function checkRecipeTable() {
   }
 }
 
-// TEMA RENK YÖNETİMİ (localStorage Kalıcı Çözüm)
+// TEMA RENK YÖNETİMİ VE YENİ RENK PALETİ
 const THEME_STORAGE_KEY = "knpos_primary_color_v1";
 
 async function loadThemeColor() {
@@ -69,11 +69,17 @@ function applyThemeColor(primaryHex) {
   document.documentElement.style.setProperty('--primary', primaryHex);
   
   let darkHex = primaryHex;
-  if (primaryHex === '#2d5a27') darkHex = '#1e3d1a';
-  else if (primaryHex === '#0f766e') darkHex = '#115e59';
-  else if (primaryHex === '#78350f') darkHex = '#451a03';
-  else if (primaryHex === '#1e3a8a') darkHex = '#172554';
-  else if (primaryHex === '#9d174d') darkHex = '#831843';
+  // Yeni eklenen renkler ve mevcutlar için koyu ton eşleştirmeleri
+  if (primaryHex === '#2d5a27') darkHex = '#1e3d1a';       // Yeşil
+  else if (primaryHex === '#0f766e') darkHex = '#115e59';  // Koyu Yeşil/Camgöbeği tonu
+  else if (primaryHex === '#78350f') darkHex = '#451a03';  // Kahverengi
+  else if (primaryHex === '#1e3a8a') darkHex = '#172554';  // Mavi
+  else if (primaryHex === '#9d174d') darkHex = '#831843';  // Pembe/Bordo
+  else if (primaryHex === '#000000') darkHex = '#1c1917';  // Siyah -> Koyu Gri/Siyah
+  else if (primaryHex === '#eab308') darkHex = '#ca8a04';  // Sarı -> Koyu Sarı
+  else if (primaryHex === '#06b6d4') darkHex = '#0891b2';  // Cam Göbeği (Cyan) -> Koyu Cam Göbeği
+  else if (primaryHex === '#f97316') darkHex = '#c2410c';  // Turuncu -> Koyu Turuncu
+  else if (primaryHex === '#ffffff') darkHex = '#cbd5e1';  // Beyaz -> Butonlarda okunabilirlik için gri ton
 
   document.documentElement.style.setProperty('--primary-dark', darkHex);
 }
@@ -87,7 +93,6 @@ async function changeThemeColor(primaryHex, darkHex) {
     alert("Tema kaydedilemedi: " + err.message);
   }
 }
-
 // 1. GİRİŞ İŞLEMİ
 async function login() {
   const password = loginPassword ? loginPassword.value : "";
