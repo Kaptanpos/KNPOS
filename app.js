@@ -10,7 +10,7 @@ if (typeof supabase !== 'undefined' && typeof window.client === 'undefined') {
     );
 }
 
-// Global Giriş Fonksiyonu (HTML'deki onclick ile doğrudan tetiklenebilir)
+// Global Giriş Fonksiyonu
 window.kaptanGirisYap = function() {
     const passwordInput = document.getElementById("loginPassword");
     const loginScreen = document.getElementById("loginScreen");
@@ -38,15 +38,14 @@ window.kaptanGirisYap = function() {
     console.log("✅ Giriş başarılı!");
 };
 
-// Sayfa yüklendiğinde butonları ve Enter tuşunu otomatik bağla
+// Sayfa yüklendiğinde senin index.html'deki 'loginButton' ID'sini bağlıyoruz
 document.addEventListener("DOMContentLoaded", () => {
     console.log("Kaptan Nili POS Yükleniyor... 🚀");
 
-    const loginBtn = document.getElementById("loginBtn");
+    const loginBtn = document.getElementById("loginButton"); // index.html ile birebir uyumlu
     const passwordInput = document.getElementById("loginPassword");
 
     if (loginBtn) {
-        // Eski dinleyicileri ezmek için onclick kullanıyoruz
         loginBtn.onclick = window.kaptanGirisYap;
     }
 
