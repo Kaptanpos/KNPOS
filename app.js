@@ -3,7 +3,7 @@
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
 
-// ADİSYO API ENTEGRASYON BİLGİLERİ (Kendi anahtarlarını buraya yazacaksın kanka)
+// ADİSYO API ENTEGRASYON BİLGİLERİ
 const ADISYO_MOBILE_APP_KEY = "BURAYA_MOBIL_APP_KEY_GELECEK";
 const ADISYO_WEB_APP_KEY = "BURAYA_WEB_APP_KEY_GELECEK";
 const ADISYO_API_SECRET_KEY = "BURAYA_API_SECRET_KEY_GELECEK";
@@ -688,12 +688,14 @@ async function loadStockMovements() {
       const foundIng = allIngredients.find(i => String(i.id) === String(m.ingredient_id));
       const ingName = foundIng ? foundIng.name : "Malzeme #" + m.ingredient_id;
       const unit = foundIng ? (foundIng.unit || "gr") : "gr";
+      const sign = Number(m.quantity_changed) >= 0 ? "+" : "";
+      const color = Number(m.quantity_changed) >= 0 ? "#16a34a" : "#dc2626";
 
       return `
         <tr>
           <td><strong>${dateStr}</strong> <span style="color:var(--text-muted);">${timeStr}</span></td>
           <td>${escapeHtml(ingName)}</td>
-          <td><strong style="color:#16a34a;">+${m.quantity_changed} ${unit}</strong></td>
+          <td><strong style="color:${color};">${sign}${m.quantity_changed} ${unit}</strong></td>
           <td>${escapeHtml(m.note || '-')}</td>
         </tr>
       `;
@@ -796,6 +798,7 @@ function resetIngForm() {
   document.getElementById("resetIngFormBtn").style.display = "none";
 }
 
+// 🎯 GÜNCELLENEN STOK EKLE/DÜŞ FONKSİYONU (LOG KAYDI ATAN KISIM)
 async function adjustIngredientStock(id) {
   const ing = allIngredients.find(i => i.id === id);
   if (!ing) return;
@@ -811,12 +814,32 @@ async function adjustIngredientStock(id) {
   }
 
   const newStock = Math.max(0, Number(currentStock) + delta);
+  const movementType = delta >= 0 ? "Stok Ekleme" : "Stok Düşme";
+  const note = prompt("Bu işlem için bir açıklama / parti giriniz (İsteğe bağlı):", "Manuel Stok Güncelleme") || "Manuel Stok Güncelleme";
 
   try {
-    const { error } = await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", id);
-    if (error) throw error;
+    // 1. Stok tablosunu güncelle
+    const { error: updateErr } = await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", id);
+    if (updateErr) throw updateErr;
+
+    // 2. Hareketleri log tablosuna kaydet ki log ekranına ve ana sayfaya yansısın!
+    const { error: logErr } = await client.from("stock_movements").insert({
+      ingredient_id: id,
+      quantity_changed: delta,
+      movement_type: movementType,
+      note: note
+    });
+    if (logErr) throw logErr;
+
+    alert(`✅ Başarılı! '${ing.name}' stoğu güncellendi ve loglara işlendi.`);
+
     await loadIngredients();
     await loadIngredientsForDashboard();
+    
+    if (document.getElementById("pageIngredients").style.display !== "none") {
+      await loadStockMovements();
+    }
+
   } catch (err) {
     alert("Stok güncellenemedi: " + err.message);
   }
@@ -1063,7 +1086,7 @@ async function deletePaymentMethod(id) {
   }
 }
 
-// 10. ADİSYON ENTEGRASYON KÖPRÜSÜ (ADİSYO'DAN SİPARİŞ ÇEKME)
+// 10. ADİSYON ENTEGRASYON KÖPRÜSÜ
 async function fetchAdisyoOrders() {
   try {
     const response = await fetch("https://api.adisyo.com/v1/orders/pending", {
@@ -1953,7 +1976,7 @@ function bindEvents() {
   if (saveProdBtn) saveProdBtn.onclick = saveProductFromForm;
 
   const resetProdBtn = document.getElementById("resetProductFormBtn");
-  if (resetProdBtn) resetProdBtn.onclick = resetProdForm;
+  if (resetProdBtn) resetProdBtn.onclick = resetProductForm;
 
   const searchProdInput = document.getElementById("searchProductInput");
   if (searchProdInput) {
