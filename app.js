@@ -5,25 +5,22 @@
 document.addEventListener("DOMContentLoaded", async () => {
     console.log("Kaptan Nili POS Yükleniyor... 🚀");
 
-    // 1. Supabase İstemci Kontrolü ve Başlatma
-    if (typeof supabase === 'undefined' && typeof createClient === 'undefined') {
-        console.error("Supabase kütüphanesi yüklenemedi!");
+    // Supabase İstemci Başlatma
+    if (typeof supabase !== 'undefined' && typeof window.client === 'undefined') {
+        window.client = supabase.createClient(
+            "https://stytmmafrrtqaxobihap.supabase.co",
+            "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu"
+        );
     }
 
-    // Projendeki global client değişkenini burada tanımlıyoruz
-    window.client = window.client || supabase.createClient(
-        "https://stytmmafrrtqaxobihap.supabase.co",
-        "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu"
-    );
-
-    // Giriş Butonu Dinleyicisi
+    // Senin HTML'indeki doğru ID'ler (loginPassword ve loginBtn)
     const loginBtn = document.getElementById("loginBtn");
-    const passwordInput = document.getElementById("passwordInput");
+    const passwordInput = document.getElementById("loginPassword");
     const loginScreen = document.getElementById("loginScreen");
     const appShell = document.getElementById("appShell");
 
     if (loginBtn) {
-        loginBtn.addEventListener("click", () => handleLogin());
+        loginBtn.addEventListener("click", handleLogin);
     }
 
     if (passwordInput) {
@@ -35,16 +32,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     async function handleLogin() {
         const pass = passwordInput ? passwordInput.value.trim() : "";
         
-        // Basit şifre koruması veya doğrulama
-        if (pass === "" || pass.length < 3) {
-            alert("Lütfen geçerli bir şifre gir kanka!");
+        if (pass === "") {
+            alert("Lütfen şifreni gir kanka!");
             return;
         }
 
         try {
             console.log("Giriş yapılıyor...");
             
-            // Paneli görünür yap
+            // Paneli aç
             if (loginScreen) loginScreen.style.display = "none";
             if (appShell) appShell.style.display = "block";
 
@@ -56,7 +52,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 renderSales();
             }
 
-            console.log("✅ Giriş başarılı ve panel açıldı!");
+            console.log("✅ Giriş başarılı!");
         } catch (err) {
             console.error("Giriş hatası:", err);
             alert("Giriş sırasında hata oluştu: " + err.message);
@@ -64,7 +60,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 });
 
-// HTML içindeki kaçış fonksiyonu (güvenlik için)
 function escapeHtml(text) {
     if (!text) return '';
     return text.toString()
@@ -75,7 +70,6 @@ function escapeHtml(text) {
         .replace(/'/g, "&#039;");
 }
 
-// Standart satışları render etme fonksiyonu (yedek)
 window.renderSales = async function() {
     if (typeof client === 'undefined') return;
     try {
@@ -101,7 +95,6 @@ window.renderSales = async function() {
     'use strict';
     console.log("Kaptan Nili Canlı Dinleme Modülü Aktif! 🚀");
 
-    // Supabase'den güncel satışları çekip ekrandaki tabloyu ve ciro penceresini güncelleyen fonksiyon
     window.kaptanCanliSatislarıTazele = async function() {
         if (typeof client === 'undefined') return;
 
@@ -147,7 +140,6 @@ window.renderSales = async function() {
         }
     };
 
-    // Her 3 saniyede bir Supabase'i yokla ve ekranı güncelle
     setInterval(() => {
         const appShell = document.getElementById("appShell");
         if (appShell && appShell.style.display !== "none") {
@@ -155,7 +147,6 @@ window.renderSales = async function() {
         }
     }, 3000);
 
-    // İlk açılışta bir kez çalıştır
     setTimeout(window.kaptanCanliSatislarıTazele, 1000);
 
 })();
