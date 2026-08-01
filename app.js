@@ -2049,3 +2049,145 @@ if (loginPassword) {
     e.key === "Enter" && login();
   });
 }
+/* ==========================================================
+   KAPTAN NİLİ - ADİSYO CANLI KÖPRÜ & SESLİ OTOMASYON MODÜLÜ v5.0
+   ========================================================== */
+
+(function() {
+    'use strict';
+    console.log("Kaptan Nili Adisyo Canlı Köprü Modülü Aktif! 🚀");
+
+    // 1. Dikkat Çekici Zil Sesi (Web Audio API - Harici dosya gerektirmez)
+    function kaptanZilSesiCal() {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5 nota
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15); // A5 nota
+            
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.6);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.6);
+        } catch(e) {
+            console.log("Zil sesi çalınamadı:", e);
+        }
+    }
+
+    // 2. Panel İçine İzole "Gelen Adisyo Siparişleri" Kutusu Enjeksiyonu
+    function kaptanPaneliOlustur() {
+        // Eğer zaten eklenmişse tekrar ekleme
+        if (document.getElementById("kaptan-adisyo-panel-alani")) return;
+
+        // Ana panel içinde uygun bir yere (örneğin sol menü veya dashboard üstüne) şık bir kutu ekleyelim
+        const panelAlani = document.createElement('div');
+        panelAlani.id = "kaptan-adisyo-panel-alani";
+        panelAlani.style.cssText = "margin: 15px; background: #fff8f8; border: 2px dashed #ff6b6b; padding: 15px; border-radius: 8px; font-family: Arial, sans-serif;";
+        panelAlani.innerHTML = `
+            <h4 style="margin: 0 0 10px 0; color: #ff6b6b; display: flex; justify-content: space-between; align-items: center;">
+                <span>🍰 Adisyo Canlı Gelen Siparişler</span>
+                <span id="kaptan-adisyo-sayac" style="font-size: 11px; background: #ff6b6b; color: white; padding: 2px 6px; border-radius: 10px;">Aktif</span>
+            </h4>
+            <div id="kaptan-adisyo-liste" style="font-size: 13px; color: #333; max-height: 150px; overflow-y: auto;">
+                <p style="color: #888; margin: 0;">Sipariş bekleniyor, Adisyo dinleniyor...</p>
+            </div>
+        `;
+
+        // appShell veya uygun bir ana kapsayıcının içine yerleştir
+        const appShellElem = document.getElementById("appShell");
+        if (appShellElem) {
+            appShellElem.prepend(panelAlani);
+        }
+    }
+
+    // 3. Paneli Güncelleme ve Listeleme Fonksiyonu
+    window.kaptanAdisyoPaneliGuncelle = function() {
+        const listeDiv = document.getElementById("kaptan-adisyo-liste");
+        if (!listeDiv) return;
+
+        const kayitli = JSON.parse(localStorage.getItem('kaptan_bulut_siparisler') || '[]');
+        if (kayitli.length === 0) {
+            listeDiv.innerHTML = '<p style="color: #888; margin: 0;">Henüz gelen Adisyo siparişi yok...</p>';
+            return;
+        }
+
+        let html = '';
+        kayitli.forEach((s, index) => {
+            html += `
+                <div style="background: white; border: 1px solid #ddd; padding: 8px 12px; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <b>Müşteri:</b> ${escapeHtml(s.musteri)} | <b>Sipariş No:</b> ${escapeHtml(s.siparisNo)}<br>
+                        <span style="color: #2e7d32; font-weight: bold;">Tutar: ${escapeHtml(s.tutar)}</span> (${escapeHtml(s.odeme)}) • <span style="font-size: 11px; color: #666;">${escapeHtml(s.zaman)}</span>
+                    </div>
+                    <button type="button" onclick="kaptanAdisyoSiparisiniKapat(${index})" style="background: #2e7d32; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;">Tamamla & Arşivle</button>
+                </div>
+            `;
+        });
+        listeDiv.innerHTML = html;
+    };
+
+    // 4. Siparişi Kapatıp Günlük Satışlara (Supabase / Panele) İşleme Fonksiyonu
+    window.kaptanAdisyoSiparisiniKapat = async function(index) {
+        let kayitliSiparisler = JSON.parse(localStorage.getItem('kaptan_bulut_siparisler') || '[]');
+        const tamamlanan = kayitliSiparisler.splice(index, 1)[0];
+        
+        if (!tamamlanan) return;
+
+        try {
+            // Ham tutar stringinden (Örn: "₺6,00" veya "6.00 TL") sayısal değeri çekelim
+            let temizTutar = parseFloat(tamamlanan.tutar.replace(/[^0-9,.]/g, '').replace(',', '.')) || 0;
+
+            // Supabase'deki 'sales' tablosuna kayıt atalım (Böylece günlük raporlara ve satışlara işlenir!)
+            if (typeof client !== 'undefined') {
+                const { error: saleErr } = await client
+                    .from("sales")
+                    .insert({ 
+                        total_amount: temizTutar, 
+                        payment_type: tamamlanan.odeme || "Adisyo / Online" 
+                    });
+
+                if (saleErr) console.error("Supabase satış kayıt hatası:", saleErr.message);
+            }
+
+            // LocalStorage'ı güncelle
+            localStorage.setItem('kaptan_bulut_siparisler', JSON.stringify(kayitliSiparisler));
+            
+            // Paneli ve anlık satışları tazele
+            window.kaptanAdisyoPaneliGuncelle();
+            if (typeof renderSales === 'function') {
+                await renderSales(); // Senin mevcut anlık satışlar tablonu günceller!
+            }
+
+            alert(`🎉 Sipariş başarıyla kapatıldı, günlük satışlara ve ciroya işlendi!`);
+
+        } catch (err) {
+            alert("Sipariş kapatılırken hata oluştu: " + err.message);
+        }
+    };
+
+    // 5. Periyodik Kontrol ve Tetikleyici
+    setInterval(() => {
+        // Eğer kullanıcı giriş yapmışsa ve panel görünürse kutuyu ve verileri taze tut
+        const appShell = document.getElementById("appShell");
+        if (appShell && appShell.style.display !== "none") {
+            kaptanPaneliOlustur();
+            window.kaptanAdisyoPaneliGuncelle();
+        }
+    }, 2000);
+
+    // Dışarıdan (Tampermonkey aracılığıyla Adisyo sekmesinden) veri geldiğinde zili çal ve paneli güncelle
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'kaptan_bulut_siparisler') {
+            kaptanZilSesiCal();
+            window.kaptanAdisyoPaneliGuncelle();
+        }
+    });
+
+})();
