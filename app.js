@@ -49,12 +49,16 @@ async function checkRecipeTable() {
   }
 }
 
-// TEMA RENK YÖNETİMİ (Kalıcı ve Kesin Çözüm)
+// TEMA RENK YÖNETİMİ (localStorage Kalıcı Çözüm)
+const THEME_STORAGE_KEY = "knpos_primary_color_v1";
+
 async function loadThemeColor() {
   try {
-    const { data, error } = await client.from("app_settings").select("value").eq("key", "primary_color").single();
-    if (!error && data && data.value) {
-      applyThemeColor(data.value);
+    const savedColor = localStorage.getItem(THEME_STORAGE_KEY);
+    if (savedColor) {
+      applyThemeColor(savedColor);
+    } else {
+      applyThemeColor('#2d5a27'); // Varsayılan renk
     }
   } catch (err) {
     console.log("Tema yüklenemedi, varsayılan kullanılıyor.");
@@ -77,15 +81,12 @@ function applyThemeColor(primaryHex) {
 async function changeThemeColor(primaryHex, darkHex) {
   applyThemeColor(primaryHex);
   try {
-    // Supabase app_settings tablosuna kaydediyoruz
-    const { error } = await client.from("app_settings").upsert({ key: "primary_color", value: primaryHex }, { onConflict: 'key' });
-    if (error) throw error;
+    localStorage.setItem(THEME_STORAGE_KEY, primaryHex);
     alert("Tema rengi başarıyla güncellendi ve kalıcı olarak kaydedildi!");
   } catch (err) {
     alert("Tema kaydedilemedi: " + err.message);
   }
 }
-
 
 // 1. GİRİŞ İŞLEMİ
 async function login() {
