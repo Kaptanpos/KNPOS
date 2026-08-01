@@ -86,28 +86,6 @@ async function changeThemeColor(primaryHex, darkHex) {
   }
 }
 
-function applyThemeColor(primaryHex) {
-  document.documentElement.style.setProperty('--primary', primaryHex);
-  
-  let darkHex = primaryHex;
-  if (primaryHex === '#2d5a27') darkHex = '#1e3d1a';
-  else if (primaryHex === '#0f766e') darkHex = '#115e59';
-  else if (primaryHex === '#78350f') darkHex = '#451a03';
-  else if (primaryHex === '#1e3a8a') darkHex = '#172554';
-  else if (primaryHex === '#9d174d') darkHex = '#831843';
-
-  document.documentElement.style.setProperty('--primary-dark', darkHex);
-}
-
-async function changeThemeColor(primaryHex, darkHex) {
-  applyThemeColor(primaryHex);
-  try {
-    await client.from("app_settings").upsert({ key: "primary_color", value: primaryHex });
-    alert("Tema rengi başarıyla güncellendi ve kaydedildi!");
-  } catch (err) {
-    alert("Tema kaydedilemedi: " + err.message);
-  }
-}
 
 // 1. GİRİŞ İŞLEMİ
 async function login() {
