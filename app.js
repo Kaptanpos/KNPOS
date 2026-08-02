@@ -1095,6 +1095,7 @@ async function deletePaymentMethod(id) {
   }
 }
 
+// 10. ADİSYON ENTEGRASYON KÖPRÜSÜ
 async function fetchAdisyoOrders() {
   try {
     const response = await fetch("https://api.adisyo.com/v1/orders/pending", {
@@ -1119,92 +1120,47 @@ async function fetchAdisyoOrders() {
       return;
     }
 
-    // Ürünleri eşleştirebilmek için veritabanındaki ürünleri hafızaya alalım
-    const { data: dbProducts } = await client.from("products").select("id, name, price");
-    const productsList = dbProducts || [];
-
     for (const order of adisyoOrders) {
       const totalAmount = Number(order.totalAmount || order.total || 0);
       const paymentChannel = order.channel || order.paymentType || "Adisyo / Online";
-      const orderNo = order.orderNumber || order.id || "";
-      const customerName = order.customerName || order.name || "Müşteri";
 
-      // 1. Ürün kalemlerini tüm olası yollardan yakalayalım
-      let rawItems = order.items || order.orderItems || order.products || order.details || [];
-      
-      if (rawItems.length === 0 && (order.productName || order.name)) {
-        rawItems = [{
-          productName: order.productName || order.name || "Adisyo Ürünü",
-          quantity: order.quantity || order.qty || 1,
-          price: order.price || totalAmount
-        }];
-      }
-
-      // 2. Önce ana satış kaydını at
       const { data: saleRecord, error: saleErr } = await client
         .from("sales")
         .insert({ 
           total_amount: totalAmount, 
-          payment_type: `${paymentChannel} (#${orderNo} - ${customerName})` 
+          payment_type: paymentChannel 
         })
         .select("id")
         .single();
 
       if (saleErr) throw saleErr;
 
-      // 3. Ürün detaylarını veritabanındaki ürün adlarıyla eşleştirerek hazırla
-      let saleItemsPayload = [];
-
-      if (rawItems.length > 0) {
-        saleItemsPayload = rawItems.map(item => {
-          const qty = Number(item.quantity || item.qty || item.count || 1);
-          const unitPrice = Number(item.price || item.unitPrice || item.amount || totalAmount);
-          const incomingName = String(item.productName || item.name || item.title || "Adisyo Ürünü").trim().toLowerCase();
-
-          // Veritabanındaki ürünle adından eşleştirmeye çalışalım
-          const matchedProd = productsList.find(p => p.name.trim().toLowerCase() === incomingName);
-          const resolvedProductId = matchedProd ? matchedProd.id : (productsList.length > 0 ? productsList[0].id : 1);
-
-          return {
-            sale_id: saleRecord.id,
-            product_id: resolvedProductId,
-            quantity: qty,
-            unit_price: unitPrice,
-            line_total: qty * unitPrice
-          };
-        });
-      } else {
-        // Ürün kalemi yoksa ilk ürünü veya varsayılanı bas
-        const defaultProdId = productsList.length > 0 ? productsList[0].id : 1;
-        saleItemsPayload = [{
+      if (order.items && order.items.length > 0) {
+        const saleItemsPayload = order.items.map(item => ({
           sale_id: saleRecord.id,
-          product_id: defaultProdId,
-          quantity: 1,
-          unit_price: totalAmount,
-          line_total: totalAmount
-        }];
-      }
+          product_id: item.productId || 1,
+          quantity: Number(item.quantity || 1),
+          unit_price: Number(item.price || 0),
+          line_total: Number(item.quantity || 1) * Number(item.price || 0)
+        }));
 
-      const { error: itemsErr } = await client.from("sale_items").insert(saleItemsPayload);
-      if (itemsErr) {
-        console.error("Detaylar kaydedilemedi:", itemsErr.message);
-        alert("Satış ana kalemi atıldı fakat detaylar kaydedilirken hata oluştu: " + itemsErr.message);
-      } else {
-        // Reçeteden stok düşüşü
-        await deductStockFromRecipe(saleItemsPayload.map(i => ({
-          productId: i.product_id,
-          quantity: i.quantity
+        await client.from("sale_items").insert(saleItemsPayload);
+
+        await deductStockFromRecipe(order.items.map(i => ({
+          productId: i.productId || 1,
+          quantity: Number(i.quantity || 1)
         })));
       }
     }
 
-    alert("🎉 Adisyo siparişi ve tüm detayları Supabase'e kusursuz bir şekilde işlendi!");
+    alert("🎉 Adisyo'daki siparişler başarıyla Kaptan Nili POS sistemine aktarıldı, kasaya işlendi ve stoklar düşüldü!");
+    
     await renderSales();
     await loadIngredients();
 
   } catch (err) {
     console.error("Adisyo Entegrasyon Hatası:", err);
-    alert("Hata: " + err.message);
+    alert("Adisyo siparişleri çekilirken bir hata oluştu: " + err.message);
   }
 }
 
@@ -1278,18 +1234,104 @@ async function completePaymentWithChannel(channelName) {
 
     closeTableModal();
     renderTables();
-    
-    // Eğer projede renderSales varsa çalıştır, yoksa hata vermez
-    if (typeof renderSales === "function") {
-      await renderSales();
-    }
+    await renderSales();
 
-    alert(`Satış [ ${channelName} ] üzerinden başarıyla tamamlandı!`);
+    alert(`Satış [ ${channelName} ] kanalı üzerinden başarıyla tamamlandı ve stoklar düşüldü!`);
 
   } catch (err) {
     alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
   }
 }
+
+// 12. ANLIK SATIŞLAR TABLOSU
+async function renderSales() {
+  const list = document.getElementById("salesList");
+  const totalElem = document.getElementById("salesDailyTotal");
+  if (!list) return;
+
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const { data: sales, error } = await client
+      .from("sales")
+      .select("*")
+      .gte("created_at", today)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    if (!sales || sales.length === 0) {
+      list.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Bugün henüz satış yapılmadı.</div>';
+      if (totalElem) totalElem.textContent = formatMoney(0);
+      return;
+    }
+
+    let sum = 0;
+    list.innerHTML = sales.map(s => {
+      sum += Number(s.total_amount || 0);
+      const timeStr = new Date(s.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+      return `
+        <div class="daily-sales-row" onclick="openReceiptDetailModal(${s.id}, '${timeStr}', '${escapeHtml(s.payment_type || "Nakit")}', ${s.total_amount})">
+          <div><strong>${timeStr}</strong></div>
+          <div><strong style="color:var(--primary);">${escapeHtml(s.payment_type || "Nakit")}</strong></div>
+          <div style="text-align:right;"><strong>${formatMoney(s.total_amount)} 🔍</strong></div>
+        </div>
+      `;
+    }).join("");
+
+    if (totalElem) totalElem.textContent = formatMoney(sum);
+  } catch (err) {
+    list.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Satışlar çekilemedi.</div>';
+    if (totalElem) totalElem.textContent = formatMoney(0);
+  }
+}
+
+async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount) {
+  const modal = document.getElementById("receiptDetailModal");
+  const subtitle = document.getElementById("receiptSubtitle");
+  const container = document.getElementById("receiptItemsContainer");
+  const totalElem = document.getElementById("receiptTotalAmount");
+
+  if (!modal || !container) return;
+
+  if (subtitle) subtitle.textContent = `Saat: ${timeStr} • Kanal: ${paymentType}`;
+  if (totalElem) totalElem.textContent = formatMoney(totalAmount);
+  
+  container.innerHTML = '<div style="text-align:center; padding:15px; color:var(--text-muted); font-size:12px;">Adisyon detayları yükleniyor...</div>';
+  modal.style.display = "flex";
+
+  try {
+    const { data: items, error } = await client
+      .from("sale_items")
+      .select("*, products(name)")
+      .eq("sale_id", saleId);
+
+    if (error) throw error;
+
+    if (!items || items.length === 0) {
+      container.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Bu adisyona ait detay bulunamadı.</div>';
+      return;
+    }
+
+    container.innerHTML = items.map(item => {
+      const prodName = item.products?.name || "Ürün";
+      const lineTotal = Number(item.line_total || (item.quantity * item.unit_price) || 0);
+      return `
+        <div class="receipt-detail-row">
+          <div>
+            <strong>${escapeHtml(prodName)}</strong><br>
+            <span style="font-size:11px; color:var(--text-muted);">${item.quantity} Adet × ${formatMoney(item.unit_price)}</span>
+          </div>
+          <div style="font-weight:bold; color:var(--primary); align-self:center;">
+            ${formatMoney(lineTotal)}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+  } catch (err) {
+    container.innerHTML = '<div style="text-align:center; padding:15px; color:#dc2626; font-size:12px;">Adisyon içeriği çekilemedi.</div>';
+  }
+}
+
 // 13. RAPOR SEKMELERİ
 function switchReportTab(tabId) {
   const contents = document.querySelectorAll(".report-tab-content");
@@ -2055,14 +2097,4 @@ if (loginPassword) {
   loginPassword.addEventListener("keydown", (e) => {
     e.key === "Enter" && login();
   });
-}
-// renderSales fonksiyonu tanımlı olmadığından hata alınmaması için güvenlik yaması
-async function renderSales() {
-  try {
-    if (typeof loadSales === "function") {
-      await loadSales();
-    }
-  } catch (e) {
-    // Sessiz geç
-  }
 }
