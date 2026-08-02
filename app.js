@@ -1243,7 +1243,6 @@ async function completePaymentWithChannel(channelName) {
   }
 }
 
-// 12. ANLIK SATIŞLAR TABLOSU
 async function renderSales() {
   const list = document.getElementById("salesList");
   const totalElem = document.getElementById("salesDailyTotal");
@@ -1268,10 +1267,12 @@ async function renderSales() {
     list.innerHTML = sales.map(s => {
       sum += Number(s.total_amount || 0);
       const timeStr = new Date(s.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+      const safeChannel = escapeHtml(s.payment_type || "Nakit");
+      
       return `
-        <div class="daily-sales-row" onclick="openReceiptDetailModal(${s.id}, '${timeStr}', '${escapeHtml(s.payment_type || "Nakit")}', ${s.total_amount})">
+        <div class="daily-sales-row" onclick="openReceiptDetailModal(${s.id}, '${timeStr}', '${safeChannel}', ${s.total_amount})" style="cursor: pointer; display: flex; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid var(--border-color); align-items: center;">
           <div><strong>${timeStr}</strong></div>
-          <div><strong style="color:var(--primary);">${escapeHtml(s.payment_type || "Nakit")}</strong></div>
+          <div><strong style="color:var(--primary);">${safeChannel}</strong></div>
           <div style="text-align:right;"><strong>${formatMoney(s.total_amount)} 🔍</strong></div>
         </div>
       `;
@@ -1283,7 +1284,6 @@ async function renderSales() {
     if (totalElem) totalElem.textContent = formatMoney(0);
   }
 }
-
 async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount) {
   const modal = document.getElementById("receiptDetailModal");
   const subtitle = document.getElementById("receiptSubtitle");
