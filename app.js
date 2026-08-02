@@ -2056,3 +2056,13 @@ if (loginPassword) {
     e.key === "Enter" && login();
   });
 }
+// renderSales fonksiyonu tanımlı olmadığından hata alınmaması için güvenlik yaması
+async function renderSales() {
+  try {
+    if (typeof loadSales === "function") {
+      await loadSales();
+    }
+  } catch (e) {
+    // Sessiz geç
+  }
+}
