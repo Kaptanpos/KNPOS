@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - ADİSYON DETAYLI FULL TEMİZ SÜRÜM */
+/* KAPTAN NİLİ BULUT POS - EKSİKSİZ VE FULL SORUNSUZ SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -868,7 +868,6 @@ async function completePaymentWithChannel(channelName) {
   if (!table) return;
 
   try {
-    // 1. Önce ana satış kaydını atıp id'sini alıyoruz
     const { data: sale, error: saleErr } = await client
       .from("sales")
       .insert({ total_amount: Number(table.total), payment_type: channelName })
@@ -877,7 +876,6 @@ async function completePaymentWithChannel(channelName) {
 
     if (saleErr) throw saleErr;
 
-    // 2. Büyütecin içini dolduracak olan sale_items detaylarını saf ve hatasız kaydediyoruz
     if (table.orders && table.orders.length > 0) {
       const saleItems = table.orders.map(item => ({
         sale_id: sale.id,
@@ -891,10 +889,8 @@ async function completePaymentWithChannel(channelName) {
       if (itemsErr) throw itemsErr;
     }
 
-    // 3. Stoktan güvenli düşüş
     await deductStockFromRecipe(table.orders);
 
-    // 4. Masayı kapat ve temizle
     table.status = "closed";
     table.openedAt = null;
     table.total = 0;
