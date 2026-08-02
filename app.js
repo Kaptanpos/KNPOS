@@ -1203,6 +1203,7 @@ async function completePaymentWithChannel(channelName) {
   if (!table) return;
 
   try {
+    // 1. Önce ana satış kaydını atalım
     const { data: sale, error: saleErr } = await client
       .from("sales")
       .insert({ total_amount: Number(table.total), payment_type: channelName })
@@ -1211,18 +1212,26 @@ async function completePaymentWithChannel(channelName) {
 
     if (saleErr) throw saleErr;
 
-    const saleItems = table.orders.map(item => ({
-      sale_id: sale.id,
-      product_id: item.productId,
-      quantity: Number(item.quantity),
-      unit_price: Number(item.price),
-      line_total: Number(item.quantity) * Number(item.price)
-    }));
+    // 2. Masadaki ürünleri sale_items tablosuna eksiksiz yazdıralım
+    if (table.orders && table.orders.length > 0) {
+      const saleItems = table.orders.map(item => ({
+        sale_id: sale.id,
+        product_id: item.productId,
+        quantity: Number(item.quantity),
+        unit_price: Number(item.price),
+        line_total: Number(item.quantity) * Number(item.price)
+      }));
 
-    await client.from("sale_items").insert(saleItems);
+      const { error: itemsErr } = await client.from("sale_items").insert(saleItems);
+      if (itemsErr) {
+        console.error("Detaylar yazılamadı:", itemsErr.message);
+      }
+    }
 
+    // 3. Stoktan reçeteye göre düşüşü yapalım
     await deductStockFromRecipe(table.orders);
 
+    // 4. Masayı temizleyip kapatalım
     table.status = "closed";
     table.openedAt = null;
     table.total = 0;
@@ -1234,15 +1243,17 @@ async function completePaymentWithChannel(channelName) {
 
     closeTableModal();
     renderTables();
-    await renderSales();
+    
+    if (typeof renderSales === "function") {
+      await renderSales();
+    }
 
-    alert(`Satış [ ${channelName} ] kanalı üzerinden başarıyla tamamlandı ve stoklar düşüldü!`);
+    alert(`Satış [ ${channelName} ] üzerinden başarıyla tamamlandı ve detaylar işlendi!`);
 
   } catch (err) {
     alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
   }
 }
-
 async function renderSales() {
   const list = document.getElementById("salesList");
   const totalElem = document.getElementById("salesDailyTotal");
