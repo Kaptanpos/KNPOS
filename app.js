@@ -1203,6 +1203,8 @@ async function completePaymentWithChannel(channelName) {
   if (!table) return;
 
   try {
+    console.log("1. Satış başlatılıyor...", table.total, channelName);
+
     // 1. Önce ana satış kaydını atalım
     const { data: sale, error: saleErr } = await client
       .from("sales")
@@ -1210,9 +1212,14 @@ async function completePaymentWithChannel(channelName) {
       .select("id")
       .single();
 
-    if (saleErr) throw saleErr;
+    if (saleErr) {
+      console.error("Ana satış kayıt hatası:", saleErr);
+      throw saleErr;
+    }
 
-    // 2. Masadaki ürünleri sale_items tablosuna eksiksiz yazdıralım
+    console.log("2. Ana satış başarıyla atıldı, ID:", sale.id);
+
+    // 2. Masadaki ürünleri sale_items tablosuna yazdıralım
     if (table.orders && table.orders.length > 0) {
       const saleItems = table.orders.map(item => ({
         sale_id: sale.id,
@@ -1222,9 +1229,14 @@ async function completePaymentWithChannel(channelName) {
         line_total: Number(item.quantity) * Number(item.price)
       }));
 
+      console.log("3. sale_items verisi hazırlanıyor:", saleItems);
+
       const { error: itemsErr } = await client.from("sale_items").insert(saleItems);
       if (itemsErr) {
-        console.error("Detaylar yazılamadı:", itemsErr.message);
+        console.error("sale_items kayıt hatası:", itemsErr);
+        alert("Satış ana kalemi atıldı fakat ürün detayları kaydedilemedi: " + itemsErr.message);
+      } else {
+        console.log("4. Ürün detayları başarıyla kaydedildi!");
       }
     }
 
@@ -1248,9 +1260,10 @@ async function completePaymentWithChannel(channelName) {
       await renderSales();
     }
 
-    alert(`Satış [ ${channelName} ] üzerinden başarıyla tamamlandı ve detaylar işlendi!`);
+    alert(`Satış [ ${channelName} ] üzerinden başarıyla tamamlandı!`);
 
   } catch (err) {
+    console.error("completePaymentWithChannel kritik hata:", err);
     alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
   }
 }
