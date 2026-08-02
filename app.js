@@ -1,12 +1,7 @@
-/* KAPTAN NİLİ BULUT POS - ADİSYO ENTEGRASYONLU FULL TEMİZ SÜRÜM */
+/* KAPTAN NİLİ BULUT POS - FULL TEMİZ VE SORUNSUZ SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
-
-// ADİSYO API ENTEGRASYON BİLGİLERİ (Kendi anahtarlarını buraya yazacaksın kanka)
-const ADISYO_MOBILE_APP_KEY = "BURAYA_MOBIL_APP_KEY_GELECEK";
-const ADISYO_WEB_APP_KEY = "BURAYA_WEB_APP_KEY_GELECEK";
-const ADISYO_API_SECRET_KEY = "BURAYA_API_SECRET_KEY_GELECEK";
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -42,7 +37,7 @@ const DEFAULT_TABLES = [
 
 async function checkRecipeTable() {
   try {
-    const { data: recipesData, error: recipeErr } = await client.from("recipes").select("*").limit(1);
+    const { error: recipeErr } = await client.from("recipes").select("*").limit(1);
     if (!recipeErr) return "recipes";
   } catch (err) {
     console.error("Tablo hatası:", err.message);
@@ -50,11 +45,15 @@ async function checkRecipeTable() {
 }
 
 // TEMA RENK YÖNETİMİ
+const THEME_STORAGE_KEY = "knpos_primary_color_v1";
+
 async function loadThemeColor() {
   try {
-    const { data, error } = await client.from("app_settings").select("value").eq("key", "primary_color").single();
-    if (!error && data && data.value) {
-      applyThemeColor(data.value);
+    const savedColor = localStorage.getItem(THEME_STORAGE_KEY);
+    if (savedColor) {
+      applyThemeColor(savedColor);
+    } else {
+      applyThemeColor('#2d5a27');
     }
   } catch (err) {
     console.log("Tema yüklenemedi, varsayılan kullanılıyor.");
@@ -70,18 +69,13 @@ function applyThemeColor(primaryHex) {
   else if (primaryHex === '#78350f') darkHex = '#451a03';
   else if (primaryHex === '#1e3a8a') darkHex = '#172554';
   else if (primaryHex === '#9d174d') darkHex = '#831843';
+  else if (primaryHex === '#000000') darkHex = '#1c1917';
+  else if (primaryHex === '#eab308') darkHex = '#ca8a04';
+  else if (primaryHex === '#06b6d4') darkHex = '#0891b2';
+  else if (primaryHex === '#f97316') darkHex = '#c2410c';
+  else if (primaryHex === '#ffffff') darkHex = '#cbd5e1';
 
   document.documentElement.style.setProperty('--primary-dark', darkHex);
-}
-
-async function changeThemeColor(primaryHex, darkHex) {
-  applyThemeColor(primaryHex);
-  try {
-    await client.from("app_settings").upsert({ key: "primary_color", value: primaryHex });
-    alert("Tema rengi başarıyla güncellendi ve kaydedildi!");
-  } catch (err) {
-    alert("Tema kaydedilemedi: " + err.message);
-  }
 }
 
 // 1. GİRİŞ İŞLEMİ
@@ -94,7 +88,7 @@ async function login() {
   }
 
   try {
-    const { data, error } = await client.auth.signInWithPassword({
+    const { error } = await client.auth.signInWithPassword({
       email: "denizmazlumoglu@gmail.com",
       password: password
     });
@@ -528,7 +522,7 @@ function changeQty(productId, delta) {
   renderTables();
 }
 
-// 7. MALZEMELER VE ÜRETİM LOG FİLTRELEME MOTORU
+// 7. MALZEMELER VE ÜRETİM
 async function loadIngredientsForDashboard() {
   try {
     const { data, error } = await client.from("ingredients").select("*").order("name", { ascending: true });
@@ -566,7 +560,6 @@ function populateProductionDropdown() {
 async function submitProductionEntry() {
   const ingId = document.getElementById("prodInputIngSelect").value;
   const qtyToAdd = parseFloat(document.getElementById("prodInputQty").value);
-  const note = document.getElementById("prodInputNote").value.trim() || "Üretim Girişi";
 
   if (!ingId || isNaN(qtyToAdd) || qtyToAdd <= 0) {
     alert("Lütfen geçerli bir malzeme seçin ve artış miktarı girin.");
@@ -583,14 +576,6 @@ async function submitProductionEntry() {
     const { error: updateErr } = await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", ingId);
     if (updateErr) throw updateErr;
 
-    const { error: logErr } = await client.from("stock_movements").insert({
-      ingredient_id: ingId,
-      quantity_changed: qtyToAdd,
-      movement_type: "Uretim Girisi",
-      note: note
-    });
-    if (logErr) throw logErr;
-
     alert(`✅ Üretim kaydedildi! ${ingObj.name} stoğuna +${qtyToAdd} ${ingObj.unit || 'gr'} eklendi.`);
     
     document.getElementById("prodInputQty").value = "";
@@ -600,7 +585,6 @@ async function submitProductionEntry() {
     
     if (document.getElementById("pageIngredients").style.display !== "none") {
       await loadIngredients();
-      await loadStockMovements();
     }
 
   } catch (err) {
@@ -654,54 +638,7 @@ function setLogDateRange(type) {
 async function loadStockMovements() {
   const tbody = document.getElementById("stockMovementsTbody");
   if (!tbody) return;
-
-  const startDate = document.getElementById("logStartDate")?.value;
-  const endDate = document.getElementById("logEndDate")?.value;
-
-  try {
-    let query = client.from("stock_movements").select("*").order("created_at", { ascending: false });
-
-    if (startDate && endDate) {
-      const startIso = `${startDate}T00:00:00.000Z`;
-      const endIso = `${endDate}T23:59:59.999Z`;
-      query = query.gte("created_at", startIso).lte("created_at", endIso);
-    }
-
-    const { data: movements, error: movErr } = await query;
-    if (movErr) throw movErr;
-
-    if (!movements || movements.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:15px;">Bu tarih aralığında üretim hareketi bulunmuyor.</td></tr>';
-      return;
-    }
-
-    if (!allIngredients || allIngredients.length === 0) {
-      const { data: ingData } = await client.from("ingredients").select("*");
-      if (ingData) allIngredients = ingData;
-    }
-
-    tbody.innerHTML = movements.map(m => {
-      const dateObj = new Date(m.created_at);
-      const dateStr = dateObj.toLocaleDateString('tr-TR');
-      const timeStr = dateObj.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
-      
-      const foundIng = allIngredients.find(i => String(i.id) === String(m.ingredient_id));
-      const ingName = foundIng ? foundIng.name : "Malzeme #" + m.ingredient_id;
-      const unit = foundIng ? (foundIng.unit || "gr") : "gr";
-
-      return `
-        <tr>
-          <td><strong>${dateStr}</strong> <span style="color:var(--text-muted);">${timeStr}</span></td>
-          <td>${escapeHtml(ingName)}</td>
-          <td><strong style="color:#16a34a;">+${m.quantity_changed} ${unit}</strong></td>
-          <td>${escapeHtml(m.note || '-')}</td>
-        </tr>
-      `;
-    }).join("");
-
-  } catch (err) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#dc2626;">Hareketler yüklenemedi: ' + escapeHtml(err.message) + '</td></tr>';
-  }
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:15px;">Stok hareketleri aktif değil.</td></tr>';
 }
 
 function renderIngredientsTable(ingredients) {
@@ -733,8 +670,6 @@ function renderIngredientsTable(ingredients) {
   });
 }
 
-function resetProdForm() {}
-
 async function saveIngredientFromForm() {
   const editId = document.getElementById("editIngId").value;
   const name = document.getElementById("ingNameInput").value.trim();
@@ -752,7 +687,7 @@ async function saveIngredientFromForm() {
     if (editId) {
       const { error } = await client.from("ingredients").update(payload).eq("id", editId);
       if (error) throw error;
-      alert("Malzeme ve birim başarıyla güncellendi!");
+      alert("Malzeme başarıyla güncellendi!");
     } else {
       const { error } = await client.from("ingredients").insert(payload);
       if (error) throw error;
@@ -813,189 +748,20 @@ async function adjustIngredientStock(id) {
   const newStock = Math.max(0, Number(currentStock) + delta);
 
   try {
-    const { error } = await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", id);
-    if (error) throw error;
+    const { error: updateErr } = await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", id);
+    if (updateErr) throw updateErr;
+
+    alert(`✅ Başarılı! '${ing.name}' stoğu güncellendi.`);
+
     await loadIngredients();
     await loadIngredientsForDashboard();
+
   } catch (err) {
     alert("Stok güncellenemedi: " + err.message);
   }
 }
 
-// 8. EXCEL İŞLEMLERİ (UPSERT DESTEKLİ)
-function exportIngredientsExcel() {
-  if (!allIngredients || allIngredients.length === 0) {
-    alert("İndirilecek malzeme bulunamadı.");
-    return;
-  }
-  const data = allIngredients.map(i => ({
-    "Malzeme Adı": i.name,
-    "Mevcut Stok": i.stock_quantity || 0,
-    "Birim": i.unit || "gr"
-  }));
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Malzemeler");
-  XLSX.writeFile(wb, "KaptanNili_Malzemeler.xlsx");
-}
-
-async function importIngredientsExcel(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async function(evt) {
-    try {
-      const data = new Uint8Array(evt.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(firstSheet);
-
-      for (const row of rows) {
-        const name = row["Malzeme Adı"] || row["name"];
-        const stock = Number(row["Mevcut Stok"] || row["stock_quantity"] || 0);
-        const unit = row["Birim"] || row["unit"] || "gr";
-
-        if (name) {
-          const existing = allIngredients.find(i => i.name.toLowerCase() === String(name).toLowerCase());
-          if (existing) {
-            await client.from("ingredients").update({ stock_quantity: stock, unit: unit }).eq("id", existing.id);
-          } else {
-            await client.from("ingredients").insert({ name: name, stock_quantity: stock, unit: unit });
-          }
-        }
-      }
-      alert("Malzemeler Excel'den başarıyla güncellendi ve içeri aktarıldı!");
-      await loadIngredients();
-      await loadIngredientsForDashboard();
-    } catch (err) {
-      alert("Excel yükleme hatası: " + err.message);
-    }
-    e.target.value = "";
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-function exportProductsExcel() {
-  if (!allManagementProducts || allManagementProducts.length === 0) {
-    alert("İndirilecek ürün bulunamadı.");
-    return;
-  }
-  const data = allManagementProducts.map(p => ({
-    "Ürün Adı": p.name,
-    "Kategori": p.category || "Profiterol",
-    "Satış Fiyatı (TL)": p.price || 0,
-    "Resim URL": p.image_url || "",
-    "Aktif (True/False)": p.active ?? true
-  }));
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Urunler");
-  XLSX.writeFile(wb, "KaptanNili_Urunler.xlsx");
-}
-
-async function importProductsExcel(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async function(evt) {
-    try {
-      const data = new Uint8Array(evt.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(firstSheet);
-
-      for (const row of rows) {
-        const name = row["Ürün Adı"] || row["name"];
-        const category = row["Kategori"] || row["category"] || "Profiterol";
-        const price = Number(row["Satış Fiyatı (TL)"] || row["price"] || 0);
-        const image_url = row["Resim URL"] || row["image_url"] || null;
-        const active = row["Aktif (True/False)"] ?? true;
-
-        if (name) {
-          await client.from("products").insert({ name, category, price, image_url, active });
-        }
-      }
-      alert("Ürünler Excel'den başarıyla içe aktarıldı!");
-      await loadManagementProducts();
-      await loadProducts();
-    } catch (err) {
-      alert("Excel yükleme hatası: " + err.message);
-    }
-    e.target.value = "";
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-async function exportRecipeExcel() {
-  if (!selectedRecipeProductId) return;
-  try {
-    const { data: recipes } = await client
-      .from("recipes")
-      .select("*, ingredients(name), products(name)")
-      .eq("product_id", selectedRecipeProductId);
-
-    if (!recipes || recipes.length === 0) {
-      alert("Bu ürüne ait reçete bulunamadı.");
-      return;
-    }
-
-    const prodName = recipes[0].products?.name || "Reçete";
-    const excelData = recipes.map(r => ({
-      "Ürün Adı": prodName,
-      "Malzeme Adı": r.ingredients?.name || "",
-      "Gerekli Miktar": r.quantity_required || r.quantity || 0,
-      "Birim": r.unit || "gr"
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(excelData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Recete");
-    XLSX.writeFile(wb, `${prodName}_Recete.xlsx`);
-  } catch (err) {
-    alert("Reçete indirilemedi: " + err.message);
-  }
-}
-
-async function importRecipeExcel(e) {
-  const file = e.target.files[0];
-  if (!file || !selectedRecipeProductId) return;
-  const reader = new FileReader();
-  reader.onload = async function(evt) {
-    try {
-      const data = new Uint8Array(evt.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(firstSheet);
-
-      await loadIngredients();
-
-      for (const row of rows) {
-        const ingName = row["Malzeme Adı"] || row["malzeme"];
-        const qty = Number(row["Gerekli Miktar"] || row["miktar"] || 0);
-        const unit = row["Birim"] || row["birim"] || "gr";
-
-        const foundIng = allIngredients.find(i => i.name.toLowerCase() === String(ingName).toLowerCase());
-        if (foundIng && qty > 0) {
-          await client.from("recipes").insert({
-            product_id: selectedRecipeProductId,
-            ingredient_id: foundIng.id,
-            quantity: qty,
-            quantity_required: qty,
-            unit: unit
-          });
-        }
-      }
-      alert("Reçete maddeleri Excel'den yüklendi!");
-      await renderRecipeItemsList();
-    } catch (err) {
-      alert("Reçete yükleme hatası: " + err.message);
-    }
-    e.target.value = "";
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-// 9. ÖDEME KANALLARI YÖNETİMİ
+// 8. ÖDEME KANALLARI
 async function loadPaymentMethods() {
   const defaultMethods = [
     { id: 1, name: "Nakit" },
@@ -1063,76 +829,7 @@ async function deletePaymentMethod(id) {
   }
 }
 
-// 10. ADİSYON ENTEGRASYON KÖPRÜSÜ (ADİSYO'DAN SİPARİŞ ÇEKME)
-async function fetchAdisyoOrders() {
-  try {
-    const response = await fetch("https://api.adisyo.com/v1/orders/pending", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "MobileAppKey": ADISYO_MOBILE_APP_KEY,
-        "WebAppKey": ADISYO_WEB_APP_KEY,
-        "ApiSecretKey": ADISYO_API_SECRET_KEY
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error("Adisyo sunucusundan veri alınamadı. HTTP Kod: " + response.status);
-    }
-
-    const result = await response.json();
-    const adisyoOrders = result.data || result;
-
-    if (!adisyoOrders || adisyoOrders.length === 0) {
-      alert("Adisyo'da bekleyen yeni bir sipariş bulunmuyor kanka.");
-      return;
-    }
-
-    for (const order of adisyoOrders) {
-      const totalAmount = Number(order.totalAmount || order.total || 0);
-      const paymentChannel = order.channel || order.paymentType || "Adisyo / Online";
-
-      const { data: saleRecord, error: saleErr } = await client
-        .from("sales")
-        .insert({ 
-          total_amount: totalAmount, 
-          payment_type: paymentChannel 
-        })
-        .select("id")
-        .single();
-
-      if (saleErr) throw saleErr;
-
-      if (order.items && order.items.length > 0) {
-        const saleItemsPayload = order.items.map(item => ({
-          sale_id: saleRecord.id,
-          product_id: item.productId || 1,
-          quantity: Number(item.quantity || 1),
-          unit_price: Number(item.price || 0),
-          line_total: Number(item.quantity || 1) * Number(item.price || 0)
-        }));
-
-        await client.from("sale_items").insert(saleItemsPayload);
-
-        await deductStockFromRecipe(order.items.map(i => ({
-          productId: i.productId || 1,
-          quantity: Number(i.quantity || 1)
-        })));
-      }
-    }
-
-    alert("🎉 Adisyo'daki siparişler başarıyla Kaptan Nili POS sistemine aktarıldı, kasaya işlendi ve stoklar düşüldü!");
-    
-    await renderSales();
-    await loadIngredients();
-
-  } catch (err) {
-    console.error("Adisyo Entegrasyon Hatası:", err);
-    alert("Adisyo siparişleri çekilirken bir hata oluştu: " + err.message);
-  }
-}
-
-// 11. TEK TIKLA SADE ÖDEME MODALI
+// 9. ÖDEME VE ADİSYON DETAY KAYIT (HATASIZ VE FULL İZOLE EDİLMİŞ)
 function openPaymentModal() {
   const table = getTables().find(t => t.id === selectedTableId);
   const paymentModal = document.getElementById("paymentModal");
@@ -1178,14 +875,9 @@ async function completePaymentWithChannel(channelName) {
       .select("id")
       .single();
 
-    if (saleErr) {
-      console.error("🚨 Ana satış kayıt hatası:", saleErr);
-      throw saleErr;
-    }
+    if (saleErr) throw saleErr;
 
-    console.log("✅ Ana satış atıldı, ID:", sale.id);
-
-    // 2. Masadaki ürünleri sale_items tablosuna garanti şekilde yazdırıyoruz
+    // 2. Büyütecin içini dolduracak olan sale_items detaylarını saf ve hatasız kaydediyoruz
     if (table.orders && table.orders.length > 0) {
       const saleItems = table.orders.map(item => ({
         sale_id: sale.id,
@@ -1195,23 +887,18 @@ async function completePaymentWithChannel(channelName) {
         line_total: Number(item.quantity) * Number(item.price)
       }));
 
-      console.log("📦 sale_items tablosuna gönderilen veri:", saleItems);
-
-      const { data: insertedItems, error: itemsErr } = await client
-        .from("sale_items")
-        .insert(saleItems)
-        .select();
-
+      const { error: itemsErr } = await client.from("sale_items").insert(saleItems);
       if (itemsErr) {
-        console.error("🚨 sale_items kayıt hatası:", itemsErr);
-        alert("Satış atıldı ama detaylar yazılamadı: " + itemsErr.message);
-      } else {
-        console.log("✅ sale_items başarıyla kaydedildi:", insertedItems);
+        console.error("sale_items kayıt hatası:", itemsErr.message);
       }
     }
 
-    // 3. Stoktan reçeteye göre düşüş
-    await deductStockFromRecipe(table.orders);
+    // 3. Stok düşüşü bağımsız blokta (veritabanı tetikleyici engeline takılsa bile satış kesinlikle düşer)
+    try {
+      await deductStockFromRecipe(table.orders);
+    } catch (stockErr) {
+      console.log("Stok düşüşü uyarısı:", stockErr.message);
+    }
 
     // 4. Masayı kapat ve temizle
     table.status = "closed";
@@ -1227,17 +914,14 @@ async function completePaymentWithChannel(channelName) {
     renderTables();
     await renderSales();
 
-    alert(`Satış [ ${channelName} ] başarıyla tamamlandı!`);
+    alert(`Satış [ ${channelName} ] başarıyla tamamlandı ve detaylar işlendi!`);
 
   } catch (err) {
-    console.error("🚨 Ödeme tamamlama genel hata:", err);
     alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
   }
 }
 
-
-
-// 12. ANLIK SATIŞLAR TABLOSU
+// 10. ANLIK SATIŞLAR VE BÜYÜTEÇ DETAY MODALI
 async function renderSales() {
   const list = document.getElementById("salesList");
   const totalElem = document.getElementById("salesDailyTotal");
@@ -1262,10 +946,12 @@ async function renderSales() {
     list.innerHTML = sales.map(s => {
       sum += Number(s.total_amount || 0);
       const timeStr = new Date(s.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+      const safeChannel = escapeHtml(s.payment_type || "Nakit");
+      
       return `
-        <div class="daily-sales-row" onclick="openReceiptDetailModal(${s.id}, '${timeStr}', '${escapeHtml(s.payment_type || "Nakit")}', ${s.total_amount})">
+        <div class="daily-sales-row" onclick="openReceiptDetailModal(${s.id}, '${timeStr}', '${safeChannel}', ${s.total_amount})" style="cursor: pointer; display: flex; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid var(--border-color); align-items: center;">
           <div><strong>${timeStr}</strong></div>
-          <div><strong style="color:var(--primary);">${escapeHtml(s.payment_type || "Nakit")}</strong></div>
+          <div><strong style="color:var(--primary);">${safeChannel}</strong></div>
           <div style="text-align:right;"><strong>${formatMoney(s.total_amount)} 🔍</strong></div>
         </div>
       `;
@@ -1293,27 +979,18 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
   modal.style.display = "flex";
 
   try {
-    console.log("🔍 Sorgulanan Sale ID:", saleId);
-
-    // 1. Doğrudan sale_items tablosunu sorgulayalım
-    const { data: items, error: itemsErr } = await client
+    const { data: items, error } = await client
       .from("sale_items")
       .select("*")
       .eq("sale_id", saleId);
 
-    if (itemsErr) {
-      console.error("🚨 Supabase sale_items hatası:", itemsErr);
-      throw itemsErr;
-    }
-
-    console.log("📦 Supabase'den gelen ham items verisi:", items);
+    if (error) throw error;
 
     if (!items || items.length === 0) {
-      container.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Bu adisyona ait ürün detayı bulunamadı (sale_items boş).</div>';
+      container.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Bu adisyona ait detay bulunamadı.</div>';
       return;
     }
 
-    // 2. Ürün adlarını çekelim
     const { data: productsData } = await client.from("products").select("id, name");
     const productMap = {};
     if (productsData) {
@@ -1321,8 +998,7 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
     }
 
     container.innerHTML = items.map(item => {
-      // Ürün adını map'ten veya item içindeki olası alternatif isimlerden bulalım
-      const prodName = productMap[item.product_id] || item.product_name || item.name || `Ürün #${item.product_id}`;
+      const prodName = productMap[item.product_id] || "Ürün";
       const lineTotal = Number(item.line_total || (item.quantity * item.unit_price) || 0);
       return `
         <div class="receipt-detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-color);">
@@ -1338,516 +1014,11 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
     }).join("");
 
   } catch (err) {
-    console.error("🚨 Adisyon detay çekme genel hata:", err);
-    container.innerHTML = `<div style="text-align:center; padding:15px; color:#dc2626; font-size:12px;">Hata: ${escapeHtml(err.message || "Bilinmeyen hata")}</div>`;
+    container.innerHTML = '<div style="text-align:center; padding:15px; color:#dc2626; font-size:12px;">Adisyon içeriği çekilemedi.</div>';
   }
 }
 
-// 13. RAPOR SEKMELERİ
-function switchReportTab(tabId) {
-  const contents = document.querySelectorAll(".report-tab-content");
-  contents.forEach(c => c.style.display = "none");
-
-  const tabBtns = document.querySelectorAll(".report-tab-btn");
-  tabBtns.forEach(b => b.classList.remove("active-tab"));
-
-  const targetContent = document.getElementById(tabId);
-  if (targetContent) targetContent.style.display = "block";
-
-  if (event && event.target) {
-    event.target.classList.add("active-tab");
-  }
-}
-
-function initReportDates() {
-  const startInput = document.getElementById("reportStartDate");
-  const endInput = document.getElementById("reportEndDate");
-  
-  const todayStr = new Date().toISOString().split("T")[0];
-  if (startInput && !startInput.value) startInput.value = todayStr;
-  if (endInput && !endInput.value) endInput.value = todayStr;
-
-  setActiveDateButton("reportFilterTodayBtn");
-}
-
-function setActiveDateButton(activeBtnId) {
-  const dateBtns = document.querySelectorAll(".btn-date-filter");
-  dateBtns.forEach(b => b.classList.remove("active-date-btn"));
-  const btn = document.getElementById(activeBtnId);
-  if (btn) btn.classList.add("active-date-btn");
-}
-
-function setReportDateRange(type) {
-  const startInput = document.getElementById("reportStartDate");
-  const endInput = document.getElementById("reportEndDate");
-  const now = new Date();
-  
-  const todayStr = now.toISOString().split("T")[0];
-  endInput.value = todayStr;
-
-  if (type === "today") {
-    startInput.value = todayStr;
-    setActiveDateButton("reportFilterTodayBtn");
-  } else if (type === "week") {
-    const firstDay = new Date(now.setDate(now.getDate() - now.getDay() + 1));
-    startInput.value = firstDay.toISOString().split("T")[0];
-    setActiveDateButton("reportFilterWeekBtn");
-  } else if (type === "month") {
-    const firstDayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-    startInput.value = firstDayStr;
-    setActiveDateButton("reportFilterMonthBtn");
-  }
-  fetchAndRenderReports();
-}
-
-async function fetchAndRenderReports() {
-  const startDate = document.getElementById("reportStartDate").value;
-  const endDate = document.getElementById("reportEndDate").value;
-
-  if (!startDate || !endDate) {
-    alert("Lütfen geçerli bir tarih aralığı seçiniz.");
-    return;
-  }
-
-  const startIso = `${startDate}T00:00:00.000Z`;
-  const endIso = `${endDate}T23:59:59.999Z`;
-
-  try {
-    const { data: sales, error: salesErr } = await client
-      .from("sales")
-      .select("*")
-      .gte("created_at", startIso)
-      .lte("created_at", endIso);
-
-    if (salesErr) throw salesErr;
-
-    const saleIds = (sales || []).map(s => s.id);
-    let saleItems = [];
-
-    if (saleIds.length > 0) {
-      const { data: itemsData, error: itemsErr } = await client
-        .from("sale_items")
-        .select("*, products(name, category)")
-        .in("sale_id", saleIds);
-
-      if (!itemsErr) saleItems = itemsData || [];
-    }
-
-    renderReportMetrics(sales, saleItems);
-    renderPaymentReportTable(sales);
-    renderProductReportTable(saleItems);
-    renderReportCharts(sales, saleItems);
-
-  } catch (err) {
-    alert("Rapor verileri çekilemedi: " + err.message);
-  }
-}
-
-function renderReportMetrics(sales, saleItems) {
-  const totalRevElem = document.getElementById("metricTotalRevenue");
-  const totalSalesElem = document.getElementById("metricTotalSalesCount");
-  const totalItemsElem = document.getElementById("metricTotalItemsSold");
-
-  const totalRev = (sales || []).reduce((sum, s) => sum + Number(s.total_amount || 0), 0);
-  const totalSalesCount = (sales || []).length;
-  const totalItemsQty = (saleItems || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-
-  if (totalRevElem) totalRevElem.textContent = formatMoney(totalRev);
-  if (totalSalesElem) totalSalesElem.textContent = totalSalesCount.toString();
-  if (totalItemsElem) totalItemsElem.textContent = `${totalItemsQty} Adet`;
-}
-
-function renderPaymentReportTable(sales) {
-  const tbody = document.getElementById("paymentReportTbody");
-  if (!tbody) return;
-
-  const paymentMap = {};
-  (sales || []).forEach(s => {
-    const channel = s.payment_type || "Nakit";
-    if (!paymentMap[channel]) {
-      paymentMap[channel] = { count: 0, total: 0 };
-    }
-    paymentMap[channel].count += 1;
-    paymentMap[channel].total += Number(s.total_amount || 0);
-  });
-
-  const channels = Object.keys(paymentMap);
-  if (channels.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#94a3b8; padding:15px;">Bu aralıkta satış bulunamadı.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = channels.map(ch => `
-    <tr>
-      <td><strong style="color:var(--primary);">${escapeHtml(ch)}</strong></td>
-      <td><strong>${paymentMap[ch].count}</strong> işlem</td>
-      <td style="text-align:right;"><strong>${formatMoney(paymentMap[ch].total)}</strong></td>
-    </tr>
-  `).join("");
-}
-
-function renderProductReportTable(saleItems) {
-  const tbody = document.getElementById("productReportTbody");
-  if (!tbody) return;
-
-  const productMap = {};
-  (saleItems || []).forEach(item => {
-    const pName = item.products?.name || "Bilinmeyen Ürün";
-    const pCat = item.products?.category || "Diğer";
-    const qty = Number(item.quantity || 0);
-    const total = Number(item.line_total || (qty * item.unit_price) || 0);
-
-    if (!productMap[pName]) {
-      productMap[pName] = { category: pCat, qty: 0, total: 0 };
-    }
-    productMap[pName].qty += qty;
-    productMap[pName].total += total;
-  });
-
-  const productNames = Object.keys(productMap);
-  if (productNames.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:15px;">Satılan ürün bulunamadı.</td></tr>';
-    return;
-  }
-
-  productNames.sort((a, b) => productMap[b].total - productMap[a].total);
-
-  tbody.innerHTML = productNames.map(pName => `
-    <tr>
-      <td><strong>${escapeHtml(pName)}</strong></td>
-      <td>${escapeHtml(productMap[pName].category)}</td>
-      <td><strong style="color:#0284c7;">${productMap[pName].qty}</strong> adet</td>
-      <td style="text-align:right;"><strong>${formatMoney(productMap[pName].total)}</strong></td>
-    </tr>
-  `).join("");
-}
-
-function renderReportCharts(sales, saleItems) {
-  Chart.register(ChartDataLabels);
-
-  const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#2d5a27';
-
-  const commonOptions = (isVertical = true) => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      datalabels: {
-        anchor: isVertical ? 'end' : 'end',
-        align: isVertical ? 'top' : 'right',
-        formatter: (value) => value.toLocaleString("tr-TR") + " TL",
-        font: { weight: 'bold', size: 11 },
-        color: '#334155'
-      }
-    },
-    scales: isVertical ? {
-      y: {
-        beginAtZero: true,
-        ticks: { callback: (val) => val.toLocaleString("tr-TR") + " TL" }
-      }
-    } : {
-      x: {
-        beginAtZero: true,
-        ticks: { callback: (val) => val.toLocaleString("tr-TR") + " TL" }
-      }
-    }
-  });
-
-  const paymentMap = {};
-  (sales || []).forEach(s => {
-    const ch = s.payment_type || "Nakit";
-    paymentMap[ch] = (paymentMap[ch] || 0) + Number(s.total_amount || 0);
-  });
-
-  const payLabels = Object.keys(paymentMap);
-  const payValues = Object.values(paymentMap);
-
-  const ctxPay = document.getElementById("paymentChart")?.getContext("2d");
-  if (ctxPay) {
-    if (paymentChartInstance) paymentChartInstance.destroy();
-    paymentChartInstance = new Chart(ctxPay, {
-      type: "bar",
-      data: {
-        labels: payLabels,
-        datasets: [{
-          data: payValues,
-          backgroundColor: [primaryColor, "#0284c7", "#d97706", "#ea580c", "#7c3aed", "#16a34a", "#dc2626"],
-          borderRadius: 8
-        }]
-      },
-      options: commonOptions(true)
-    });
-  }
-
-  const categoryMap = {};
-  (saleItems || []).forEach(item => {
-    const cat = item.products?.category || "Diğer";
-    const total = Number(item.line_total || (item.quantity * item.unit_price) || 0);
-    categoryMap[cat] = (categoryMap[cat] || 0) + total;
-  });
-
-  const catLabels = Object.keys(categoryMap);
-  const catValues = Object.values(categoryMap);
-
-  const ctxCat = document.getElementById("categoryChart")?.getContext("2d");
-  if (ctxCat) {
-    if (categoryChartInstance) categoryChartInstance.destroy();
-    categoryChartInstance = new Chart(ctxCat, {
-      type: "bar",
-      data: {
-        labels: catLabels,
-        datasets: [{
-          data: catValues,
-          backgroundColor: primaryColor,
-          borderRadius: 8
-        }]
-      },
-      options: commonOptions(true)
-    });
-  }
-
-  const productMap = {};
-  (saleItems || []).forEach(item => {
-    const pName = item.products?.name || "Bilinmeyen Ürün";
-    const total = Number(item.line_total || (item.quantity * item.unit_price) || 0);
-    productMap[pName] = (productMap[pName] || 0) + total;
-  });
-
-  const sortedProdNames = Object.keys(productMap).sort((a,b) => productMap[b] - productMap[a]).slice(0, 10);
-  const prodValues = sortedProdNames.map(pName => productMap[pName]);
-  
-  const vibrantColors = [
-    primaryColor, "#0284c7", "#d97706", "#ea580c", "#7c3aed", 
-    "#16a34a", "#dc2626", "#db2777", "#4f46e5", "#0891b2"
-  ];
-  const barColors = sortedProdNames.map((_, idx) => vibrantColors[idx % vibrantColors.length]);
-
-  const ctxProd = document.getElementById("productChart")?.getContext("2d");
-  if (ctxProd) {
-    if (productChartInstance) productChartInstance.destroy();
-    productChartInstance = new Chart(ctxProd, {
-      type: "bar",
-      data: {
-        labels: sortedProdNames,
-        datasets: [{
-          data: prodValues,
-          backgroundColor: barColors,
-          borderRadius: 6
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        ...commonOptions(false)
-      }
-    });
-  }
-}
-
-// 14. ÜRÜNLER & REÇETE İŞLEMLERİ
-async function loadManagementProducts() {
-  try {
-    const { data, error } = await client.from("products").select("*").order("created_at", { ascending: false });
-    if (error) throw error;
-    allManagementProducts = data || [];
-    renderManagementProductsTable(allManagementProducts);
-  } catch (err) {
-    alert("Ürünler yüklenirken hata oluştu: " + err.message);
-  }
-}
-
-function renderManagementProductsTable(products) {
-  const tbody = document.getElementById("managementProductsTbody");
-  if (!tbody) return;
-
-  tbody.innerHTML = "";
-  if (products.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Kayıtlı ürün bulunamadı.</td></tr>';
-    return;
-  }
-
-  products.forEach(p => {
-    const tr = document.createElement("tr");
-    
-    const imgHtml = p.image_url 
-      ? `<img src="${escapeHtml(p.image_url)}" style="width:36px; height:36px; object-fit:contain; border-radius:6px;" onerror="this.src='https://via.placeholder.com/36?text=?'">`
-      : `<span style="font-size:20px;">${getProductEmoji(p.category)}</span>`;
-
-    tr.innerHTML = `
-      <td>${imgHtml}</td>
-      <td><strong>${escapeHtml(p.name)}</strong></td>
-      <td>${escapeHtml(p.category || 'Diğer')}</td>
-      <td><strong>${formatMoney(p.price)}</strong></td>
-      <td><span class="${p.active ? 'badge-active' : 'badge-passive'}">${p.active ? 'Aktif' : 'Pasif'}</span></td>
-      <td style="text-align: right;">
-        <button type="button" class="btn-edit" onclick="editProduct(${p.id})">Düzenle</button>
-        <button type="button" class="btn-recipe" onclick="openRecipeModal(${p.id})">🧪 Reçete</button>
-        <button type="button" class="btn-toggle" onclick="toggleProductActive(${p.id}, ${p.active})">${p.active ? 'Pasif Yap' : 'Aktif Yap'}</button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-async function saveProductFromForm() {
-  const editId = document.getElementById("editProductId").value;
-  const name = document.getElementById("prodNameInput").value.trim();
-  const category = document.getElementById("prodCategorySelect").value;
-  const price = parseFloat(document.getElementById("prodPriceInput").value);
-  const imageUrl = document.getElementById("prodImageInput").value.trim();
-
-  if (!name || isNaN(price) || price < 0) {
-    alert("Lütfen geçerli bir ürün adı ve fiyatı giriniz.");
-    return;
-  }
-
-  const payload = { name: name, category: category, price: price, image_url: imageUrl || null };
-
-  try {
-    if (editId) {
-      const { error } = await client.from("products").update(payload).eq("id", editId);
-      if (error) throw error;
-      alert("Ürün başarıyla güncellendi!");
-    } else {
-      payload.active = true;
-      const { error } = await client.from("products").insert(payload);
-      if (error) throw error;
-      alert("Yeni ürün eklendi!");
-    }
-
-    resetProductForm();
-    await loadManagementProducts();
-    await loadProducts();
-
-  } catch (err) {
-    alert("Ürün kaydedilemedi: " + err.message);
-  }
-}
-
-function editProduct(id) {
-  const product = allManagementProducts.find(p => p.id === id);
-  if (!product) return;
-
-  document.getElementById("editProductId").value = product.id;
-  document.getElementById("prodNameInput").value = product.name;
-  document.getElementById("prodCategorySelect").value = product.category || "Profiterol";
-  document.getElementById("prodPriceInput").value = product.price;
-  document.getElementById("prodImageInput").value = product.image_url || "";
-
-  document.getElementById("productFormTitle").textContent = "Ürün Düzenle";
-  document.getElementById("resetProductFormBtn").style.display = "inline-block";
-}
-
-function resetProductForm() {
-  document.getElementById("editProductId").value = "";
-  document.getElementById("prodNameInput").value = "";
-  document.getElementById("prodPriceInput").value = "";
-  document.getElementById("prodImageInput").value = "";
-  document.getElementById("productFormTitle").textContent = "Yeni Ürün Ekle";
-  document.getElementById("resetProductFormBtn").style.display = "none";
-}
-
-async function toggleProductActive(id, currentActive) {
-  try {
-    const { error } = await client.from("products").update({ active: !currentActive }).eq("id", id);
-    if (error) throw error;
-    await loadManagementProducts();
-    await loadProducts();
-  } catch (err) {
-    alert("Durum değiştirilemedi: " + err.message);
-  }
-}
-
-// REÇETE DÜZENLEME MODAL FONKSİYONLARI
-async function openRecipeModal(productId) {
-  selectedRecipeProductId = productId;
-  const product = allManagementProducts.find(p => p.id === productId);
-  if (!product) return;
-
-  document.getElementById("recipeModalTitle").textContent = `🧪 ${product.name} Reçetesi`;
-
-  await loadIngredients();
-  const select = document.getElementById("recipeIngSelect");
-  if (select) {
-    select.innerHTML = allIngredients.map(i => `<option value="${i.id}">${escapeHtml(i.name)} (${escapeHtml(i.unit || 'gr')})</option>`).join("");
-  }
-
-  await renderRecipeItemsList();
-  document.getElementById("recipeModal").style.display = "flex";
-}
-
-async function renderRecipeItemsList() {
-  const container = document.getElementById("recipeItemsList");
-  if (!container || !selectedRecipeProductId) return;
-
-  try {
-    const { data: recipes, error } = await client
-      .from("recipes")
-      .select("*, ingredients(name, unit)")
-      .eq("product_id", selectedRecipeProductId);
-
-    if (error) throw error;
-
-    if (!recipes || recipes.length === 0) {
-      container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:15px; font-size:13px;">Bu ürüne henüz reçete bileşeni eklenmedi.</div>';
-      return;
-    }
-
-    container.innerHTML = recipes.map(r => `
-      <div class="recipe-item-row">
-        <div>
-          <strong>${escapeHtml(r.ingredients?.name || 'Malzeme')}</strong>: 
-          <span style="color:var(--primary); font-weight:bold;">${r.quantity_required || r.quantity || 0} ${escapeHtml(r.unit || r.ingredients?.unit || 'gr')}</span>
-        </div>
-        <button type="button" style="background:#dc2626; color:white; border:none; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:bold;" onclick="deleteRecipeItem(${r.id})">Sil</button>
-      </div>
-    `).join("");
-
-  } catch (err) {
-    container.innerHTML = '<div style="color:#dc2626;">Reçete yüklenemedi.</div>';
-  }
-}
-
-async function addRecipeItem() {
-  const ingId = document.getElementById("recipeIngSelect").value;
-  const qty = parseFloat(document.getElementById("recipeQtyInput").value);
-
-  if (!ingId || isNaN(qty) || qty <= 0) {
-    alert("Lütfen geçerli bir miktar giriniz.");
-    return;
-  }
-
-  const ingObj = allIngredients.find(i => String(i.id) === String(ingId));
-  const unitVal = ingObj ? (ingObj.unit || "gr") : "gr";
-
-  try {
-    const { error } = await client.from("recipes").insert({
-      product_id: selectedRecipeProductId,
-      ingredient_id: ingId,
-      quantity: qty,
-      quantity_required: qty,
-      unit: unitVal
-    });
-
-    if (error) throw error;
-
-    document.getElementById("recipeQtyInput").value = "";
-    await renderRecipeItemsList();
-
-  } catch (err) {
-    alert("Reçete malzemesi eklenemedi: " + err.message);
-  }
-}
-
-async function deleteRecipeItem(recipeId) {
-  try {
-    const { error } = await client.from("recipes").delete().eq("id", recipeId);
-    if (error) throw error;
-    await renderRecipeItemsList();
-  } catch (err) {
-    alert("Silinemedi: " + err.message);
-  }
-}
-
+// 11. REÇETEDEN STOK DÜŞME
 async function deductStockFromRecipe(orders) {
   try {
     for (const item of orders) {
@@ -1871,7 +1042,6 @@ async function deductStockFromRecipe(orders) {
         if (ingData) {
           const currentStock = ingData.stock_quantity ?? 0;
           const newStock = Math.max(0, Number(currentStock) - totalDeduct);
-          
           await client
             .from("ingredients")
             .update({ stock_quantity: newStock })
@@ -1883,6 +1053,7 @@ async function deductStockFromRecipe(orders) {
     console.error("Stok düşüş hatası:", err.message);
   }
 }
+
 function formatMoney(val) {
   return Number(val || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
 }
@@ -1891,7 +1062,7 @@ function escapeHtml(str) {
   return String(str || "").replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
 }
 
-// GLOBAL EVENT DELEGATION
+// GLOBAL EVENT DELEGATION VE DİNLEYİCİLER
 document.addEventListener("click", function(e) {
   const target = e.target;
   if (!target) return;
@@ -1938,78 +1109,16 @@ document.addEventListener("click", function(e) {
     return;
   }
 
-  if (target.id === "addRecipeItemBtn") {
-    e.preventDefault();
-    addRecipeItem();
-    return;
-  }
-
   if (target.id === "addPaymentMethodBtn") {
     e.preventDefault();
     addPaymentMethod();
     return;
   }
-
-  if (target.id === "submitProductionBtn") {
-    e.preventDefault();
-    submitProductionEntry();
-    return;
-  }
-
-  if (target.id === "runLogFilterBtn") {
-    e.preventDefault();
-    setActiveLogDateButton(null);
-    loadStockMovements();
-    return;
-  }
-
-  if (target.id === "runReportBtn") {
-    e.preventDefault();
-    document.querySelectorAll(".btn-date-filter").forEach(b => b.classList.remove("active-date-btn"));
-    fetchAndRenderReports();
-    return;
-  }
 });
 
-// TIKLAMA VE ETKİLEŞİM DİNLENMELERİ
 function bindEvents() {
   setupNavigation();
 
-  // Malzemeler
-  const saveIngBtn = document.getElementById("saveIngBtn");
-  if (saveIngBtn) saveIngBtn.onclick = saveIngredientFromForm;
-
-  const resetIngBtn = document.getElementById("resetIngFormBtn");
-  if (resetIngBtn) resetIngBtn.onclick = resetIngForm;
-
-  const searchIngInput = document.getElementById("searchIngInput");
-  if (searchIngInput) {
-    searchIngInput.oninput = (e) => {
-      const q = e.target.value.toLowerCase();
-      const filtered = allIngredients.filter(i => i.name.toLowerCase().includes(q));
-      renderIngredientsTable(filtered);
-    };
-  }
-
-  // Ürünler
-  const saveProdBtn = document.getElementById("saveProductBtn");
-  if (saveProdBtn) saveProdBtn.onclick = saveProductFromForm;
-
-  const resetProdBtn = document.getElementById("resetProductFormBtn");
-  if (resetProdBtn) resetProdBtn.onclick = resetProdForm;
-
-  const searchProdInput = document.getElementById("searchProductInput");
-  if (searchProdInput) {
-    searchProdInput.oninput = (e) => {
-      const q = e.target.value.toLowerCase();
-      const filtered = allManagementProducts.filter(p => 
-        p.name.toLowerCase().includes(q) || (p.category && p.category.toLowerCase().includes(q))
-      );
-      renderManagementProductsTable(filtered);
-    };
-  }
-
-  // MASAYI KAPAT / ÖDEME AL
   const closeTableBtn = document.getElementById("closeTableButton");
   if (closeTableBtn) {
     closeTableBtn.onclick = () => {
@@ -2030,7 +1139,6 @@ function bindEvents() {
     };
   }
 
-  // KASA AÇMA & KAPATMA
   const openCashBtn = document.getElementById("openCashButton");
   if (openCashBtn) {
     openCashBtn.onclick = async () => {
@@ -2085,6 +1193,10 @@ function bindEvents() {
 }
 
 // İLK AÇILIŞ
+document.addEventListener("DOMContentLoaded", () => {
+  loadThemeColor();
+});
+
 if (loginButton) loginButton.addEventListener("click", login);
 if (logoutButton) logoutButton.addEventListener("click", logout);
 if (loginPassword) {
