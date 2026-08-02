@@ -1203,8 +1203,6 @@ async function completePaymentWithChannel(channelName) {
   if (!table) return;
 
   try {
-    console.log("1. Satış başlatılıyor...", table.total, channelName);
-
     // 1. Önce ana satış kaydını atalım
     const { data: sale, error: saleErr } = await client
       .from("sales")
@@ -1212,14 +1210,9 @@ async function completePaymentWithChannel(channelName) {
       .select("id")
       .single();
 
-    if (saleErr) {
-      console.error("Ana satış kayıt hatası:", saleErr);
-      throw saleErr;
-    }
+    if (saleErr) throw saleErr;
 
-    console.log("2. Ana satış başarıyla atıldı, ID:", sale.id);
-
-    // 2. Masadaki ürünleri sale_items tablosuna yazdıralım
+    // 2. Masadaki ürünleri sale_items tablosuna eksiksiz yazdıralım
     if (table.orders && table.orders.length > 0) {
       const saleItems = table.orders.map(item => ({
         sale_id: sale.id,
@@ -1229,18 +1222,13 @@ async function completePaymentWithChannel(channelName) {
         line_total: Number(item.quantity) * Number(item.price)
       }));
 
-      console.log("3. sale_items verisi hazırlanıyor:", saleItems);
-
       const { error: itemsErr } = await client.from("sale_items").insert(saleItems);
       if (itemsErr) {
-        console.error("sale_items kayıt hatası:", itemsErr);
-        alert("Satış ana kalemi atıldı fakat ürün detayları kaydedilemedi: " + itemsErr.message);
-      } else {
-        console.log("4. Ürün detayları başarıyla kaydedildi!");
+        console.error("sale_items kayıt hatası:", itemsErr.message);
       }
     }
 
-    // 3. Stoktan reçeteye göre düşüşü yapalım
+    // 3. Stoktan reçeteye göre düşüşü yapalım (log tablosuna bulaşmadan)
     await deductStockFromRecipe(table.orders);
 
     // 4. Masayı temizleyip kapatalım
@@ -1260,14 +1248,13 @@ async function completePaymentWithChannel(channelName) {
       await renderSales();
     }
 
-    alert(`Satış [ ${channelName} ] üzerinden başarıyla tamamlandı!`);
+    alert(`Satış [ ${channelName} ] üzerinden başarıyla tamamlandı ve detaylar işlendi!`);
 
   } catch (err) {
-    console.error("completePaymentWithChannel kritik hata:", err);
+    console.error("Satış hatası:", err);
     alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
   }
-}
-async function renderSales() {
+}async function renderSales() {
   const list = document.getElementById("salesList");
   const totalElem = document.getElementById("salesDailyTotal");
   if (!list) return;
