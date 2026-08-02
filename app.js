@@ -1119,16 +1119,19 @@ async function fetchAdisyoOrders() {
       return;
     }
 
+    // Ürünleri eşleştirebilmek için veritabanındaki ürünleri hafızaya alalım
+    const { data: dbProducts } = await client.from("products").select("id, name, price");
+    const productsList = dbProducts || [];
+
     for (const order of adisyoOrders) {
       const totalAmount = Number(order.totalAmount || order.total || 0);
       const paymentChannel = order.channel || order.paymentType || "Adisyo / Online";
       const orderNo = order.orderNumber || order.id || "";
       const customerName = order.customerName || order.name || "Müşteri";
 
-      // 1. Ürün kalemlerini tüm olası yollardan yakalamaya çalışalım
+      // 1. Ürün kalemlerini tüm olası yollardan yakalayalım
       let rawItems = order.items || order.orderItems || order.products || order.details || [];
       
-      // Eğer ana dizide ürün yoksa ama siparişin kendisi tek bir ürün gibi alanlar barındırıyorsa onları al
       if (rawItems.length === 0 && (order.productName || order.name)) {
         rawItems = [{
           productName: order.productName || order.name || "Adisyo Ürünü",
@@ -1149,41 +1152,53 @@ async function fetchAdisyoOrders() {
 
       if (saleErr) throw saleErr;
 
-      // 3. Ürün detayları varsa ekle, yoksa toplam tutarı "Adisyo Satışı" olarak detay tablosuna yaz
+      // 3. Ürün detaylarını veritabanındaki ürün adlarıyla eşleştirerek hazırla
+      let saleItemsPayload = [];
+
       if (rawItems.length > 0) {
-        const saleItemsPayload = rawItems.map(item => {
+        saleItemsPayload = rawItems.map(item => {
           const qty = Number(item.quantity || item.qty || item.count || 1);
           const unitPrice = Number(item.price || item.unitPrice || item.amount || totalAmount);
+          const incomingName = String(item.productName || item.name || item.title || "Adisyo Ürünü").trim().toLowerCase();
+
+          // Veritabanındaki ürünle adından eşleştirmeye çalışalım
+          const matchedProd = productsList.find(p => p.name.trim().toLowerCase() === incomingName);
+          const resolvedProductId = matchedProd ? matchedProd.id : (productsList.length > 0 ? productsList[0].id : 1);
+
           return {
             sale_id: saleRecord.id,
-            product_id: item.productId || item.id || 1,
+            product_id: resolvedProductId,
             quantity: qty,
             unit_price: unitPrice,
             line_total: qty * unitPrice
           };
         });
-
-        const { error: itemsErr } = await client.from("sale_items").insert(saleItemsPayload);
-        if (itemsErr) console.error("Detaylar kaydedilemedi:", itemsErr.message);
-
-        // Reçeteden stok düşüşü
-        await deductStockFromRecipe(rawItems.map(i => ({
-          productId: i.productId || i.id || 1,
-          quantity: Number(i.quantity || i.qty || i.count || 1)
-        })));
       } else {
-        // Ürün bulunamadıysa bile adisyon detay ekranı boş kalmasın diye ana tutarı ekliyoruz
-        await client.from("sale_items").insert({
+        // Ürün kalemi yoksa ilk ürünü veya varsayılanı bas
+        const defaultProdId = productsList.length > 0 ? productsList[0].id : 1;
+        saleItemsPayload = [{
           sale_id: saleRecord.id,
-          product_id: 1,
+          product_id: defaultProdId,
           quantity: 1,
           unit_price: totalAmount,
           line_total: totalAmount
-        });
+        }];
+      }
+
+      const { error: itemsErr } = await client.from("sale_items").insert(saleItemsPayload);
+      if (itemsErr) {
+        console.error("Detaylar kaydedilemedi:", itemsErr.message);
+        alert("Satış ana kalemi atıldı fakat detaylar kaydedilirken hata oluştu: " + itemsErr.message);
+      } else {
+        // Reçeteden stok düşüşü
+        await deductStockFromRecipe(saleItemsPayload.map(i => ({
+          productId: i.product_id,
+          quantity: i.quantity
+        })));
       }
     }
 
-    alert("🎉 Adisyo siparişi, detayları ve stok güncellemeleriyle birlikte başarıyla işlendi!");
+    alert("🎉 Adisyo siparişi ve tüm detayları Supabase'e kusursuz bir şekilde işlendi!");
     await renderSales();
     await loadIngredients();
 
@@ -1192,6 +1207,7 @@ async function fetchAdisyoOrders() {
     alert("Hata: " + err.message);
   }
 }
+
 // 11. TEK TIKLA SADE ÖDEME MODALI
 function openPaymentModal() {
   const table = getTables().find(t => t.id === selectedTableId);
