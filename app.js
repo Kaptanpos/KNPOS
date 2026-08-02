@@ -1247,20 +1247,16 @@ async function completePaymentWithChannel(channelName) {
   if (!table) return;
 
   try {
-    // 1. Masadaki ürünleri özet bir metin haline getirelim (Örn: "2 Çay, 1 Türk Kahvesi")
-    const urunOzetMetni = table.orders.map(o => `${o.quantity} ${o.name}`).join(", ");
-    
-    // 2. Ödeme kanalının yanına ürün detayını ekleyerek kaydedelim
-    const tamOdemeKansi = `${channelName} - ${urunOzetMetni}`;
-
+    // Ödeme türünü ASLA bozmadan, sadece saf kanal adını (örn: "Nakit") kaydediyoruz
     const { data: sale, error: saleErr } = await client
       .from("sales")
-      .insert({ total_amount: Number(table.total), payment_type: tamOdemeKansi })
+      .insert({ total_amount: Number(table.total), payment_type: channelName })
       .select("id")
       .single();
 
     if (saleErr) throw saleErr;
 
+    // Ürün detayları sale_items tablosuna yazıldığı için adisyona tıklandığında içeride tertemiz listelenecek
     const saleItems = table.orders.map(item => ({
       sale_id: sale.id,
       product_id: item.productId,
@@ -1286,53 +1282,12 @@ async function completePaymentWithChannel(channelName) {
     renderTables();
     await renderSales();
 
-    alert(`Satış [ ${channelName} ] üzerinden başarıyla tamamlandı ve detaylar kütüğe işlendi!`);
+    alert(`Satış [ ${channelName} ] üzerinden başarıyla tamamlandı!`);
 
   } catch (err) {
     alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
   }
 }
-// 12. ANLIK SATIŞLAR TABLOSU
-async function renderSales() {
-  const list = document.getElementById("salesList");
-  const totalElem = document.getElementById("salesDailyTotal");
-  if (!list) return;
-
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const { data: sales, error } = await client
-      .from("sales")
-      .select("*")
-      .gte("created_at", today)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-    if (!sales || sales.length === 0) {
-      list.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Bugün henüz satış yapılmadı.</div>';
-      if (totalElem) totalElem.textContent = formatMoney(0);
-      return;
-    }
-
-    let sum = 0;
-    list.innerHTML = sales.map(s => {
-      sum += Number(s.total_amount || 0);
-      const timeStr = new Date(s.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
-      return `
-        <div class="daily-sales-row" onclick="openReceiptDetailModal(${s.id}, '${timeStr}', '${escapeHtml(s.payment_type || "Nakit")}', ${s.total_amount})">
-          <div><strong>${timeStr}</strong></div>
-          <div><strong style="color:var(--primary);">${escapeHtml(s.payment_type || "Nakit")}</strong></div>
-          <div style="text-align:right;"><strong>${formatMoney(s.total_amount)} 🔍</strong></div>
-        </div>
-      `;
-    }).join("");
-
-    if (totalElem) totalElem.textContent = formatMoney(sum);
-  } catch (err) {
-    list.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Satışlar çekilemedi.</div>';
-    if (totalElem) totalElem.textContent = formatMoney(0);
-  }
-}
-
 async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount) {
   const modal = document.getElementById("receiptDetailModal");
   const subtitle = document.getElementById("receiptSubtitle");
