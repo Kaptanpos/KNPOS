@@ -1210,9 +1210,12 @@ async function completePaymentWithChannel(channelName) {
       .select("id")
       .single();
 
-    if (saleErr) throw saleErr;
+    if (saleErr) {
+      console.error("Ana satış tablosu hatası:", saleErr);
+      throw saleErr;
+    }
 
-    // 2. Masadaki ürünleri sale_items tablosuna eksiksiz yazdıralım
+    // 2. Masadaki ürünleri sale_items tablosuna gönderelim
     if (table.orders && table.orders.length > 0) {
       const saleItems = table.orders.map(item => ({
         sale_id: sale.id,
@@ -1222,16 +1225,25 @@ async function completePaymentWithChannel(channelName) {
         line_total: Number(item.quantity) * Number(item.price)
       }));
 
-      const { error: itemsErr } = await client.from("sale_items").insert(saleItems);
+      console.log("Supabase'e gönderilen sale_items:", saleItems);
+
+      const { data: insertedItems, error: itemsErr } = await client
+        .from("sale_items")
+        .insert(saleItems)
+        .select();
+
       if (itemsErr) {
-        console.error("sale_items kayıt hatası:", itemsErr.message);
+        console.error("🚨 KONSOL HATASI (sale_items):", itemsErr);
+        alert("Satış atıldı ama detaylar kaydedilemedi: " + itemsErr.message);
+      } else {
+        console.log("✅ Detaylar başarıyla kaydedildi:", insertedItems);
       }
     }
 
-    // 3. Stoktan reçeteye göre düşüşü yapalım (log tablosuna bulaşmadan)
+    // 3. Stok düşüşü
     await deductStockFromRecipe(table.orders);
 
-    // 4. Masayı temizleyip kapatalım
+    // 4. Masayı kapat
     table.status = "closed";
     table.openedAt = null;
     table.total = 0;
@@ -1248,13 +1260,14 @@ async function completePaymentWithChannel(channelName) {
       await renderSales();
     }
 
-    alert(`Satış [ ${channelName} ] üzerinden başarıyla tamamlandı ve detaylar işlendi!`);
+    alert(`Satış [ ${channelName} ] başarıyla tamamlandı!`);
 
   } catch (err) {
-    console.error("Satış hatası:", err);
+    console.error("Genel hata:", err);
     alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
   }
-}async function renderSales() {
+}
+async function renderSales() {
   const list = document.getElementById("salesList");
   const totalElem = document.getElementById("salesDailyTotal");
   if (!list) return;
