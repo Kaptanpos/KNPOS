@@ -4,9 +4,9 @@ const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
 
 // ADİSYO API ENTEGRASYON BİLGİLERİ (Kendi anahtarlarını buraya yazacaksın kanka)
-const ADISYO_MOBILE_APP_KEY = "932ab8c-8846-ad07-sca0-6b70af18cb6f-d6c524f3-9ea3-42ce-90b0-89973d0c0d2";
-const ADISYO_WEB_APP_KEY = "25b80b3556ca3a15353dd2fd312062fad27adcf5a1de51b75bdadea1fa8214ab";
-const ADISYO_API_SECRET_KEY = "766ce226-a646-4557-903e-32e6aae9f072";
+const ADISYO_MOBILE_APP_KEY = "BURAYA_MOBIL_APP_KEY_GELECEK";
+const ADISYO_WEB_APP_KEY = "BURAYA_WEB_APP_KEY_GELECEK";
+const ADISYO_API_SECRET_KEY = "BURAYA_API_SECRET_KEY_GELECEK";
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
