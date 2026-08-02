@@ -1095,7 +1095,6 @@ async function deletePaymentMethod(id) {
   }
 }
 
-// 10. ADİSYON ENTEGRASYON KÖPRÜSÜ (DETAYLAR DAHİL FULL SENRONİZASYON)
 async function fetchAdisyoOrders() {
   try {
     const response = await fetch("https://api.adisyo.com/v1/orders/pending", {
@@ -1123,29 +1122,41 @@ async function fetchAdisyoOrders() {
     for (const order of adisyoOrders) {
       const totalAmount = Number(order.totalAmount || order.total || 0);
       const paymentChannel = order.channel || order.paymentType || "Adisyo / Online";
+      const orderNo = order.orderNumber || order.id || "";
+      const customerName = order.customerName || order.name || "Müşteri";
 
-      // 1. Önce ana satış kaydını at ve ID'sini al
+      // 1. Ürün kalemlerini tüm olası yollardan yakalamaya çalışalım
+      let rawItems = order.items || order.orderItems || order.products || order.details || [];
+      
+      // Eğer ana dizide ürün yoksa ama siparişin kendisi tek bir ürün gibi alanlar barındırıyorsa onları al
+      if (rawItems.length === 0 && (order.productName || order.name)) {
+        rawItems = [{
+          productName: order.productName || order.name || "Adisyo Ürünü",
+          quantity: order.quantity || order.qty || 1,
+          price: order.price || totalAmount
+        }];
+      }
+
+      // 2. Önce ana satış kaydını at
       const { data: saleRecord, error: saleErr } = await client
         .from("sales")
         .insert({ 
           total_amount: totalAmount, 
-          payment_type: paymentChannel 
+          payment_type: `${paymentChannel} (#${orderNo} - ${customerName})` 
         })
         .select("id")
         .single();
 
       if (saleErr) throw saleErr;
 
-      // 2. Sipariş kalemleri (detayları) varsa işle ve sale_items tablosuna kaydet
-      const rawItems = order.items || order.orderItems || order.products || [];
-      
+      // 3. Ürün detayları varsa ekle, yoksa toplam tutarı "Adisyo Satışı" olarak detay tablosuna yaz
       if (rawItems.length > 0) {
         const saleItemsPayload = rawItems.map(item => {
-          const qty = Number(item.quantity || item.qty || 1);
-          const unitPrice = Number(item.price || item.unitPrice || 0);
+          const qty = Number(item.quantity || item.qty || item.count || 1);
+          const unitPrice = Number(item.price || item.unitPrice || item.amount || totalAmount);
           return {
             sale_id: saleRecord.id,
-            product_id: item.productId || item.id || 1, // Ürün ID eşleşmesi
+            product_id: item.productId || item.id || 1,
             quantity: qty,
             unit_price: unitPrice,
             line_total: qty * unitPrice
@@ -1153,27 +1164,34 @@ async function fetchAdisyoOrders() {
         });
 
         const { error: itemsErr } = await client.from("sale_items").insert(saleItemsPayload);
-        if (itemsErr) console.error("Adisyon detayları kaydedilemedi:", itemsErr.message);
+        if (itemsErr) console.error("Detaylar kaydedilemedi:", itemsErr.message);
 
-        // 3. Reçeteden stok düşüşünü tetikle
+        // Reçeteden stok düşüşü
         await deductStockFromRecipe(rawItems.map(i => ({
           productId: i.productId || i.id || 1,
-          quantity: Number(i.quantity || i.qty || 1)
+          quantity: Number(i.quantity || i.qty || i.count || 1)
         })));
+      } else {
+        // Ürün bulunamadıysa bile adisyon detay ekranı boş kalmasın diye ana tutarı ekliyoruz
+        await client.from("sale_items").insert({
+          sale_id: saleRecord.id,
+          product_id: 1,
+          quantity: 1,
+          unit_price: totalAmount,
+          line_total: totalAmount
+        });
       }
     }
 
-    alert("🎉 Adisyo'daki siparişler, detayları ve stok düşüşleriyle birlikte Kaptan Nili POS sistemine eksiksiz işlendi!");
-    
+    alert("🎉 Adisyo siparişi, detayları ve stok güncellemeleriyle birlikte başarıyla işlendi!");
     await renderSales();
     await loadIngredients();
 
   } catch (err) {
     console.error("Adisyo Entegrasyon Hatası:", err);
-    alert("Adisyo siparişleri çekilirken bir hata oluştu: " + err.message);
+    alert("Hata: " + err.message);
   }
 }
-
 // 11. TEK TIKLA SADE ÖDEME MODALI
 function openPaymentModal() {
   const table = getTables().find(t => t.id === selectedTableId);
