@@ -1267,20 +1267,27 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
   modal.style.display = "flex";
 
   try {
-    // 1. Doğrudan sale_items tablosundan bu satışa ait ürünleri çekiyoruz
+    console.log("🔍 Sorgulanan Sale ID:", saleId);
+
+    // 1. Doğrudan sale_items tablosunu sorgulayalım
     const { data: items, error: itemsErr } = await client
       .from("sale_items")
       .select("*")
       .eq("sale_id", saleId);
 
-    if (itemsErr) throw itemsErr;
+    if (itemsErr) {
+      console.error("🚨 Supabase sale_items hatası:", itemsErr);
+      throw itemsErr;
+    }
+
+    console.log("📦 Supabase'den gelen ham items verisi:", items);
 
     if (!items || items.length === 0) {
-      container.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Bu adisyona ait ürün detayı bulunamadı.</div>';
+      container.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Bu adisyona ait ürün detayı bulunamadı (sale_items boş).</div>';
       return;
     }
 
-    // 2. Ürün isimlerini eşleştirmek için products tablosunu çekiyoruz
+    // 2. Ürün adlarını çekelim
     const { data: productsData } = await client.from("products").select("id, name");
     const productMap = {};
     if (productsData) {
@@ -1288,7 +1295,8 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
     }
 
     container.innerHTML = items.map(item => {
-      const prodName = productMap[item.product_id] || "Ürün";
+      // Ürün adını map'ten veya item içindeki olası alternatif isimlerden bulalım
+      const prodName = productMap[item.product_id] || item.product_name || item.name || `Ürün #${item.product_id}`;
       const lineTotal = Number(item.line_total || (item.quantity * item.unit_price) || 0);
       return `
         <div class="receipt-detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-color);">
@@ -1304,12 +1312,10 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
     }).join("");
 
   } catch (err) {
-    console.error("Adisyon detay hatası:", err);
-    container.innerHTML = '<div style="text-align:center; padding:15px; color:#dc2626; font-size:12px;">Adisyon içeriği çekilemedi.</div>';
+    console.error("🚨 Adisyon detay çekme genel hata:", err);
+    container.innerHTML = `<div style="text-align:center; padding:15px; color:#dc2626; font-size:12px;">Hata: ${escapeHtml(err.message || "Bilinmeyen hata")}</div>`;
   }
 }
-
-
 
 // 13. RAPOR SEKMELERİ
 function switchReportTab(tabId) {
