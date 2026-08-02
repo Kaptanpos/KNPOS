@@ -1871,6 +1871,7 @@ async function deductStockFromRecipe(orders) {
         if (ingData) {
           const currentStock = ingData.stock_quantity ?? 0;
           const newStock = Math.max(0, Number(currentStock) - totalDeduct);
+          
           await client
             .from("ingredients")
             .update({ stock_quantity: newStock })
@@ -1882,7 +1883,6 @@ async function deductStockFromRecipe(orders) {
     console.error("Stok düşüş hatası:", err.message);
   }
 }
-
 function formatMoney(val) {
   return Number(val || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
 }
