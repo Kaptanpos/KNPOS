@@ -1326,7 +1326,7 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
       const prodName = item.products?.name || "Ürün";
       const lineTotal = Number(item.line_total || (item.quantity * item.unit_price) || 0);
       return `
-        <div class="receipt-detail-row">
+        <div class="receipt-detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-color);">
           <div>
             <strong>${escapeHtml(prodName)}</strong><br>
             <span style="font-size:11px; color:var(--text-muted);">${item.quantity} Adet × ${formatMoney(item.unit_price)}</span>
@@ -1342,7 +1342,6 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
     container.innerHTML = '<div style="text-align:center; padding:15px; color:#dc2626; font-size:12px;">Adisyon içeriği çekilemedi.</div>';
   }
 }
-
 // 13. RAPOR SEKMELERİ
 function switchReportTab(tabId) {
   const contents = document.querySelectorAll(".report-tab-content");
