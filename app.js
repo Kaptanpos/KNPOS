@@ -1247,9 +1247,15 @@ async function completePaymentWithChannel(channelName) {
   if (!table) return;
 
   try {
+    // 1. Masadaki ürünleri özet bir metin haline getirelim (Örn: "2 Çay, 1 Türk Kahvesi")
+    const urunOzetMetni = table.orders.map(o => `${o.quantity} ${o.name}`).join(", ");
+    
+    // 2. Ödeme kanalının yanına ürün detayını ekleyerek kaydedelim
+    const tamOdemeKansi = `${channelName} - ${urunOzetMetni}`;
+
     const { data: sale, error: saleErr } = await client
       .from("sales")
-      .insert({ total_amount: Number(table.total), payment_type: channelName })
+      .insert({ total_amount: Number(table.total), payment_type: tamOdemeKansi })
       .select("id")
       .single();
 
@@ -1280,13 +1286,12 @@ async function completePaymentWithChannel(channelName) {
     renderTables();
     await renderSales();
 
-    alert(`Satış [ ${channelName} ] kanalı üzerinden başarıyla tamamlandı ve stoklar düşüldü!`);
+    alert(`Satış [ ${channelName} ] üzerinden başarıyla tamamlandı ve detaylar kütüğe işlendi!`);
 
   } catch (err) {
     alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
   }
 }
-
 // 12. ANLIK SATIŞLAR TABLOSU
 async function renderSales() {
   const list = document.getElementById("salesList");
