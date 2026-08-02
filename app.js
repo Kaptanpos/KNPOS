@@ -1171,26 +1171,49 @@ async function completePaymentWithChannel(channelName) {
   if (!table) return;
 
   try {
+    // 1. Önce ana satış kaydını atıp id'sini alıyoruz
     const { data: sale, error: saleErr } = await client
       .from("sales")
       .insert({ total_amount: Number(table.total), payment_type: channelName })
       .select("id")
       .single();
 
-    if (saleErr) throw saleErr;
+    if (saleErr) {
+      console.error("🚨 Ana satış kayıt hatası:", saleErr);
+      throw saleErr;
+    }
 
-    const saleItems = table.orders.map(item => ({
-      sale_id: sale.id,
-      product_id: item.productId,
-      quantity: Number(item.quantity),
-      unit_price: Number(item.price),
-      line_total: Number(item.quantity) * Number(item.price)
-    }));
+    console.log("✅ Ana satış atıldı, ID:", sale.id);
 
-    await client.from("sale_items").insert(saleItems);
+    // 2. Masadaki ürünleri sale_items tablosuna garanti şekilde yazdırıyoruz
+    if (table.orders && table.orders.length > 0) {
+      const saleItems = table.orders.map(item => ({
+        sale_id: sale.id,
+        product_id: Number(item.productId),
+        quantity: Number(item.quantity),
+        unit_price: Number(item.price),
+        line_total: Number(item.quantity) * Number(item.price)
+      }));
 
+      console.log("📦 sale_items tablosuna gönderilen veri:", saleItems);
+
+      const { data: insertedItems, error: itemsErr } = await client
+        .from("sale_items")
+        .insert(saleItems)
+        .select();
+
+      if (itemsErr) {
+        console.error("🚨 sale_items kayıt hatası:", itemsErr);
+        alert("Satış atıldı ama detaylar yazılamadı: " + itemsErr.message);
+      } else {
+        console.log("✅ sale_items başarıyla kaydedildi:", insertedItems);
+      }
+    }
+
+    // 3. Stoktan reçeteye göre düşüş
     await deductStockFromRecipe(table.orders);
 
+    // 4. Masayı kapat ve temizle
     table.status = "closed";
     table.openedAt = null;
     table.total = 0;
@@ -1204,12 +1227,15 @@ async function completePaymentWithChannel(channelName) {
     renderTables();
     await renderSales();
 
-    alert(`Satış [ ${channelName} ] kanalı üzerinden başarıyla tamamlandı ve stoklar düşüldü!`);
+    alert(`Satış [ ${channelName} ] başarıyla tamamlandı!`);
 
   } catch (err) {
+    console.error("🚨 Ödeme tamamlama genel hata:", err);
     alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
   }
 }
+
+
 
 // 12. ANLIK SATIŞLAR TABLOSU
 async function renderSales() {
