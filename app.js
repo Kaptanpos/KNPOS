@@ -1,7 +1,12 @@
-/* KAPTAN NİLİ BULUT POS - FULL TEMİZ VE SORUNSUZ SÜRÜM */
+/* KAPTAN NİLİ BULUT POS - ADİSYO ENTEGRASYONLU FULL TEMİZ SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
+
+// ADİSYO API ENTEGRASYON BİLGİLERİ (Kendi anahtarlarını buraya yazacaksın kanka)
+const ADISYO_MOBILE_APP_KEY = "932ab8c-8846-ad07-sca0-6b70af18cb6f-d6c524f3-9ea3-42ce-90b0-89973d0c0d2";
+const ADISYO_WEB_APP_KEY = "25b80b3556ca3a15353dd2fd312062fad27adcf5a1de51b75bdadea1fa8214ab";
+const ADISYO_API_SECRET_KEY = "766ce226-a646-4557-903e-32e6aae9f072";
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -45,15 +50,11 @@ async function checkRecipeTable() {
 }
 
 // TEMA RENK YÖNETİMİ
-const THEME_STORAGE_KEY = "knpos_primary_color_v1";
-
 async function loadThemeColor() {
   try {
-    const savedColor = localStorage.getItem(THEME_STORAGE_KEY);
-    if (savedColor) {
-      applyThemeColor(savedColor);
-    } else {
-      applyThemeColor('#2d5a27');
+    const { data, error } = await client.from("app_settings").select("value").eq("key", "primary_color").single();
+    if (!error && data && data.value) {
+      applyThemeColor(data.value);
     }
   } catch (err) {
     console.log("Tema yüklenemedi, varsayılan kullanılıyor.");
@@ -69,13 +70,18 @@ function applyThemeColor(primaryHex) {
   else if (primaryHex === '#78350f') darkHex = '#451a03';
   else if (primaryHex === '#1e3a8a') darkHex = '#172554';
   else if (primaryHex === '#9d174d') darkHex = '#831843';
-  else if (primaryHex === '#000000') darkHex = '#1c1917';
-  else if (primaryHex === '#eab308') darkHex = '#ca8a04';
-  else if (primaryHex === '#06b6d4') darkHex = '#0891b2';
-  else if (primaryHex === '#f97316') darkHex = '#c2410c';
-  else if (primaryHex === '#ffffff') darkHex = '#cbd5e1';
 
   document.documentElement.style.setProperty('--primary-dark', darkHex);
+}
+
+async function changeThemeColor(primaryHex, darkHex) {
+  applyThemeColor(primaryHex);
+  try {
+    await client.from("app_settings").upsert({ key: "primary_color", value: primaryHex });
+    alert("Tema rengi başarıyla güncellendi ve kaydedildi!");
+  } catch (err) {
+    alert("Tema kaydedilemedi: " + err.message);
+  }
 }
 
 // 1. GİRİŞ İŞLEMİ
@@ -522,7 +528,7 @@ function changeQty(productId, delta) {
   renderTables();
 }
 
-// 7. MALZEMELER VE ÜRETİM
+// 7. MALZEMELER VE ÜRETİM LOG FİLTRELEME MOTORU
 async function loadIngredientsForDashboard() {
   try {
     const { data, error } = await client.from("ingredients").select("*").order("name", { ascending: true });
@@ -577,6 +583,14 @@ async function submitProductionEntry() {
     const { error: updateErr } = await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", ingId);
     if (updateErr) throw updateErr;
 
+    const { error: logErr } = await client.from("stock_movements").insert({
+      ingredient_id: ingId,
+      quantity_changed: qtyToAdd,
+      movement_type: "Uretim Girisi",
+      note: note
+    });
+    if (logErr) throw logErr;
+
     alert(`✅ Üretim kaydedildi! ${ingObj.name} stoğuna +${qtyToAdd} ${ingObj.unit || 'gr'} eklendi.`);
     
     document.getElementById("prodInputQty").value = "";
@@ -586,6 +600,7 @@ async function submitProductionEntry() {
     
     if (document.getElementById("pageIngredients").style.display !== "none") {
       await loadIngredients();
+      await loadStockMovements();
     }
 
   } catch (err) {
@@ -639,7 +654,54 @@ function setLogDateRange(type) {
 async function loadStockMovements() {
   const tbody = document.getElementById("stockMovementsTbody");
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:15px;">Stok hareketleri aktif değil.</td></tr>';
+
+  const startDate = document.getElementById("logStartDate")?.value;
+  const endDate = document.getElementById("logEndDate")?.value;
+
+  try {
+    let query = client.from("stock_movements").select("*").order("created_at", { ascending: false });
+
+    if (startDate && endDate) {
+      const startIso = `${startDate}T00:00:00.000Z`;
+      const endIso = `${endDate}T23:59:59.999Z`;
+      query = query.gte("created_at", startIso).lte("created_at", endIso);
+    }
+
+    const { data: movements, error: movErr } = await query;
+    if (movErr) throw movErr;
+
+    if (!movements || movements.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:15px;">Bu tarih aralığında üretim hareketi bulunmuyor.</td></tr>';
+      return;
+    }
+
+    if (!allIngredients || allIngredients.length === 0) {
+      const { data: ingData } = await client.from("ingredients").select("*");
+      if (ingData) allIngredients = ingData;
+    }
+
+    tbody.innerHTML = movements.map(m => {
+      const dateObj = new Date(m.created_at);
+      const dateStr = dateObj.toLocaleDateString('tr-TR');
+      const timeStr = dateObj.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+      
+      const foundIng = allIngredients.find(i => String(i.id) === String(m.ingredient_id));
+      const ingName = foundIng ? foundIng.name : "Malzeme #" + m.ingredient_id;
+      const unit = foundIng ? (foundIng.unit || "gr") : "gr";
+
+      return `
+        <tr>
+          <td><strong>${dateStr}</strong> <span style="color:var(--text-muted);">${timeStr}</span></td>
+          <td>${escapeHtml(ingName)}</td>
+          <td><strong style="color:#16a34a;">+${m.quantity_changed} ${unit}</strong></td>
+          <td>${escapeHtml(m.note || '-')}</td>
+        </tr>
+      `;
+    }).join("");
+
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#dc2626;">Hareketler yüklenemedi: ' + escapeHtml(err.message) + '</td></tr>';
+  }
 }
 
 function renderIngredientsTable(ingredients) {
@@ -670,6 +732,8 @@ function renderIngredientsTable(ingredients) {
     tbody.appendChild(tr);
   });
 }
+
+function resetProdForm() {}
 
 async function saveIngredientFromForm() {
   const editId = document.getElementById("editIngId").value;
@@ -749,20 +813,16 @@ async function adjustIngredientStock(id) {
   const newStock = Math.max(0, Number(currentStock) + delta);
 
   try {
-    const { error: updateErr } = await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", id);
-    if (updateErr) throw updateErr;
-
-    alert(`✅ Başarılı! '${ing.name}' stoğu güncellendi.`);
-
+    const { error } = await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", id);
+    if (error) throw error;
     await loadIngredients();
     await loadIngredientsForDashboard();
-
   } catch (err) {
     alert("Stok güncellenemedi: " + err.message);
   }
 }
 
-// 8. EXCEL İŞLEMLERİ
+// 8. EXCEL İŞLEMLERİ (UPSERT DESTEKLİ)
 function exportIngredientsExcel() {
   if (!allIngredients || allIngredients.length === 0) {
     alert("İndirilecek malzeme bulunamadı.");
@@ -935,7 +995,7 @@ async function importRecipeExcel(e) {
   reader.readAsArrayBuffer(file);
 }
 
-// 9. ÖDEME KANALLARI
+// 9. ÖDEME KANALLARI YÖNETİMİ
 async function loadPaymentMethods() {
   const defaultMethods = [
     { id: 1, name: "Nakit" },
@@ -1003,7 +1063,76 @@ async function deletePaymentMethod(id) {
   }
 }
 
-// 11. ÖDEME VE ADİSYON DETAY KAYIT (HATASIZ VE FULL DETAYLI)
+// 10. ADİSYON ENTEGRASYON KÖPRÜSÜ (ADİSYO'DAN SİPARİŞ ÇEKME)
+async function fetchAdisyoOrders() {
+  try {
+    const response = await fetch("https://api.adisyo.com/v1/orders/pending", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "MobileAppKey": ADISYO_MOBILE_APP_KEY,
+        "WebAppKey": ADISYO_WEB_APP_KEY,
+        "ApiSecretKey": ADISYO_API_SECRET_KEY
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error("Adisyo sunucusundan veri alınamadı. HTTP Kod: " + response.status);
+    }
+
+    const result = await response.json();
+    const adisyoOrders = result.data || result;
+
+    if (!adisyoOrders || adisyoOrders.length === 0) {
+      alert("Adisyo'da bekleyen yeni bir sipariş bulunmuyor kanka.");
+      return;
+    }
+
+    for (const order of adisyoOrders) {
+      const totalAmount = Number(order.totalAmount || order.total || 0);
+      const paymentChannel = order.channel || order.paymentType || "Adisyo / Online";
+
+      const { data: saleRecord, error: saleErr } = await client
+        .from("sales")
+        .insert({ 
+          total_amount: totalAmount, 
+          payment_type: paymentChannel 
+        })
+        .select("id")
+        .single();
+
+      if (saleErr) throw saleErr;
+
+      if (order.items && order.items.length > 0) {
+        const saleItemsPayload = order.items.map(item => ({
+          sale_id: saleRecord.id,
+          product_id: item.productId || 1,
+          quantity: Number(item.quantity || 1),
+          unit_price: Number(item.price || 0),
+          line_total: Number(item.quantity || 1) * Number(item.price || 0)
+        }));
+
+        await client.from("sale_items").insert(saleItemsPayload);
+
+        await deductStockFromRecipe(order.items.map(i => ({
+          productId: i.productId || 1,
+          quantity: Number(i.quantity || 1)
+        })));
+      }
+    }
+
+    alert("🎉 Adisyo'daki siparişler başarıyla Kaptan Nili POS sistemine aktarıldı, kasaya işlendi ve stoklar düşüldü!");
+    
+    await renderSales();
+    await loadIngredients();
+
+  } catch (err) {
+    console.error("Adisyo Entegrasyon Hatası:", err);
+    alert("Adisyo siparişleri çekilirken bir hata oluştu: " + err.message);
+  }
+}
+
+// 11. TEK TIKLA SADE ÖDEME MODALI
 function openPaymentModal() {
   const table = getTables().find(t => t.id === selectedTableId);
   const paymentModal = document.getElementById("paymentModal");
@@ -1042,7 +1171,6 @@ async function completePaymentWithChannel(channelName) {
   if (!table) return;
 
   try {
-    // 1. Önce ana satış kaydını atıp id'sini alıyoruz
     const { data: sale, error: saleErr } = await client
       .from("sales")
       .insert({ total_amount: Number(table.total), payment_type: channelName })
@@ -1051,23 +1179,18 @@ async function completePaymentWithChannel(channelName) {
 
     if (saleErr) throw saleErr;
 
-    // 2. Büyütecin içini dolduracak olan sale_items detaylarını saf ve hatasız kaydediyoruz
-    if (table.orders && table.orders.length > 0) {
-      const saleItems = table.orders.map(item => ({
-        sale_id: sale.id,
-        product_id: item.productId,
-        quantity: Number(item.quantity),
-        unit_price: Number(item.price),
-        line_total: Number(item.quantity) * Number(item.price)
-      }));
+    const saleItems = table.orders.map(item => ({
+      sale_id: sale.id,
+      product_id: item.productId,
+      quantity: Number(item.quantity),
+      unit_price: Number(item.price),
+      line_total: Number(item.quantity) * Number(item.price)
+    }));
 
-      const { error: itemsErr } = await client.from("sale_items").insert(saleItems);
-      if (itemsErr) {
-        console.error("sale_items kayıt hatası:", itemsErr.message);
-      }
-    }
+    await client.from("sale_items").insert(saleItems);
 
-    // 3. Masayı kapat ve temizle
+    await deductStockFromRecipe(table.orders);
+
     table.status = "closed";
     table.openedAt = null;
     table.total = 0;
@@ -1081,14 +1204,14 @@ async function completePaymentWithChannel(channelName) {
     renderTables();
     await renderSales();
 
-    alert(`Satış [ ${channelName} ] üzerinden başarıyla tamamlandı ve detaylar işlendi!`);
+    alert(`Satış [ ${channelName} ] kanalı üzerinden başarıyla tamamlandı ve stoklar düşüldü!`);
 
   } catch (err) {
     alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
   }
 }
 
-// 12. ANLIK SATIŞLAR VE BÜYÜTEÇ DETAY MODALI
+// 12. ANLIK SATIŞLAR TABLOSU
 async function renderSales() {
   const list = document.getElementById("salesList");
   const totalElem = document.getElementById("salesDailyTotal");
@@ -1113,12 +1236,10 @@ async function renderSales() {
     list.innerHTML = sales.map(s => {
       sum += Number(s.total_amount || 0);
       const timeStr = new Date(s.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
-      const safeChannel = escapeHtml(s.payment_type || "Nakit");
-      
       return `
-        <div class="daily-sales-row" onclick="openReceiptDetailModal(${s.id}, '${timeStr}', '${safeChannel}', ${s.total_amount})" style="cursor: pointer; display: flex; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid var(--border-color); align-items: center;">
+        <div class="daily-sales-row" onclick="openReceiptDetailModal(${s.id}, '${timeStr}', '${escapeHtml(s.payment_type || "Nakit")}', ${s.total_amount})">
           <div><strong>${timeStr}</strong></div>
-          <div><strong style="color:var(--primary);">${safeChannel}</strong></div>
+          <div><strong style="color:var(--primary);">${escapeHtml(s.payment_type || "Nakit")}</strong></div>
           <div style="text-align:right;"><strong>${formatMoney(s.total_amount)} 🔍</strong></div>
         </div>
       `;
@@ -1162,7 +1283,7 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
       const prodName = item.products?.name || "Ürün";
       const lineTotal = Number(item.line_total || (item.quantity * item.unit_price) || 0);
       return `
-        <div class="receipt-detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-color);">
+        <div class="receipt-detail-row">
           <div>
             <strong>${escapeHtml(prodName)}</strong><br>
             <span style="font-size:11px; color:var(--text-muted);">${item.quantity} Adet × ${formatMoney(item.unit_price)}</span>
@@ -1179,7 +1300,22 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
   }
 }
 
-// 13. RAPORLAR
+// 13. RAPOR SEKMELERİ
+function switchReportTab(tabId) {
+  const contents = document.querySelectorAll(".report-tab-content");
+  contents.forEach(c => c.style.display = "none");
+
+  const tabBtns = document.querySelectorAll(".report-tab-btn");
+  tabBtns.forEach(b => b.classList.remove("active-tab"));
+
+  const targetContent = document.getElementById(tabId);
+  if (targetContent) targetContent.style.display = "block";
+
+  if (event && event.target) {
+    event.target.classList.add("active-tab");
+  }
+}
+
 function initReportDates() {
   const startInput = document.getElementById("reportStartDate");
   const endInput = document.getElementById("reportEndDate");
@@ -1511,25 +1647,13 @@ function renderManagementProductsTable(products) {
 
 async function saveProductFromForm() {
   const editId = document.getElementById("editProductId").value;
-  const rawName = document.getElementById("prodNameInput").value;
-  const name = rawName ? rawName.trim().replace(/\s+/g, ' ') : "";
+  const name = document.getElementById("prodNameInput").value.trim();
   const category = document.getElementById("prodCategorySelect").value;
   const price = parseFloat(document.getElementById("prodPriceInput").value);
   const imageUrl = document.getElementById("prodImageInput").value.trim();
 
   if (!name || isNaN(price) || price < 0) {
     alert("Lütfen geçerli bir ürün adı ve fiyatı giriniz.");
-    return;
-  }
-
-  const nameLower = name.toLowerCase();
-  const duplicate = allManagementProducts.find(p => {
-    const pNameClean = (p.name || "").trim().replace(/\s+/g, ' ').toLowerCase();
-    return pNameClean === nameLower && String(p.id) !== String(editId);
-  });
-  
-  if (duplicate) {
-    alert(`⚠️ '${name}' adında bir ürün zaten sistemde kayıtlı! Aynı isimle ikinci bir ürün ekleyemezsin.`);
     return;
   }
 
@@ -1590,7 +1714,7 @@ async function toggleProductActive(id, currentActive) {
   }
 }
 
-// REÇETE MODALI
+// REÇETE DÜZENLEME MODAL FONKSİYONLARI
 async function openRecipeModal(productId) {
   selectedRecipeProductId = productId;
   const product = allManagementProducts.find(p => p.id === productId);
@@ -1804,9 +1928,11 @@ document.addEventListener("click", function(e) {
   }
 });
 
+// TIKLAMA VE ETKİLEŞİM DİNLENMELERİ
 function bindEvents() {
   setupNavigation();
 
+  // Malzemeler
   const saveIngBtn = document.getElementById("saveIngBtn");
   if (saveIngBtn) saveIngBtn.onclick = saveIngredientFromForm;
 
@@ -1822,11 +1948,12 @@ function bindEvents() {
     };
   }
 
+  // Ürünler
   const saveProdBtn = document.getElementById("saveProductBtn");
   if (saveProdBtn) saveProdBtn.onclick = saveProductFromForm;
 
   const resetProdBtn = document.getElementById("resetProductFormBtn");
-  if (resetProdBtn) resetProdBtn.onclick = resetProductForm;
+  if (resetProdBtn) resetProdBtn.onclick = resetProdForm;
 
   const searchProdInput = document.getElementById("searchProductInput");
   if (searchProdInput) {
@@ -1839,6 +1966,7 @@ function bindEvents() {
     };
   }
 
+  // MASAYI KAPAT / ÖDEME AL
   const closeTableBtn = document.getElementById("closeTableButton");
   if (closeTableBtn) {
     closeTableBtn.onclick = () => {
@@ -1859,6 +1987,7 @@ function bindEvents() {
     };
   }
 
+  // KASA AÇMA & KAPATMA
   const openCashBtn = document.getElementById("openCashButton");
   if (openCashBtn) {
     openCashBtn.onclick = async () => {
@@ -1913,10 +2042,6 @@ function bindEvents() {
 }
 
 // İLK AÇILIŞ
-document.addEventListener("DOMContentLoaded", () => {
-  loadThemeColor();
-});
-
 if (loginButton) loginButton.addEventListener("click", login);
 if (logoutButton) logoutButton.addEventListener("click", logout);
 if (loginPassword) {
