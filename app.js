@@ -1247,7 +1247,6 @@ async function completePaymentWithChannel(channelName) {
   if (!table) return;
 
   try {
-    // Ödeme türünü ASLA bozmadan, sadece saf kanal adını (örn: "Nakit") kaydediyoruz
     const { data: sale, error: saleErr } = await client
       .from("sales")
       .insert({ total_amount: Number(table.total), payment_type: channelName })
@@ -1256,7 +1255,6 @@ async function completePaymentWithChannel(channelName) {
 
     if (saleErr) throw saleErr;
 
-    // Ürün detayları sale_items tablosuna yazıldığı için adisyona tıklandığında içeride tertemiz listelenecek
     const saleItems = table.orders.map(item => ({
       sale_id: sale.id,
       product_id: item.productId,
@@ -1280,7 +1278,11 @@ async function completePaymentWithChannel(channelName) {
 
     closeTableModal();
     renderTables();
-    await renderSales();
+    
+    // Eğer projede renderSales varsa çalıştır, yoksa hata vermez
+    if (typeof renderSales === "function") {
+      await renderSales();
+    }
 
     alert(`Satış [ ${channelName} ] üzerinden başarıyla tamamlandı!`);
 
@@ -1288,54 +1290,6 @@ async function completePaymentWithChannel(channelName) {
     alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
   }
 }
-async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount) {
-  const modal = document.getElementById("receiptDetailModal");
-  const subtitle = document.getElementById("receiptSubtitle");
-  const container = document.getElementById("receiptItemsContainer");
-  const totalElem = document.getElementById("receiptTotalAmount");
-
-  if (!modal || !container) return;
-
-  if (subtitle) subtitle.textContent = `Saat: ${timeStr} • Kanal: ${paymentType}`;
-  if (totalElem) totalElem.textContent = formatMoney(totalAmount);
-  
-  container.innerHTML = '<div style="text-align:center; padding:15px; color:var(--text-muted); font-size:12px;">Adisyon detayları yükleniyor...</div>';
-  modal.style.display = "flex";
-
-  try {
-    const { data: items, error } = await client
-      .from("sale_items")
-      .select("*, products(name)")
-      .eq("sale_id", saleId);
-
-    if (error) throw error;
-
-    if (!items || items.length === 0) {
-      container.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Bu adisyona ait detay bulunamadı.</div>';
-      return;
-    }
-
-    container.innerHTML = items.map(item => {
-      const prodName = item.products?.name || "Ürün";
-      const lineTotal = Number(item.line_total || (item.quantity * item.unit_price) || 0);
-      return `
-        <div class="receipt-detail-row">
-          <div>
-            <strong>${escapeHtml(prodName)}</strong><br>
-            <span style="font-size:11px; color:var(--text-muted);">${item.quantity} Adet × ${formatMoney(item.unit_price)}</span>
-          </div>
-          <div style="font-weight:bold; color:var(--primary); align-self:center;">
-            ${formatMoney(lineTotal)}
-          </div>
-        </div>
-      `;
-    }).join("");
-
-  } catch (err) {
-    container.innerHTML = '<div style="text-align:center; padding:15px; color:#dc2626; font-size:12px;">Adisyon içeriği çekilemedi.</div>';
-  }
-}
-
 // 13. RAPOR SEKMELERİ
 function switchReportTab(tabId) {
   const contents = document.querySelectorAll(".report-tab-content");
