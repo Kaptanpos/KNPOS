@@ -1907,7 +1907,6 @@ async function deductStockFromRecipe(orders) {
     console.error("Stok düşüş hatası:", err.message);
   }
 }
-
 function formatMoney(val) {
   return Number(val || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
 }
