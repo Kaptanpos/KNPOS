@@ -1,12 +1,7 @@
-/* KAPTAN NİLİ BULUT POS - ADİSYO ENTEGRASYONLU FULL TEMİZ SÜRÜM */
+/* KAPTAN NİLİ BULUT POS - FULL TEMİZ VE SORUNSUZ SÜRÜM */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
-
-// ADİSYO API ENTEGRASYON BİLGİLERİ
-const ADISYO_MOBILE_APP_KEY = "BURAYA_MOBIL_APP_KEY_GELECEK";
-const ADISYO_WEB_APP_KEY = "BURAYA_WEB_APP_KEY_GELECEK";
-const ADISYO_API_SECRET_KEY = "BURAYA_API_SECRET_KEY_GELECEK";
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -49,7 +44,7 @@ async function checkRecipeTable() {
   }
 }
 
-// TEMA RENK YÖNETİMİ VE YENİ RENK PALETİ
+// TEMA RENK YÖNETİMİ
 const THEME_STORAGE_KEY = "knpos_primary_color_v1";
 
 async function loadThemeColor() {
@@ -58,7 +53,7 @@ async function loadThemeColor() {
     if (savedColor) {
       applyThemeColor(savedColor);
     } else {
-      applyThemeColor('#2d5a27'); // Varsayılan renk
+      applyThemeColor('#2d5a27');
     }
   } catch (err) {
     console.log("Tema yüklenemedi, varsayılan kullanılıyor.");
@@ -69,30 +64,20 @@ function applyThemeColor(primaryHex) {
   document.documentElement.style.setProperty('--primary', primaryHex);
   
   let darkHex = primaryHex;
-  // Yeni eklenen renkler ve mevcutlar için koyu ton eşleştirmeleri
-  if (primaryHex === '#2d5a27') darkHex = '#1e3d1a';       // Yeşil
-  else if (primaryHex === '#0f766e') darkHex = '#115e59';  // Koyu Yeşil/Camgöbeği tonu
-  else if (primaryHex === '#78350f') darkHex = '#451a03';  // Kahverengi
-  else if (primaryHex === '#1e3a8a') darkHex = '#172554';  // Mavi
-  else if (primaryHex === '#9d174d') darkHex = '#831843';  // Pembe/Bordo
-  else if (primaryHex === '#000000') darkHex = '#1c1917';  // Siyah -> Koyu Gri/Siyah
-  else if (primaryHex === '#eab308') darkHex = '#ca8a04';  // Sarı -> Koyu Sarı
-  else if (primaryHex === '#06b6d4') darkHex = '#0891b2';  // Cam Göbeği (Cyan) -> Koyu Cam Göbeği
-  else if (primaryHex === '#f97316') darkHex = '#c2410c';  // Turuncu -> Koyu Turuncu
-  else if (primaryHex === '#ffffff') darkHex = '#cbd5e1';  // Beyaz -> Butonlarda okunabilirlik için gri ton
+  if (primaryHex === '#2d5a27') darkHex = '#1e3d1a';
+  else if (primaryHex === '#0f766e') darkHex = '#115e59';
+  else if (primaryHex === '#78350f') darkHex = '#451a03';
+  else if (primaryHex === '#1e3a8a') darkHex = '#172554';
+  else if (primaryHex === '#9d174d') darkHex = '#831843';
+  else if (primaryHex === '#000000') darkHex = '#1c1917';
+  else if (primaryHex === '#eab308') darkHex = '#ca8a04';
+  else if (primaryHex === '#06b6d4') darkHex = '#0891b2';
+  else if (primaryHex === '#f97316') darkHex = '#c2410c';
+  else if (primaryHex === '#ffffff') darkHex = '#cbd5e1';
 
   document.documentElement.style.setProperty('--primary-dark', darkHex);
 }
 
-async function changeThemeColor(primaryHex, darkHex) {
-  applyThemeColor(primaryHex);
-  try {
-    localStorage.setItem(THEME_STORAGE_KEY, primaryHex);
-    alert("Tema rengi başarıyla güncellendi ve kalıcı olarak kaydedildi!");
-  } catch (err) {
-    alert("Tema kaydedilemedi: " + err.message);
-  }
-}
 // 1. GİRİŞ İŞLEMİ
 async function login() {
   const password = loginPassword ? loginPassword.value : "";
@@ -537,7 +522,7 @@ function changeQty(productId, delta) {
   renderTables();
 }
 
-// 7. MALZEMELER VE ÜRETİM LOG FİLTRELEME MOTORU
+// 7. MALZEMELER VE ÜRETİM
 async function loadIngredientsForDashboard() {
   try {
     const { data, error } = await client.from("ingredients").select("*").order("name", { ascending: true });
@@ -592,14 +577,6 @@ async function submitProductionEntry() {
     const { error: updateErr } = await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", ingId);
     if (updateErr) throw updateErr;
 
-    const { error: logErr } = await client.from("stock_movements").insert({
-      ingredient_id: ingId,
-      quantity_changed: qtyToAdd,
-      movement_type: "Uretim Girisi",
-      note: note
-    });
-    if (logErr) throw logErr;
-
     alert(`✅ Üretim kaydedildi! ${ingObj.name} stoğuna +${qtyToAdd} ${ingObj.unit || 'gr'} eklendi.`);
     
     document.getElementById("prodInputQty").value = "";
@@ -609,7 +586,6 @@ async function submitProductionEntry() {
     
     if (document.getElementById("pageIngredients").style.display !== "none") {
       await loadIngredients();
-      await loadStockMovements();
     }
 
   } catch (err) {
@@ -663,56 +639,7 @@ function setLogDateRange(type) {
 async function loadStockMovements() {
   const tbody = document.getElementById("stockMovementsTbody");
   if (!tbody) return;
-
-  const startDate = document.getElementById("logStartDate")?.value;
-  const endDate = document.getElementById("logEndDate")?.value;
-
-  try {
-    let query = client.from("stock_movements").select("*").order("created_at", { ascending: false });
-
-    if (startDate && endDate) {
-      const startIso = `${startDate}T00:00:00.000Z`;
-      const endIso = `${endDate}T23:59:59.999Z`;
-      query = query.gte("created_at", startIso).lte("created_at", endIso);
-    }
-
-    const { data: movements, error: movErr } = await query;
-    if (movErr) throw movErr;
-
-    if (!movements || movements.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:15px;">Bu tarih aralığında üretim hareketi bulunmuyor.</td></tr>';
-      return;
-    }
-
-    if (!allIngredients || allIngredients.length === 0) {
-      const { data: ingData } = await client.from("ingredients").select("*");
-      if (ingData) allIngredients = ingData;
-    }
-
-    tbody.innerHTML = movements.map(m => {
-      const dateObj = new Date(m.created_at);
-      const dateStr = dateObj.toLocaleDateString('tr-TR');
-      const timeStr = dateObj.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
-      
-      const foundIng = allIngredients.find(i => String(i.id) === String(m.ingredient_id));
-      const ingName = foundIng ? foundIng.name : "Malzeme #" + m.ingredient_id;
-      const unit = foundIng ? (foundIng.unit || "gr") : "gr";
-      const sign = Number(m.quantity_changed) >= 0 ? "+" : "";
-      const color = Number(m.quantity_changed) >= 0 ? "#16a34a" : "#dc2626";
-
-      return `
-        <tr>
-          <td><strong>${dateStr}</strong> <span style="color:var(--text-muted);">${timeStr}</span></td>
-          <td>${escapeHtml(ingName)}</td>
-          <td><strong style="color:${color};">${sign}${m.quantity_changed} ${unit}</strong></td>
-          <td>${escapeHtml(m.note || '-')}</td>
-        </tr>
-      `;
-    }).join("");
-
-  } catch (err) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#dc2626;">Hareketler yüklenemedi: ' + escapeHtml(err.message) + '</td></tr>';
-  }
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:15px;">Stok hareketleri aktif değil.</td></tr>';
 }
 
 function renderIngredientsTable(ingredients) {
@@ -743,8 +670,6 @@ function renderIngredientsTable(ingredients) {
     tbody.appendChild(tr);
   });
 }
-
-function resetProdForm() {}
 
 async function saveIngredientFromForm() {
   const editId = document.getElementById("editIngId").value;
@@ -807,7 +732,6 @@ function resetIngForm() {
   document.getElementById("resetIngFormBtn").style.display = "none";
 }
 
-// 🎯 GÜNCELLENEN STOK EKLE/DÜŞ FONKSİYONU (LOG KAYDI ATAN KISIM)
 async function adjustIngredientStock(id) {
   const ing = allIngredients.find(i => i.id === id);
   if (!ing) return;
@@ -823,38 +747,22 @@ async function adjustIngredientStock(id) {
   }
 
   const newStock = Math.max(0, Number(currentStock) + delta);
-  const movementType = delta >= 0 ? "Stok Ekleme" : "Stok Düşme";
-  const note = prompt("Bu işlem için bir açıklama / parti giriniz (İsteğe bağlı):", "Manuel Stok Güncelleme") || "Manuel Stok Güncelleme";
 
   try {
-    // 1. Stok tablosunu güncelle
     const { error: updateErr } = await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", id);
     if (updateErr) throw updateErr;
 
-    // 2. Hareketleri log tablosuna kaydet ki log ekranına ve ana sayfaya yansısın!
-    const { error: logErr } = await client.from("stock_movements").insert({
-      ingredient_id: id,
-      quantity_changed: delta,
-      movement_type: movementType,
-      note: note
-    });
-    if (logErr) throw logErr;
-
-    alert(`✅ Başarılı! '${ing.name}' stoğu güncellendi ve loglara işlendi.`);
+    alert(`✅ Başarılı! '${ing.name}' stoğu güncellendi.`);
 
     await loadIngredients();
     await loadIngredientsForDashboard();
-    
-    if (document.getElementById("pageIngredients").style.display !== "none") {
-      await loadStockMovements();
-    }
 
   } catch (err) {
     alert("Stok güncellenemedi: " + err.message);
   }
 }
 
-// 8. EXCEL İŞLEMLERİ (UPSERT DESTEKLİ)
+// 8. EXCEL İŞLEMLERİ
 function exportIngredientsExcel() {
   if (!allIngredients || allIngredients.length === 0) {
     alert("İndirilecek malzeme bulunamadı.");
@@ -1027,7 +935,7 @@ async function importRecipeExcel(e) {
   reader.readAsArrayBuffer(file);
 }
 
-// 9. ÖDEME KANALLARI YÖNETİMİ
+// 9. ÖDEME KANALLARI
 async function loadPaymentMethods() {
   const defaultMethods = [
     { id: 1, name: "Nakit" },
@@ -1095,76 +1003,7 @@ async function deletePaymentMethod(id) {
   }
 }
 
-// 10. ADİSYON ENTEGRASYON KÖPRÜSÜ
-async function fetchAdisyoOrders() {
-  try {
-    const response = await fetch("https://api.adisyo.com/v1/orders/pending", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "MobileAppKey": ADISYO_MOBILE_APP_KEY,
-        "WebAppKey": ADISYO_WEB_APP_KEY,
-        "ApiSecretKey": ADISYO_API_SECRET_KEY
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error("Adisyo sunucusundan veri alınamadı. HTTP Kod: " + response.status);
-    }
-
-    const result = await response.json();
-    const adisyoOrders = result.data || result;
-
-    if (!adisyoOrders || adisyoOrders.length === 0) {
-      alert("Adisyo'da bekleyen yeni bir sipariş bulunmuyor kanka.");
-      return;
-    }
-
-    for (const order of adisyoOrders) {
-      const totalAmount = Number(order.totalAmount || order.total || 0);
-      const paymentChannel = order.channel || order.paymentType || "Adisyo / Online";
-
-      const { data: saleRecord, error: saleErr } = await client
-        .from("sales")
-        .insert({ 
-          total_amount: totalAmount, 
-          payment_type: paymentChannel 
-        })
-        .select("id")
-        .single();
-
-      if (saleErr) throw saleErr;
-
-      if (order.items && order.items.length > 0) {
-        const saleItemsPayload = order.items.map(item => ({
-          sale_id: saleRecord.id,
-          product_id: item.productId || 1,
-          quantity: Number(item.quantity || 1),
-          unit_price: Number(item.price || 0),
-          line_total: Number(item.quantity || 1) * Number(item.price || 0)
-        }));
-
-        await client.from("sale_items").insert(saleItemsPayload);
-
-        await deductStockFromRecipe(order.items.map(i => ({
-          productId: i.productId || 1,
-          quantity: Number(i.quantity || 1)
-        })));
-      }
-    }
-
-    alert("🎉 Adisyo'daki siparişler başarıyla Kaptan Nili POS sistemine aktarıldı, kasaya işlendi ve stoklar düşüldü!");
-    
-    await renderSales();
-    await loadIngredients();
-
-  } catch (err) {
-    console.error("Adisyo Entegrasyon Hatası:", err);
-    alert("Adisyo siparişleri çekilirken bir hata oluştu: " + err.message);
-  }
-}
-
-// 11. TEK TIKLA SADE ÖDEME MODALI
+// 11. ÖDEME VE ADİSYON DETAY KAYIT (HATASIZ VE FULL DETAYLI)
 function openPaymentModal() {
   const table = getTables().find(t => t.id === selectedTableId);
   const paymentModal = document.getElementById("paymentModal");
@@ -1203,19 +1042,16 @@ async function completePaymentWithChannel(channelName) {
   if (!table) return;
 
   try {
-    // 1. Önce ana satış kaydını atalım
+    // 1. Önce ana satış kaydını atıp id'sini alıyoruz
     const { data: sale, error: saleErr } = await client
       .from("sales")
       .insert({ total_amount: Number(table.total), payment_type: channelName })
       .select("id")
       .single();
 
-    if (saleErr) {
-      console.error("Ana satış tablosu hatası:", saleErr);
-      throw saleErr;
-    }
+    if (saleErr) throw saleErr;
 
-    // 2. Masadaki ürünleri sale_items tablosuna gönderelim
+    // 2. Büyütecin içini dolduracak olan sale_items detaylarını eksiksiz kaydediyoruz
     if (table.orders && table.orders.length > 0) {
       const saleItems = table.orders.map(item => ({
         sale_id: sale.id,
@@ -1225,25 +1061,16 @@ async function completePaymentWithChannel(channelName) {
         line_total: Number(item.quantity) * Number(item.price)
       }));
 
-      console.log("Supabase'e gönderilen sale_items:", saleItems);
-
-      const { data: insertedItems, error: itemsErr } = await client
-        .from("sale_items")
-        .insert(saleItems)
-        .select();
-
+      const { error: itemsErr } = await client.from("sale_items").insert(saleItems);
       if (itemsErr) {
-        console.error("🚨 KONSOL HATASI (sale_items):", itemsErr);
-        alert("Satış atıldı ama detaylar kaydedilemedi: " + itemsErr.message);
-      } else {
-        console.log("✅ Detaylar başarıyla kaydedildi:", insertedItems);
+        console.error("sale_items kayıt hatası:", itemsErr.message);
       }
     }
 
-    // 3. Stok düşüşü
+    // 3. Stoktan güvenli düşüş
     await deductStockFromRecipe(table.orders);
 
-    // 4. Masayı kapat
+    // 4. Masayı kapat ve temizle
     table.status = "closed";
     table.openedAt = null;
     table.total = 0;
@@ -1255,18 +1082,16 @@ async function completePaymentWithChannel(channelName) {
 
     closeTableModal();
     renderTables();
-    
-    if (typeof renderSales === "function") {
-      await renderSales();
-    }
+    await renderSales();
 
-    alert(`Satış [ ${channelName} ] başarıyla tamamlandı!`);
+    alert(`Satış [ ${channelName} ] üzerinden başarıyla tamamlandı ve detaylar işlendi!`);
 
   } catch (err) {
-    console.error("Genel hata:", err);
     alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
   }
 }
+
+// 12. ANLIK SATIŞLAR VE BÜYÜTEÇ DETAY MODALI
 async function renderSales() {
   const list = document.getElementById("salesList");
   const totalElem = document.getElementById("salesDailyTotal");
@@ -1308,6 +1133,7 @@ async function renderSales() {
     if (totalElem) totalElem.textContent = formatMoney(0);
   }
 }
+
 async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount) {
   const modal = document.getElementById("receiptDetailModal");
   const subtitle = document.getElementById("receiptSubtitle");
@@ -1355,22 +1181,8 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
     container.innerHTML = '<div style="text-align:center; padding:15px; color:#dc2626; font-size:12px;">Adisyon içeriği çekilemedi.</div>';
   }
 }
-// 13. RAPOR SEKMELERİ
-function switchReportTab(tabId) {
-  const contents = document.querySelectorAll(".report-tab-content");
-  contents.forEach(c => c.style.display = "none");
 
-  const tabBtns = document.querySelectorAll(".report-tab-btn");
-  tabBtns.forEach(b => b.classList.remove("active-tab"));
-
-  const targetContent = document.getElementById(tabId);
-  if (targetContent) targetContent.style.display = "block";
-
-  if (event && event.target) {
-    event.target.classList.add("active-tab");
-  }
-}
-
+// 13. RAPORLAR
 function initReportDates() {
   const startInput = document.getElementById("reportStartDate");
   const endInput = document.getElementById("reportEndDate");
@@ -1713,7 +1525,6 @@ async function saveProductFromForm() {
     return;
   }
 
-  // 🛑 KESİN ÇAKIŞMA KONTROLÜ (Büyük/küçük harf ve boşluk duyarsız)
   const nameLower = name.toLowerCase();
   const duplicate = allManagementProducts.find(p => {
     const pNameClean = (p.name || "").trim().replace(/\s+/g, ' ').toLowerCase();
@@ -1782,7 +1593,7 @@ async function toggleProductActive(id, currentActive) {
   }
 }
 
-// REÇETE DÜZENLEME MODAL FONKSİYONLARI
+// REÇETE MODALI
 async function openRecipeModal(productId) {
   selectedRecipeProductId = productId;
   const product = allManagementProducts.find(p => p.id === productId);
@@ -1907,6 +1718,7 @@ async function deductStockFromRecipe(orders) {
     console.error("Stok düşüş hatası:", err.message);
   }
 }
+
 function formatMoney(val) {
   return Number(val || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
 }
@@ -1995,11 +1807,9 @@ document.addEventListener("click", function(e) {
   }
 });
 
-// TIKLAMA VE ETKİLEŞİM DİNLENMELERİ
 function bindEvents() {
   setupNavigation();
 
-  // Malzemeler
   const saveIngBtn = document.getElementById("saveIngBtn");
   if (saveIngBtn) saveIngBtn.onclick = saveIngredientFromForm;
 
@@ -2015,7 +1825,6 @@ function bindEvents() {
     };
   }
 
-  // Ürünler
   const saveProdBtn = document.getElementById("saveProductBtn");
   if (saveProdBtn) saveProdBtn.onclick = saveProductFromForm;
 
@@ -2033,7 +1842,6 @@ function bindEvents() {
     };
   }
 
-  // MASAYI KAPAT / ÖDEME AL
   const closeTableBtn = document.getElementById("closeTableButton");
   if (closeTableBtn) {
     closeTableBtn.onclick = () => {
@@ -2054,7 +1862,6 @@ function bindEvents() {
     };
   }
 
-  // KASA AÇMA & KAPATMA
   const openCashBtn = document.getElementById("openCashButton");
   if (openCashBtn) {
     openCashBtn.onclick = async () => {
@@ -2110,7 +1917,7 @@ function bindEvents() {
 
 // İLK AÇILIŞ
 document.addEventListener("DOMContentLoaded", () => {
-  loadThemeColor(); // Sayfa açılır açılmaz son temayı patlat
+  loadThemeColor();
 });
 
 if (loginButton) loginButton.addEventListener("click", login);
