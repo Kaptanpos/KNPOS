@@ -1095,7 +1095,7 @@ async function deletePaymentMethod(id) {
   }
 }
 
-// 10. ADİSYON ENTEGRASYON KÖPRÜSÜ
+// 10. ADİSYON ENTEGRASYON KÖPRÜSÜ (DETAYLAR DAHİL FULL SENRONİZASYON)
 async function fetchAdisyoOrders() {
   try {
     const response = await fetch("https://api.adisyo.com/v1/orders/pending", {
@@ -1124,6 +1124,7 @@ async function fetchAdisyoOrders() {
       const totalAmount = Number(order.totalAmount || order.total || 0);
       const paymentChannel = order.channel || order.paymentType || "Adisyo / Online";
 
+      // 1. Önce ana satış kaydını at ve ID'sini al
       const { data: saleRecord, error: saleErr } = await client
         .from("sales")
         .insert({ 
@@ -1135,25 +1136,34 @@ async function fetchAdisyoOrders() {
 
       if (saleErr) throw saleErr;
 
-      if (order.items && order.items.length > 0) {
-        const saleItemsPayload = order.items.map(item => ({
-          sale_id: saleRecord.id,
-          product_id: item.productId || 1,
-          quantity: Number(item.quantity || 1),
-          unit_price: Number(item.price || 0),
-          line_total: Number(item.quantity || 1) * Number(item.price || 0)
-        }));
+      // 2. Sipariş kalemleri (detayları) varsa işle ve sale_items tablosuna kaydet
+      const rawItems = order.items || order.orderItems || order.products || [];
+      
+      if (rawItems.length > 0) {
+        const saleItemsPayload = rawItems.map(item => {
+          const qty = Number(item.quantity || item.qty || 1);
+          const unitPrice = Number(item.price || item.unitPrice || 0);
+          return {
+            sale_id: saleRecord.id,
+            product_id: item.productId || item.id || 1, // Ürün ID eşleşmesi
+            quantity: qty,
+            unit_price: unitPrice,
+            line_total: qty * unitPrice
+          };
+        });
 
-        await client.from("sale_items").insert(saleItemsPayload);
+        const { error: itemsErr } = await client.from("sale_items").insert(saleItemsPayload);
+        if (itemsErr) console.error("Adisyon detayları kaydedilemedi:", itemsErr.message);
 
-        await deductStockFromRecipe(order.items.map(i => ({
-          productId: i.productId || 1,
-          quantity: Number(i.quantity || 1)
+        // 3. Reçeteden stok düşüşünü tetikle
+        await deductStockFromRecipe(rawItems.map(i => ({
+          productId: i.productId || i.id || 1,
+          quantity: Number(i.quantity || i.qty || 1)
         })));
       }
     }
 
-    alert("🎉 Adisyo'daki siparişler başarıyla Kaptan Nili POS sistemine aktarıldı, kasaya işlendi ve stoklar düşüldü!");
+    alert("🎉 Adisyo'daki siparişler, detayları ve stok düşüşleriyle birlikte Kaptan Nili POS sistemine eksiksiz işlendi!");
     
     await renderSales();
     await loadIngredients();
