@@ -1267,23 +1267,31 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
   modal.style.display = "flex";
 
   try {
-    const { data: items, error } = await client
+    // 1. Doğrudan sale_items tablosundan bu satışa ait ürünleri çekiyoruz
+    const { data: items, error: itemsErr } = await client
       .from("sale_items")
-      .select("*, products(name)")
+      .select("*")
       .eq("sale_id", saleId);
 
-    if (error) throw error;
+    if (itemsErr) throw itemsErr;
 
     if (!items || items.length === 0) {
-      container.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Bu adisyona ait detay bulunamadı.</div>';
+      container.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Bu adisyona ait ürün detayı bulunamadı.</div>';
       return;
     }
 
+    // 2. Ürün isimlerini eşleştirmek için products tablosunu çekiyoruz
+    const { data: productsData } = await client.from("products").select("id, name");
+    const productMap = {};
+    if (productsData) {
+      productsData.forEach(p => { productMap[p.id] = p.name; });
+    }
+
     container.innerHTML = items.map(item => {
-      const prodName = item.products?.name || "Ürün";
+      const prodName = productMap[item.product_id] || "Ürün";
       const lineTotal = Number(item.line_total || (item.quantity * item.unit_price) || 0);
       return `
-        <div class="receipt-detail-row">
+        <div class="receipt-detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-color);">
           <div>
             <strong>${escapeHtml(prodName)}</strong><br>
             <span style="font-size:11px; color:var(--text-muted);">${item.quantity} Adet × ${formatMoney(item.unit_price)}</span>
@@ -1296,9 +1304,12 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
     }).join("");
 
   } catch (err) {
+    console.error("Adisyon detay hatası:", err);
     container.innerHTML = '<div style="text-align:center; padding:15px; color:#dc2626; font-size:12px;">Adisyon içeriği çekilemedi.</div>';
   }
 }
+
+
 
 // 13. RAPOR SEKMELERİ
 function switchReportTab(tabId) {
