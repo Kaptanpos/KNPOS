@@ -1051,7 +1051,7 @@ async function completePaymentWithChannel(channelName) {
 
     if (saleErr) throw saleErr;
 
-    // 2. Büyütecin içini dolduracak olan sale_items detaylarını eksiksiz kaydediyoruz
+    // 2. Büyütecin içini dolduracak olan sale_items detaylarını saf ve hatasız kaydediyoruz
     if (table.orders && table.orders.length > 0) {
       const saleItems = table.orders.map(item => ({
         sale_id: sale.id,
@@ -1067,10 +1067,7 @@ async function completePaymentWithChannel(channelName) {
       }
     }
 
-    // 3. Stoktan güvenli düşüş
-    await deductStockFromRecipe(table.orders);
-
-    // 4. Masayı kapat ve temizle
+    // 3. Masayı kapat ve temizle
     table.status = "closed";
     table.openedAt = null;
     table.total = 0;
