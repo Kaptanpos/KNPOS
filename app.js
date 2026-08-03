@@ -1204,3 +1204,72 @@ if (loginPassword) {
     e.key === "Enter" && login();
   });
 }
+// 12. ÜRÜN YÖNETİMİ VE YÖNETİM PANELİ
+async function loadManagementProducts() {
+  const tbody = document.getElementById("managementProductsTbody");
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:20px;">Ürünler yükleniyor...</td></tr>';
+
+  try {
+    const { data, error } = await client.from("products").select("*").order("name", { ascending: true });
+    if (error) throw error;
+    
+    allManagementProducts = data || [];
+    renderManagementProductsTable(allManagementProducts);
+    populateProductCategoryDropdown();
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#dc2626; padding:20px;">Ürünler yüklenemedi.</td></tr>';
+  }
+}
+
+function renderManagementProductsTable(products) {
+  const tbody = document.getElementById("managementProductsTbody");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+  if (!products || products.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:20px;">Kayıtlı ürün bulunamadı.</td></tr>';
+    return;
+  }
+
+  products.forEach(p => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${escapeHtml(p.name)}</strong></td>
+      <td>${escapeHtml(p.category || "Genel")}</td>
+      <td><strong style="color:var(--primary);">${formatMoney(p.price)}</strong></td>
+      <td>${p.active !== false ? '<span class="badge-active">Aktif</span>' : '<span class="badge-critical" style="background:#64748b;">Pasif</span>'}</td>
+      <td style="text-align: right;">
+        <button type="button" class="btn-edit" onclick="editManagementProduct(${p.id})">Düzenle</button>
+        <button type="button" class="btn-toggle" onclick="toggleProductStatus(${p.id}, ${p.active !== false})">${p.active !== false ? 'Pasif Yap' : 'Aktif Yap'}</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function populateProductCategoryDropdown() {
+  // Eğer ürün ekleme formunda kategori seçimi varsa buraya bağlayabiliriz
+}
+
+async function saveManagementProductFromForm() {
+  // Ürün ekleme / güncelleme formu entegrasyonu
+}
+
+function editManagementProduct(id) {
+  const product = allManagementProducts.find(p => p.id === id);
+  if (!product) return;
+  // Form alanlarını doldurma işlemleri
+}
+
+async function toggleProductStatus(id, currentStatus) {
+  try {
+    const { error } = await client.from("products").update({ active: !currentStatus }).eq("id", id);
+    if (error) throw error;
+    await loadManagementProducts();
+    await loadProducts(); // Satış ekranındakileri de güncelle
+  } catch (err) {
+    alert("Ürün durumu değiştirilemedi: " + err.message);
+  }
+}
