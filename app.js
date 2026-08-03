@@ -1450,17 +1450,23 @@ async function fetchAndRenderReports() {
   const startDate = startInput ? startInput.value : new Date().toISOString().split('T')[0];
   const endDate = endInput ? endInput.value : new Date().toISOString().split('T')[0];
 
+  console.log("Rapor çekiliyor, tarih aralığı:", startDate, "ile", endDate);
+
   try {
-    // 1. Satışları çek
+    // Saat filtresini kaldırarak tüm günü kapsayacak şekilde esnetiyoruz
     const { data: sales, error: salesErr } = await client
       .from("sales")
       .select("*")
-      .gte("created_at", startDate + "T00:00:00")
+      .gte("created_at", startDate)
       .lte("created_at", endDate + "T23:59:59");
 
-    if (salesErr) throw salesErr;
+    if (salesErr) {
+      console.error("Sales sorgu hatası:", salesErr.message);
+      throw salesErr;
+    }
 
-    // 2. Satış detaylarını (sale_items) çek
+    console.log("Çekilen satışlar:", sales);
+
     const saleIds = (sales || []).map(s => s.id);
     let saleItems = [];
     if (saleIds.length > 0) {
@@ -1471,14 +1477,12 @@ async function fetchAndRenderReports() {
       if (!itemsErr) saleItems = items || [];
     }
 
-    // 3. Ürünleri çek (isim ve kategori eşleştirmesi için)
     const { data: productsData } = await client.from("products").select("id, name, category");
     const productMap = {};
     if (productsData) {
       productsData.forEach(p => { productMap[p.id] = p; });
     }
 
-    // Özet Metrikleri Hesapla
     let totalRevenue = 0;
     let totalSalesCount = (sales || []).length;
     let totalItemsSold = 0;
@@ -1502,12 +1506,9 @@ async function fetchAndRenderReports() {
       totalItemsSold += qty;
 
       const prod = productMap[item.product_id] || { name: "Bilinmeyen Ürün", category: "Diğer" };
-      
-      // Kategori Dağılımı
       const cat = prod.category || "Diğer";
       categoryMap[cat] = (categoryMap[cat] || 0) + lineTot;
 
-      // Ürün Performansı
       if (!productSalesMap[item.product_id]) {
         productSalesMap[item.product_id] = { name: prod.name, category: cat, qty: 0, total: 0 };
       }
@@ -1515,16 +1516,14 @@ async function fetchAndRenderReports() {
       productSalesMap[item.product_id].total += lineTot;
     });
 
-    // Metrik Kartlarını Güncelle
     document.getElementById("metricTotalRevenue").textContent = formatMoney(totalRevenue);
     document.getElementById("metricTotalSalesCount").textContent = totalSalesCount;
     document.getElementById("metricTotalItemsSold").textContent = totalItemsSold + " Adet";
 
-    // Ödeme Türleri Tablosu
     const paymentTbody = document.getElementById("paymentReportTbody");
     if (paymentTbody) {
       paymentTbody.innerHTML = Object.keys(paymentMap).length === 0 
-        ? '<tr><td colspan="3" style="text-align:center; color:#94a3b8; padding:15px;">Kayıt bulunamadı.</td></tr>'
+        ? '<tr><td colspan="3" style="text-align:center; color:#94a3b8; padding:15px;">Bu tarih aralığında satış bulunamadı.</td></tr>'
         : Object.keys(paymentMap).map(k => `
             <tr>
               <td><strong>${escapeHtml(k)}</strong></td>
@@ -1534,12 +1533,11 @@ async function fetchAndRenderReports() {
           `).join("");
     }
 
-    // Ürün Performans Tablosu
     const productTbody = document.getElementById("productReportTbody");
     const productArr = Object.values(productSalesMap).sort((a,b) => b.total - a.total);
     if (productTbody) {
       productTbody.innerHTML = productArr.length === 0
-        ? '<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:15px;">Satış verisi yok.</td></tr>'
+        ? '<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:15px;">Satış detayı bulunamadı.</td></tr>'
         : productArr.map(p => `
             <tr>
               <td><strong>${escapeHtml(p.name)}</strong></td>
@@ -1550,14 +1548,12 @@ async function fetchAndRenderReports() {
           `).join("");
     }
 
-    // Grafikleri Çiz (Chart.js)
     renderCharts(paymentMap, categoryMap, productArr);
 
   } catch (err) {
-    console.error("Raporlar yüklenemedi:", err.message);
+    console.error("Raporlar yüklenirken kritik hata:", err.message);
   }
 }
-
 function renderCharts(paymentMap, categoryMap, productArr) {
   // 1. Ödeme Grafiği
   const payCtx = document.getElementById("paymentChart")?.getContext("2d");
