@@ -52,7 +52,15 @@ async function loadThemeColor() {
     console.log("Tema yüklenemedi, varsayılan kullanılıyor.");
   }
 }
-
+function changeThemeColor(primaryHex, darkHex) {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, primaryHex);
+    localStorage.setItem("knpos_primary_dark_v1", darkHex);
+    applyThemeColor(primaryHex, darkHex);
+  } catch (err) {
+    console.error("Tema değiştirilemedi:", err);
+  }
+}
 function applyThemeColor(primaryHex, darkHex) {
   try {
     localStorage.setItem(THEME_STORAGE_KEY, primaryHex);
