@@ -1417,3 +1417,210 @@ function initReportDates() {
   const todayBtn = document.getElementById("reportFilterTodayBtn");
   if (todayBtn) todayBtn.classList.add("active-date-btn");
 }
+
+
+// 17. RAPORLAR MODÜLÜ GRAFİK VE VERİ MOTORU
+function switchReportTab(tabId) {
+  const tabs = ['tabSummary', 'tabPayments', 'tabCategories', 'tabProducts'];
+  tabs.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = (id === tabId) ? "block" : "none";
+  });
+
+  const buttons = document.querySelectorAll(".report-tab-strip button");
+  buttons.forEach(btn => {
+    btn.classList.remove("active-tab");
+    if ((tabId === 'tabSummary' && btn.textContent.includes("Özet")) ||
+        (tabId === 'tabPayments' && btn.textContent.includes("Ödeme")) ||
+        (tabId === 'tabCategories' && btn.textContent.includes("Kategori")) ||
+        (tabId === 'tabProducts' && btn.textContent.includes("Performans"))) {
+      btn.classList.add("active-tab");
+    }
+  });
+
+  if (tabId === 'tabPayments' || tabId === 'tabCategories' || tabId === 'tabProducts') {
+    fetchAndRenderReports();
+  }
+}
+
+async function fetchAndRenderReports() {
+  const startInput = document.getElementById("reportStartDate");
+  const endInput = document.getElementById("reportEndDate");
+
+  const startDate = startInput ? startInput.value : new Date().toISOString().split('T')[0];
+  const endDate = endInput ? endInput.value : new Date().toISOString().split('T')[0];
+
+  try {
+    // 1. Satışları çek
+    const { data: sales, error: salesErr } = await client
+      .from("sales")
+      .select("*")
+      .gte("created_at", startDate + "T00:00:00")
+      .lte("created_at", endDate + "T23:59:59");
+
+    if (salesErr) throw salesErr;
+
+    // 2. Satış detaylarını (sale_items) çek
+    const saleIds = (sales || []).map(s => s.id);
+    let saleItems = [];
+    if (saleIds.length > 0) {
+      const { data: items, error: itemsErr } = await client
+        .from("sale_items")
+        .select("*")
+        .in("sale_id", saleIds);
+      if (!itemsErr) saleItems = items || [];
+    }
+
+    // 3. Ürünleri çek (isim ve kategori eşleştirmesi için)
+    const { data: productsData } = await client.from("products").select("id, name, category");
+    const productMap = {};
+    if (productsData) {
+      productsData.forEach(p => { productMap[p.id] = p; });
+    }
+
+    // Özet Metrikleri Hesapla
+    let totalRevenue = 0;
+    let totalSalesCount = (sales || []).length;
+    let totalItemsSold = 0;
+
+    const paymentMap = {};
+    const categoryMap = {};
+    const productSalesMap = {};
+
+    (sales || []).forEach(s => {
+      const amt = Number(s.total_amount || 0);
+      totalRevenue += amt;
+      const ch = s.payment_type || "Nakit";
+      paymentMap[ch] = (paymentMap[ch] || { count: 0, total: 0 });
+      paymentMap[ch].count += 1;
+      paymentMap[ch].total += amt;
+    });
+
+    saleItems.forEach(item => {
+      const qty = Number(item.quantity || 0);
+      const lineTot = Number(item.line_total || (qty * Number(item.unit_price || 0)) || 0);
+      totalItemsSold += qty;
+
+      const prod = productMap[item.product_id] || { name: "Bilinmeyen Ürün", category: "Diğer" };
+      
+      // Kategori Dağılımı
+      const cat = prod.category || "Diğer";
+      categoryMap[cat] = (categoryMap[cat] || 0) + lineTot;
+
+      // Ürün Performansı
+      if (!productSalesMap[item.product_id]) {
+        productSalesMap[item.product_id] = { name: prod.name, category: cat, qty: 0, total: 0 };
+      }
+      productSalesMap[item.product_id].qty += qty;
+      productSalesMap[item.product_id].total += lineTot;
+    });
+
+    // Metrik Kartlarını Güncelle
+    document.getElementById("metricTotalRevenue").textContent = formatMoney(totalRevenue);
+    document.getElementById("metricTotalSalesCount").textContent = totalSalesCount;
+    document.getElementById("metricTotalItemsSold").textContent = totalItemsSold + " Adet";
+
+    // Ödeme Türleri Tablosu
+    const paymentTbody = document.getElementById("paymentReportTbody");
+    if (paymentTbody) {
+      paymentTbody.innerHTML = Object.keys(paymentMap).length === 0 
+        ? '<tr><td colspan="3" style="text-align:center; color:#94a3b8; padding:15px;">Kayıt bulunamadı.</td></tr>'
+        : Object.keys(paymentMap).map(k => `
+            <tr>
+              <td><strong>${escapeHtml(k)}</strong></td>
+              <td>${paymentMap[k].count}</td>
+              <td style="text-align:right; font-weight:bold; color:var(--primary);">${formatMoney(paymentMap[k].total)}</td>
+            </tr>
+          `).join("");
+    }
+
+    // Ürün Performans Tablosu
+    const productTbody = document.getElementById("productReportTbody");
+    const productArr = Object.values(productSalesMap).sort((a,b) => b.total - a.total);
+    if (productTbody) {
+      productTbody.innerHTML = productArr.length === 0
+        ? '<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:15px;">Satış verisi yok.</td></tr>'
+        : productArr.map(p => `
+            <tr>
+              <td><strong>${escapeHtml(p.name)}</strong></td>
+              <td>${escapeHtml(p.category)}</td>
+              <td>${p.qty} Adet</td>
+              <td style="text-align:right; font-weight:bold; color:var(--primary);">${formatMoney(p.total)}</td>
+            </tr>
+          `).join("");
+    }
+
+    // Grafikleri Çiz (Chart.js)
+    renderCharts(paymentMap, categoryMap, productArr);
+
+  } catch (err) {
+    console.error("Raporlar yüklenemedi:", err.message);
+  }
+}
+
+function renderCharts(paymentMap, categoryMap, productArr) {
+  // 1. Ödeme Grafiği
+  const payCtx = document.getElementById("paymentChart")?.getContext("2d");
+  if (payCtx) {
+    if (window.myPaymentChart) window.myPaymentChart.destroy();
+    window.myPaymentChart = new Chart(payCtx, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(paymentMap),
+        datasets: [{
+          data: Object.keys(paymentMap).map(k => paymentMap[k].total),
+          backgroundColor: ['#2d5a27', '#0284c7', '#7c3aed', '#f59e0b', '#dc2626', '#10b981']
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+
+  // 2. Kategori Grafiği
+  const catCtx = document.getElementById("categoryChart")?.getContext("2d");
+  if (catCtx) {
+    if (window.myCategoryChart) window.myCategoryChart.destroy();
+    window.myCategoryChart = new Chart(catCtx, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(categoryMap),
+        datasets: [{
+          label: 'Ciro (TL)',
+          data: Object.keys(categoryMap).map(k => categoryMap[k]),
+          backgroundColor: '#2d5a27'
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+
+  // 3. Ürün Performans Grafiği (Top 10)
+  const prodCtx = document.getElementById("productChart")?.getContext("2d");
+  if (prodCtx) {
+    const top10 = productArr.slice(0, 10);
+    if (window.myProductChart) window.myProductChart.destroy();
+    window.myProductChart = new Chart(prodCtx, {
+      type: 'bar',
+      data: {
+        labels: top10.map(p => p.name),
+        datasets: [{
+          label: 'Ürün Cirosu (TL)',
+          data: top10.map(p => p.total),
+          backgroundColor: '#0284c7'
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+}
+
+// Raporlar filtrele butonu dinleyicisi
+document.addEventListener("click", function(e) {
+  const target = e.target;
+  if (!target) return;
+
+  if (target.id === "runReportBtn") {
+    e.preventDefault();
+    fetchAndRenderReports();
+  }
+});
