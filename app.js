@@ -1306,14 +1306,65 @@ function renderManagementProductsTable(products) {
   });
 }
 
-// Reçete modalı içindeki EKLE butonunu bağlıyoruz
+// GLOBAL EVENT DELEGATION (GÜNCELLENMİŞ)
 document.addEventListener("click", function(e) {
   const target = e.target;
   if (!target) return;
 
-  if (target.id === "addRecipeItemBtn") {
+  if (target.id === "clearTableButton" || target.closest("#clearTableButton")) {
     e.preventDefault();
-    addRecipeItem();
+    clearCurrentTable();
+    return;
+  }
+
+  if (target.id === "topClosePanelButton" || target.id === "cancelTableButton") {
+    e.preventDefault();
+    closeTableModal();
+    return;
+  }
+
+  if (target.id === "addNewTableBtn") {
+    e.preventDefault();
+    addNewTable();
+    return;
+  }
+
+  if (target.id === "renameTableBtn") {
+    e.preventDefault();
+    renameTable();
+    return;
+  }
+
+  if (target.id === "deleteTableBtn") {
+    e.preventDefault();
+    deleteTable();
+    return;
+  }
+
+  if (target.id === "closeReceiptDetailBtn") {
+    e.preventDefault();
+    document.getElementById("receiptDetailModal").style.display = "none";
+    return;
+  }
+
+  // REÇETE MODALI KAPAT BUTONU DÜZELTMESİ
+  if (target.id === "closeRecipeModalBtn" || target.closest("#closeRecipeModalBtn")) {
+    e.preventDefault();
+    const recipeModal = document.getElementById("recipeModal");
+    if (recipeModal) recipeModal.style.display = "none";
+    return;
+  }
+
+  // Ürünler sayfasındaki KAYDET butonuna basıldığında
+  if (target.id === "saveProductBtn") {
+    e.preventDefault();
+    handleNewProductSubmit();
+    return;
+  }
+
+  if (target.id === "resetProductFormBtn") {
+    e.preventDefault();
+    resetProductForm();
     return;
   }
 });
