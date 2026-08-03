@@ -603,24 +603,28 @@ async function loadManagementProducts() {
   window.kaptanManagementList = data || [];
   renderManagementProductsTable(window.kaptanManagementList);
 }
-
 function renderManagementProductsTable(products) {
   const tbody = document.getElementById("managementProductsTbody");
   if (!tbody) return;
-  tbody.innerHTML = (products || []).map(p => `
-    <tr>
-      <td>${p.image_url ? `<img src="${escapeHtml(p.image_url)}" style="width:30px;height:30px;object-fit:contain;">` : getProductEmoji(p.category)}</td>
-      <td><strong>${escapeHtml(p.name)}</strong></td>
-      <td>${escapeHtml(p.category)}</td>
-      <td><strong>${formatMoney(p.price)}</strong></td>
-      <td>${p.active !== false ? 'Aktif' : 'Pasif'}</td>
-      <td style="text-align: right;">
-        <button type="button" class="btn-edit" onclick="editManagementProduct(${p.id})">Düzenle</button>
-        <button type="button" class="btn-recipe" onclick="openRecipeModal(${p.id}, '${escapeHtml(p.name)}')">Reçete</button>
-        <button type="button" class="btn-toggle" onclick="toggleProductStatus(${p.id}, ${p.active !== false})">Değiştir</button>
-      </td>
-    </tr>
-  `).join("");
+  tbody.innerHTML = (products || []).map(p => {
+    const emoji = getProductEmoji(p.category);
+    const imageHtml = p.image_url ? '<img src="' + escapeHtml(p.image_url) + '" style="width:30px;height:30px;object-fit:contain;" onerror="this.parentElement.textContent=\'' + emoji + '\'">' : emoji;
+    
+    return `
+      <tr>
+        <td>${imageHtml}</td>
+        <td><strong>${escapeHtml(p.name)}</strong></td>
+        <td>${escapeHtml(p.category)}</td>
+        <td><strong>${formatMoney(p.price)}</strong></td>
+        <td>${p.active !== false ? 'Aktif' : 'Pasif'}</td>
+        <td style="text-align: right;">
+          <button type="button" class="btn-edit" onclick="editManagementProduct(${p.id})">Düzenle</button>
+          <button type="button" class="btn-recipe" onclick="openRecipeModal(${p.id}, '${escapeHtml(p.name)}')">Reçete</button>
+          <button type="button" class="btn-toggle" onclick="toggleProductStatus(${p.id}, ${p.active !== false})">Değiştir</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
 }
 
 async function handleNewProductSubmit() {
