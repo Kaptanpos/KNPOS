@@ -609,28 +609,30 @@
       <section id="pageSettings" style="display: none;">
         <div style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
           
-          <div class="admin-form-card" style="max-width: 100%;">
-            <h3>🎨 Site Tema ve Renk Paleti</h3>
-            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Dükkanınızın kurumsal rengini seçin, tüm sistem anında o renge bürünsün.</p>
-            
-            <div class="form-group">
-              <label>Hazır Temalar / Özel Renk Seç</label>
-              <div class="theme-picker-box">
-                <button type="button" class="theme-color-btn" style="background:#2d5a27;" onclick="changeThemeColor('#2d5a27', '#1e3d1a')" title="Fıstık Yeşili"></button>
-                <button type="button" class="theme-color-btn" style="background:#0f766e;" onclick="changeThemeColor('#0f766e', '#115e59')" title="Artisan Teal"></button>
-                <button type="button" class="theme-color-btn" style="background:#78350f;" onclick="changeThemeColor('#78350f', '#451a03')" title="Çikolata Kahve"></button>
-                <button type="button" class="theme-color-btn" style="background:#1e3a8a;" onclick="changeThemeColor('#1e3a8a', '#172554')" title="Kraliyet Laciverti"></button>
-                <button type="button" class="theme-color-btn" style="background:#9d174d;" onclick="changeThemeColor('#9d174d', '#831843')" title="Bordo / Gül"></button>
-                <button type="button" class="theme-color-btn" style="background:#000000;" onclick="changeThemeColor('#000000', '#1c1917')" title="Siyah"></button>
-<button type="button" class="theme-color-btn" style="background:#ef4444;" onclick="changeThemeColor('#ef4444', '#dc2626')" title="Açık Kırmızı"></button>
-<button type="button" class="theme-color-btn" style="background:#eab308;" onclick="changeThemeColor('#eab308', '#ca8a04')" title="Sarı"></button>
-<button type="button" class="theme-color-btn" style="background:#06b6d4;" onclick="changeThemeColor('#06b6d4', '#0891b2')" title="Açık Mavi"></button>
-<button type="button" class="theme-color-btn" style="background:#ec4899;" onclick="changeThemeColor('#ec4899', '#be185d')" title="Pembe"></button>
-<button type="button" class="theme-color-btn" style="background:#f97316;" onclick="changeThemeColor('#f97316', '#c2410c')" title="Turuncu"></button>
-<button type="button" class="theme-color-btn" style="background:#8b5cf6;" onclick="changeThemeColor('#8b5cf6', '#6d28d9')" title="Mor"></button>
-              </div>
-            </div>
-          </div>
+         <div class="admin-form-card" style="max-width: 100%;">
+  <h3>🎨 Site Tema ve Renk Paleti</h3>
+  <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Dükkanınızın kurumsal rengini seçin, tüm sistem anında o renge bürünsün.</p>
+  
+  <div class="form-group">
+    <label>Hazır Temalar / Özel Renk Seç</label>
+    <div class="theme-picker-box" style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px;">
+      <button type="button" class="theme-color-btn" style="width: 36px; height: 36px; border-radius: 50%; background: #2d5a27; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.25); cursor: pointer;" onclick="changeThemeColor('#2d5a27', '#1e3d1a')" title="Fıstık Yeşili"></button>
+      <button type="button" class="theme-color-btn" style="width: 36px; height: 36px; border-radius: 50%; background: #0f766e; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.25); cursor: pointer;" onclick="changeThemeColor('#0f766e', '#115e59')" title="Artisan Teal"></button>
+      <button type="button" class="theme-color-btn" style="width: 36px; height: 36px; border-radius: 50%; background: #78350f; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.25); cursor: pointer;" onclick="changeThemeColor('#78350f', '#451a03')" title="Çikolata Kahve"></button>
+      <button type="button" class="theme-color-btn" style="width: 36px; height: 36px; border-radius: 50%; background: #1e3a8a; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.25); cursor: pointer;" onclick="changeThemeColor('#1e3a8a', '#172554')" title="Kraliyet Laciverti"></button>
+      <button type="button" class="theme-color-btn" style="width: 36px; height: 36px; border-radius: 50%; background: #9d174d; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.25); cursor: pointer;" onclick="changeThemeColor('#9d174d', '#831843')" title="Bordo / Gül"></button>
+      
+      <!-- Yeni Eklenenler -->
+      <button type="button" class="theme-color-btn" style="width: 36px; height: 36px; border-radius: 50%; background: #000000; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.25); cursor: pointer;" onclick="changeThemeColor('#000000', '#1c1917')" title="Siyah"></button>
+      <button type="button" class="theme-color-btn" style="width: 36px; height: 36px; border-radius: 50%; background: #ef4444; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.25); cursor: pointer;" onclick="changeThemeColor('#ef4444', '#dc2626')" title="Açık Kırmızı"></button>
+      <button type="button" class="theme-color-btn" style="width: 36px; height: 36px; border-radius: 50%; background: #eab308; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.25); cursor: pointer;" onclick="changeThemeColor('#eab308', '#ca8a04')" title="Sarı"></button>
+      <button type="button" class="theme-color-btn" style="width: 36px; height: 36px; border-radius: 50%; background: #06b6d4; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.25); cursor: pointer;" onclick="changeThemeColor('#06b6d4', '#0891b2')" title="Açık Mavi"></button>
+      <button type="button" class="theme-color-btn" style="width: 36px; height: 36px; border-radius: 50%; background: #ec4899; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.25); cursor: pointer;" onclick="changeThemeColor('#ec4899', '#be185d')" title="Pembe"></button>
+      <button type="button" class="theme-color-btn" style="width: 36px; height: 36px; border-radius: 50%; background: #f97316; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.25); cursor: pointer;" onclick="changeThemeColor('#f97316', '#c2410c')" title="Turuncu"></button>
+      <button type="button" class="theme-color-btn" style="width: 36px; height: 36px; border-radius: 50%; background: #8b5cf6; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.25); cursor: pointer;" onclick="changeThemeColor('#8b5cf6', '#6d28d9')" title="Mor"></button>
+    </div>
+  </div>
+</div>
 
           <div class="admin-form-card" style="max-width: 100%;">
             <h3>💳 Ödeme Kanalları Yönetimi</h3>
