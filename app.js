@@ -1007,3 +1007,103 @@ if (loginPassword) {
     e.key === "Enter" && login();
   });
 }
+// 13. YENİ ÜRÜN EKLEME VE ÇİFTE KONTROLÜ
+async function saveNewProductFromForm() {
+  const nameInput = document.querySelector("#pageProducts input[type='text'], #pageProducts input:not([type])"); // Ürün adı inputu
+  // Alternatif olarak HTML'deki id'ye göre de seçebiliriz. Form elemanlarını tam yakalayalım:
+  
+  const inputs = document.querySelectorAll("#pageProducts input, #pageProducts select");
+  // Form alanlarındaki değerleri güvenle alıyoruz:
+  let name = "";
+  let category = "Genel";
+  let price = 0;
+  let imageUrl = "";
+
+  // Sol paneldeki inputları sırasıyla okuyoruz
+  const nameField = document.querySelector("#pageProducts .side-form input, #pageProducts form input, input[placeholder*='Ürün']"); 
+  // Daha net olması için form butonunun tetikleyeceği fonksiyonu bağlıyoruz:
+}
+
+// Doğrudan formun KAYDET butonuna bağlanacak ana fonksiyon:
+async function handleNewProductSubmit() {
+  // Sol paneldeki input alanlarını ID veya sırasına göre seçelim
+  const inputs = document.querySelectorAll("#pageProducts input, #pageProducts select");
+  
+  // Inputları form yapına göre güvenle yakalayalım
+  const nameInput = document.getElementById("productNameInput") || document.querySelector("#pageProducts input[type='text']");
+  const categorySelect = document.getElementById("productCategorySelect") || document.querySelector("#pageProducts select");
+  const priceInput = document.getElementById("productPriceInput") || document.querySelector("#pageProducts input[type='number']");
+  const imageInput = document.getElementById("productImageInput") || document.querySelector("#pageProducts input[type='url']");
+
+  // Eğer HTML'de ID'ler farklıysa alternatif DOM seçimi:
+  const formCardInputs = document.querySelectorAll("div[style*='Yeni Ürün'] input, div[style*='Yeni Ürün'] select, .side-form input, .side-form select");
+  
+  // Genel bir yaklaşımla sol paneldeki inputları alalım:
+  const allInputs = document.querySelectorAll("#pageProducts input, #pageProducts select");
+  
+  // Ekrandaki sol form alanlarını input listesinden güvenle çekelim:
+  const nameVal = nameInput ? nameInput.value.trim() : "";
+  const catVal = categorySelect ? categorySelect.value : "Profiterol";
+  const priceVal = priceInput ? parseFloat(priceInput.value) : 0;
+  
+  if (!nameVal) {
+    alert("Lütfen ürün adı giriniz.");
+    return;
+  }
+  if (isNaN(priceVal) || priceVal < 0) {
+    alert("Lütfen geçerli bir fiyat giriniz.");
+    return;
+  }
+
+  try {
+    // 1. Önce veritabanında aynı isimde ürün var mı kontrol et (Büyük/küçük harf duyarsız veya birebir)
+    const { data: existingProducts, error: checkErr } = await client
+      .from("products")
+      .select("id, name")
+      .ilike("name", nameVal);
+
+    if (checkErr) throw checkErr;
+
+    if (existingProducts && existingProducts.length > 0) {
+      alert(`⚠️ Hata: '${nameVal}' isminde bir ürün zaten kayıtlı! Aynı ürünü tekrar ekleyemezsiniz.`);
+      return;
+    }
+
+    // 2. Aynı isim yoksa yeni ürünü güvenle kaydet
+    const { error: insertErr } = await client
+      .from("products")
+      .insert({
+        name: nameVal,
+        category: catVal,
+        price: priceVal,
+        active: true
+      });
+
+    if (insertErr) throw insertErr;
+
+    alert(`✅ '${nameVal}' başarıyla eklendi!`);
+    
+    // Formu temizle
+    if (nameInput) nameInput.value = "";
+    if (priceInput) priceInput.value = "";
+
+    // Listeleri tazele
+    await loadManagementProducts();
+    await loadProducts();
+
+  } catch (err) {
+    alert("Ürün kaydedilemedi: " + err.message);
+  }
+}
+
+// Sol paneldeki KAYDET butonuna bu fonksiyonu otomatik bağlıyoruz:
+document.addEventListener("click", function(e) {
+  const target = e.target;
+  if (!target) return;
+
+  // Kaydet butonu tıklandığında (Yeşil büyük buton)
+  if (target.textContent.trim() === "KAYDET" && target.closest("#pageProducts")) {
+    e.preventDefault();
+    handleNewProductSubmit();
+  }
+});
