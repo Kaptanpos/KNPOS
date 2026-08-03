@@ -1204,8 +1204,7 @@ if (loginPassword) {
     e.key === "Enter" && login();
   });
 }
-// 12. ÜRÜN YÖNETİMİ VE YÖNETİM PANELİ
-let allManagementProducts = [];
+// 12. ÜRÜN YÖNETİMİ VE YÖNETİM PANELİ (Çakışmasız Sürüm)
 
 async function loadManagementProducts() {
   const tbody = document.getElementById("managementProductsTbody");
