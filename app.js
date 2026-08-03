@@ -58,11 +58,11 @@ function applyThemeColor(primaryHex) {
   document.documentElement.style.setProperty('--primary', primaryHex);
   
   let darkHex = primaryHex;
-  if (primaryHex === '#2d5a27') darkHex = '#1e3d1a'; // Koyu Yeşil
-  else if (primaryHex === '#0f766e') darkHex = '#115e59'; // Koyu Teal
-  else if (primaryHex === '#78350f') darkHex = '#451a03'; // Kahverengi
-  else if (primaryHex === '#1e3a8a') darkHex = '#172554'; // Lacivert
-  else if (primaryHex === '#9d174d') darkHex = '#831843'; // Bordo/Pembe tonu
+  if (primaryHex === '#2d5a27') darkHex = '#1e3d1a';
+  else if (primaryHex === '#0f766e') darkHex = '#115e59';
+  else if (primaryHex === '#78350f') darkHex = '#451a03';
+  else if (primaryHex === '#1e3a8a') darkHex = '#172554';
+  else if (primaryHex === '#9d174d') darkHex = '#831843';
   else if (primaryHex === '#000000') darkHex = '#1c1917'; // Siyah
   else if (primaryHex === '#ef4444') darkHex = '#dc2626'; // Açık Kırmızı
   else if (primaryHex === '#eab308') darkHex = '#ca8a04'; // Sarı
