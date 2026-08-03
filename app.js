@@ -1638,3 +1638,44 @@ document.addEventListener("click", function(e) {
     fetchAndRenderReports();
   }
 });
+/* ÖDEME KANALLARI YÖNETİMİ EKLEMESİ */
+async function loadPaymentMethods() {
+  const defaultMethods = [{ id: 1, name: "Nakit" }, { id: 2, name: "Kredi Kartı" }, { id: 3, name: "Yemeksepeti" }, { id: 4, name: "Trendyol" }, { id: 5, name: "Getir" }];
+  try {
+    const { data } = await client.from("payment_methods").select("*").order("id", { ascending: true });
+    paymentMethods = (data && data.length > 0) ? data : defaultMethods;
+  } catch (e) { paymentMethods = defaultMethods; }
+  renderPaymentMethodsList();
+}
+
+function renderPaymentMethodsList() {
+  const container = document.getElementById("paymentMethodsList");
+  if (!container) return;
+  container.innerHTML = paymentMethods.map(m => `
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; border-bottom:1px solid var(--border-color); font-size:13px;">
+      <span><strong>${escapeHtml(m.name)}</strong></span>
+      <button type="button" style="background:#dc2626; color:white; border:none; padding:4px 10px; border-radius:6px; cursor:pointer;" onclick="deletePaymentMethod(${m.id})">Sil</button>
+    </div>`).join("");
+}
+
+async function addPaymentMethod() {
+  const input = document.getElementById("newPaymentMethodInput");
+  const name = input ? input.value.trim() : "";
+  if (!name) return;
+  try {
+    await client.from("payment_methods").insert({ name: name, active: true });
+    if (input) input.value = "";
+    await loadPaymentMethods();
+  } catch (e) {}
+}
+
+async function deletePaymentMethod(id) {
+  if (!confirm("Silinsin mi?")) return;
+  try {
+    await client.from("payment_methods").delete().eq("id", id);
+    await loadPaymentMethods();
+  } catch (e) {}
+}
+
+
+
