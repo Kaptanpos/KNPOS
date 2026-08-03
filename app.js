@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - FULL TEMİZ VE SORUNSUZ SÜRÜM v2 */
+/* KAPTAN NİLİ BULUT POS - FULL TEMİZ VE SORUNSUZ SÜRÜM v3 */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -782,12 +782,12 @@ async function deductStockFromRecipe(orders) {
   }
 }
 
-// 12. ÜRÜN YÖNETİMİ (EKSİKSİZ VE ÇAKIŞMASIZ)
+// 12. ÜRÜN YÖNETİMİ VE YENİ ÜRÜN KAYDETME (ÇİFTE KONTROLLÜ)
 async function loadManagementProducts() {
   const tbody = document.getElementById("managementProductsTbody");
   if (!tbody) return;
 
-  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:20px;">Ürünler yükleniyor...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Ürünler yükleniyor...</td></tr>';
 
   try {
     const { data, error } = await client.from("products").select("*").order("name", { ascending: true });
@@ -796,7 +796,7 @@ async function loadManagementProducts() {
     window.kaptanManagementList = data || [];
     renderManagementProductsTable(window.kaptanManagementList);
   } catch (err) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#dc2626; padding:20px;">Ürünler yüklenemedi.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Ürünler yüklenemedi.</td></tr>';
   }
 }
 
@@ -806,17 +806,20 @@ function renderManagementProductsTable(products) {
 
   tbody.innerHTML = "";
   if (!products || products.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:20px;">Kayıtlı ürün bulunamadı.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Kayıtlı ürün bulunamadı.</td></tr>';
     return;
   }
 
   products.forEach(p => {
     const tr = document.createElement("tr");
+    const imageHtml = p.image_url ? `<img src="${escapeHtml(p.image_url)}" style="width:30px;height:30px;object-fit:contain;">` : "🍰";
+    
     tr.innerHTML = `
+      <td>${imageHtml}</td>
       <td><strong>${escapeHtml(p.name)}</strong></td>
       <td>${escapeHtml(p.category || "Genel")}</td>
       <td><strong style="color:var(--primary);">${formatMoney(p.price)}</strong></td>
-      <td>${p.active !== false ? '<span class="badge-active" style="padding:3px 8px; border-radius:4px; font-size:11px; font-weight:bold;">Aktif</span>' : '<span class="badge-critical" style="background:#64748b; color:white; padding:3px 8px; border-radius:4px; font-size:11px;">Pasif</span>'}</td>
+      <td>${p.active !== false ? '<span class="badge-active">Aktif</span>' : '<span class="badge-passive">Pasif</span>'}</td>
       <td style="text-align: right;">
         <button type="button" class="btn-edit" onclick="editManagementProduct(${p.id})">Düzenle</button>
         <button type="button" class="btn-toggle" onclick="toggleProductStatus(${p.id}, ${p.active !== false})">${p.active !== false ? 'Pasif Yap' : 'Aktif Yap'}</button>
@@ -826,36 +829,105 @@ function renderManagementProductsTable(products) {
   });
 }
 
+async function handleNewProductSubmit() {
+  const nameInput = document.getElementById("prodNameInput");
+  const categorySelect = document.getElementById("prodCategorySelect");
+  const priceInput = document.getElementById("prodPriceInput");
+  const imageInput = document.getElementById("prodImageInput");
+  const editIdInput = document.getElementById("editProductId");
+
+  const nameVal = nameInput ? nameInput.value.trim() : "";
+  const catVal = categorySelect ? categorySelect.value : "Profiterol";
+  const priceVal = priceInput ? parseFloat(priceInput.value) : 0;
+  const imageVal = imageInput ? imageInput.value.trim() : "";
+  const editId = editIdInput ? editIdInput.value : "";
+
+  if (!nameVal) {
+    alert("Lütfen ürün adı giriniz.");
+    if (nameInput) nameInput.focus();
+    return;
+  }
+  if (isNaN(priceVal) || priceVal < 0) {
+    alert("Lütfen geçerli bir satış fiyatı giriniz.");
+    if (priceInput) priceInput.focus();
+    return;
+  }
+
+  try {
+    if (!editId) {
+      // 1. Yeni kayıt: Aynı isimde ürün var mı kontrol et (Mükerrer engelleme)
+      const { data: existing, error: checkErr } = await client
+        .from("products")
+        .select("id, name")
+        .ilike("name", nameVal);
+
+      if (checkErr) throw checkErr;
+
+      if (existing && existing.length > 0) {
+        alert(`⚠️ Kayıt Yapılamadı: '${nameVal}' isminde bir ürün zaten sistemde kayıtlı! Aynı ürünü tekrar ekleyemezsiniz.`);
+        return;
+      }
+
+      // Kayıt ekle
+      const { error: insertErr } = await client.from("products").insert({
+        name: nameVal,
+        category: catVal,
+        price: priceVal,
+        image_url: imageVal,
+        active: true
+      });
+
+      if (insertErr) throw insertErr;
+      alert(`✅ '${nameVal}' başarıyla eklendi!`);
+    } else {
+      // Güncelleme
+      const { error: updateErr } = await client.from("products").update({
+        name: nameVal,
+        category: catVal,
+        price: priceVal,
+        image_url: imageVal
+      }).eq("id", editId);
+
+      if (updateErr) throw updateErr;
+      alert(`✅ Ürün başarıyla güncellendi!`);
+      resetProductForm();
+    }
+
+    // Formu temizle
+    if (nameInput) nameInput.value = "";
+    if (priceInput) priceInput.value = "";
+    if (imageInput) imageInput.value = "";
+
+    await loadManagementProducts();
+    await loadProducts();
+
+  } catch (err) {
+    alert("İşlem başarısız: " + err.message);
+  }
+}
+
 function editManagementProduct(id) {
   const list = window.kaptanManagementList || [];
   const product = list.find(p => p.id === id);
   if (!product) return;
-  
-  const newName = prompt("Ürün Adını Düzenle:", product.name);
-  if (newName === null) return;
-  
-  const newPriceStr = prompt("Ürün Fiyatını Düzenle (TL):", product.price);
-  if (newPriceStr === null) return;
 
-  const newPrice = parseFloat(newPriceStr);
-  if (isNaN(newPrice)) {
-    alert("Geçersiz fiyat girdiniz.");
-    return;
-  }
+  document.getElementById("editProductId").value = product.id;
+  document.getElementById("prodNameInput").value = product.name;
+  document.getElementById("prodCategorySelect").value = product.category || "Profiterol";
+  document.getElementById("prodPriceInput").value = product.price;
+  document.getElementById("prodImageInput").value = product.image_url || "";
 
-  updateProductInDb(product.id, { name: newName.trim(), price: newPrice });
+  document.getElementById("productFormTitle").textContent = "Ürün Düzenle";
+  document.getElementById("resetProductFormBtn").style.display = "inline-block";
 }
 
-async function updateProductInDb(id, payload) {
-  try {
-    const { error } = await client.from("products").update(payload).eq("id", id);
-    if (error) throw error;
-    alert("Ürün başarıyla güncellendi!");
-    await loadManagementProducts();
-    await loadProducts();
-  } catch (err) {
-    alert("Güncellenemedi: " + err.message);
-  }
+function resetProductForm() {
+  document.getElementById("editProductId").value = "";
+  document.getElementById("prodNameInput").value = "";
+  document.getElementById("prodPriceInput").value = "";
+  document.getElementById("prodImageInput").value = "";
+  document.getElementById("productFormTitle").textContent = "Yeni Ürün Ekle";
+  document.getElementById("resetProductFormBtn").style.display = "none";
 }
 
 async function toggleProductStatus(id, currentStatus) {
@@ -915,6 +987,19 @@ document.addEventListener("click", function(e) {
   if (target.id === "closeReceiptDetailBtn") {
     e.preventDefault();
     document.getElementById("receiptDetailModal").style.display = "none";
+    return;
+  }
+
+  // Ürünler sayfasındaki KAYDET butonuna basıldığında
+  if (target.id === "saveProductBtn") {
+    e.preventDefault();
+    handleNewProductSubmit();
+    return;
+  }
+
+  if (target.id === "resetProductFormBtn") {
+    e.preventDefault();
+    resetProductForm();
     return;
   }
 });
@@ -1007,103 +1092,3 @@ if (loginPassword) {
     e.key === "Enter" && login();
   });
 }
-// 13. YENİ ÜRÜN EKLEME VE ÇİFTE KONTROLÜ
-async function saveNewProductFromForm() {
-  const nameInput = document.querySelector("#pageProducts input[type='text'], #pageProducts input:not([type])"); // Ürün adı inputu
-  // Alternatif olarak HTML'deki id'ye göre de seçebiliriz. Form elemanlarını tam yakalayalım:
-  
-  const inputs = document.querySelectorAll("#pageProducts input, #pageProducts select");
-  // Form alanlarındaki değerleri güvenle alıyoruz:
-  let name = "";
-  let category = "Genel";
-  let price = 0;
-  let imageUrl = "";
-
-  // Sol paneldeki inputları sırasıyla okuyoruz
-  const nameField = document.querySelector("#pageProducts .side-form input, #pageProducts form input, input[placeholder*='Ürün']"); 
-  // Daha net olması için form butonunun tetikleyeceği fonksiyonu bağlıyoruz:
-}
-
-// Doğrudan formun KAYDET butonuna bağlanacak ana fonksiyon:
-async function handleNewProductSubmit() {
-  // Sol paneldeki input alanlarını ID veya sırasına göre seçelim
-  const inputs = document.querySelectorAll("#pageProducts input, #pageProducts select");
-  
-  // Inputları form yapına göre güvenle yakalayalım
-  const nameInput = document.getElementById("productNameInput") || document.querySelector("#pageProducts input[type='text']");
-  const categorySelect = document.getElementById("productCategorySelect") || document.querySelector("#pageProducts select");
-  const priceInput = document.getElementById("productPriceInput") || document.querySelector("#pageProducts input[type='number']");
-  const imageInput = document.getElementById("productImageInput") || document.querySelector("#pageProducts input[type='url']");
-
-  // Eğer HTML'de ID'ler farklıysa alternatif DOM seçimi:
-  const formCardInputs = document.querySelectorAll("div[style*='Yeni Ürün'] input, div[style*='Yeni Ürün'] select, .side-form input, .side-form select");
-  
-  // Genel bir yaklaşımla sol paneldeki inputları alalım:
-  const allInputs = document.querySelectorAll("#pageProducts input, #pageProducts select");
-  
-  // Ekrandaki sol form alanlarını input listesinden güvenle çekelim:
-  const nameVal = nameInput ? nameInput.value.trim() : "";
-  const catVal = categorySelect ? categorySelect.value : "Profiterol";
-  const priceVal = priceInput ? parseFloat(priceInput.value) : 0;
-  
-  if (!nameVal) {
-    alert("Lütfen ürün adı giriniz.");
-    return;
-  }
-  if (isNaN(priceVal) || priceVal < 0) {
-    alert("Lütfen geçerli bir fiyat giriniz.");
-    return;
-  }
-
-  try {
-    // 1. Önce veritabanında aynı isimde ürün var mı kontrol et (Büyük/küçük harf duyarsız veya birebir)
-    const { data: existingProducts, error: checkErr } = await client
-      .from("products")
-      .select("id, name")
-      .ilike("name", nameVal);
-
-    if (checkErr) throw checkErr;
-
-    if (existingProducts && existingProducts.length > 0) {
-      alert(`⚠️ Hata: '${nameVal}' isminde bir ürün zaten kayıtlı! Aynı ürünü tekrar ekleyemezsiniz.`);
-      return;
-    }
-
-    // 2. Aynı isim yoksa yeni ürünü güvenle kaydet
-    const { error: insertErr } = await client
-      .from("products")
-      .insert({
-        name: nameVal,
-        category: catVal,
-        price: priceVal,
-        active: true
-      });
-
-    if (insertErr) throw insertErr;
-
-    alert(`✅ '${nameVal}' başarıyla eklendi!`);
-    
-    // Formu temizle
-    if (nameInput) nameInput.value = "";
-    if (priceInput) priceInput.value = "";
-
-    // Listeleri tazele
-    await loadManagementProducts();
-    await loadProducts();
-
-  } catch (err) {
-    alert("Ürün kaydedilemedi: " + err.message);
-  }
-}
-
-// Sol paneldeki KAYDET butonuna bu fonksiyonu otomatik bağlıyoruz:
-document.addEventListener("click", function(e) {
-  const target = e.target;
-  if (!target) return;
-
-  // Kaydet butonu tıklandığında (Yeşil büyük buton)
-  if (target.textContent.trim() === "KAYDET" && target.closest("#pageProducts")) {
-    e.preventDefault();
-    handleNewProductSubmit();
-  }
-});
