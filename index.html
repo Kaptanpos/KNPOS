@@ -930,7 +930,12 @@ function renderManagementProductsTable(products) {
 
   products.forEach(p => {
     const tr = document.createElement("tr");
-    const imageHtml = p.image_url ? `<img src="${escapeHtml(p.image_url)}" style="width:30px;height:30px;object-fit:contain;">` : "🍰";
+    
+    // Doğru fonksiyon çağrısı ile emoji veya görsel tespiti
+    const emoji = getProductEmoji(p.category);
+    const imageHtml = p.image_url 
+      ? `<img src="${escapeHtml(p.image_url)}" style="width:30px;height:30px;object-fit:contain;" onerror="this.parentElement.textContent='${emoji}'">` 
+      : emoji;
     
     tr.innerHTML = `
       <td>${imageHtml}</td>
@@ -947,7 +952,6 @@ function renderManagementProductsTable(products) {
     tbody.appendChild(tr);
   });
 }
-
 async function handleNewProductSubmit() {
   const nameInput = document.getElementById("prodNameInput");
   const categorySelect = document.getElementById("prodCategorySelect");
