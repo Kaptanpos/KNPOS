@@ -1163,3 +1163,157 @@ function editIngredient(id) {
   document.getElementById("ingFormTitle").textContent = "Malzeme Düzenle";
   document.getElementById("resetIngFormBtn").style.display = "inline-block";
 }
+
+// 15. ÜRÜN REÇETE YÖNETİMİ VE MODALI
+let selectedRecipeProductId = null;
+
+async function openRecipeModal(productId, productName) {
+  selectedRecipeProductId = productId;
+  const modal = document.getElementById("recipeModal");
+  const title = document.getElementById("recipeModalTitle");
+  const select = document.getElementById("recipeIngSelect");
+
+  if (!modal) return;
+
+  if (title) title.textContent = `Reçete: ${productName}`;
+  
+  // Malzeme dropdown'ını doldur
+  if (select) {
+    if (!allIngredients || allIngredients.length === 0) {
+      try {
+        const { data } = await client.from("ingredients").select("*").order("name", { ascending: true });
+        allIngredients = data || [];
+      } catch (e) {}
+    }
+    select.innerHTML = allIngredients.map(i => `<option value="${i.id}">${escapeHtml(i.name)} (${i.unit || 'gr'})</option>`).join("");
+  }
+
+  modal.style.display = "flex";
+  await loadRecipeItemsForProduct(productId);
+}
+
+async function loadRecipeItemsForProduct(productId) {
+  const container = document.getElementById("recipeItemsList");
+  if (!container) return;
+
+  container.innerHTML = '<div style="text-align:center; padding:15px; color:var(--text-muted);">Reçete bileşenleri yükleniyor...</div>';
+
+  try {
+    const { data: recipeItems, error } = await client
+      .from("recipes")
+      .select("*")
+      .eq("product_id", productId);
+
+    if (error) throw error;
+
+    if (!recipeItems || recipeItems.length === 0) {
+      container.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:13px;">Bu ürün için henüz reçete bileşeni eklenmemiş.</div>';
+      return;
+    }
+
+    // Malzeme isimlerini eşleştirmek için ingredients listesini kullanalım
+    container.innerHTML = recipeItems.map(r => {
+      const ing = allIngredients.find(i => i.id === r.ingredient_id);
+      const ingName = ing ? ing.name : "Malzeme #" + r.ingredient_id;
+      const qty = r.quantity_required || r.quantity || 0;
+      const unit = ing ? (ing.unit || 'gr') : 'gr';
+
+      return `
+        <div class="recipe-item-row" style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border-color);">
+          <div><strong>${escapeHtml(ingName)}</strong>: <span style="color:var(--primary); font-weight:bold;">${qty} ${unit}</span></div>
+          <button type="button" class="btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteRecipeItem(${r.id}, ${productId})">Kaldır</button>
+        </div>
+      `;
+    }).join("");
+
+  } catch (err) {
+    container.innerHTML = '<div style="text-align:center; padding:15px; color:#dc2626; font-size:13px;">Reçete yüklenemedi.</div>';
+  }
+}
+
+async function addRecipeItem() {
+  if (!selectedRecipeProductId) return;
+
+  const select = document.getElementById("recipeIngSelect");
+  const qtyInput = document.getElementById("recipeQtyInput");
+
+  const ingId = select ? select.value : "";
+  const qty = qtyInput ? parseFloat(qtyInput.value) : 0;
+
+  if (!ingId || isNaN(qty) || qty <= 0) {
+    alert("Lütfen geçerli bir malzeme seçin ve miktar girin.");
+    return;
+  }
+
+  try {
+    const { error } = await client.from("recipes").insert({
+      product_id: selectedRecipeProductId,
+      ingredient_id: Number(ingId),
+      quantity_required: qty
+    });
+
+    if (error) throw error;
+
+    if (qtyInput) qtyInput.value = "";
+    await loadRecipeItemsForProduct(selectedRecipeProductId);
+    alert("✅ Reçeteye malzeme eklendi!");
+
+  } catch (err) {
+    alert("Eklenemedi: " + err.message);
+  }
+}
+
+async function deleteRecipeItem(recipeId, productId) {
+  if (!confirm("Bu malzemeyi reçeteden kaldırmak istediğinize emin misiniz?")) return;
+
+  try {
+    const { error } = await client.from("recipes").delete().eq("id", recipeId);
+    if (error) throw error;
+    await loadRecipeItemsForProduct(productId);
+  } catch (err) {
+    alert("Kaldırılamadı: " + err.message);
+  }
+}
+
+// Ürünler tablosuna Reçete butonunu entegre etmek için render fonksiyonunu güncelliyoruz:
+function renderManagementProductsTable(products) {
+  const tbody = document.getElementById("managementProductsTbody");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+  if (!products || products.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Kayıtlı ürün bulunamadı.</td></tr>';
+    return;
+  }
+
+  products.forEach(p => {
+    const tr = document.createElement("tr");
+    const imageHtml = p.image_url ? `<img src="${escapeHtml(p.image_url)}" style="width:30px;height:30px;object-fit:contain;">` : "🍰";
+    
+    tr.innerHTML = `
+      <td>${imageHtml}</td>
+      <td><strong>${escapeHtml(p.name)}</strong></td>
+      <td>${escapeHtml(p.category || "Genel")}</td>
+      <td><strong style="color:var(--primary);">${formatMoney(p.price)}</strong></td>
+      <td>${p.active !== false ? '<span class="badge-active">Aktif</span>' : '<span class="badge-passive">Pasif</span>'}</td>
+      <td style="text-align: right;">
+        <button type="button" class="btn-edit" onclick="editManagementProduct(${p.id})">Düzenle</button>
+        <button type="button" class="btn-recipe" onclick="openRecipeModal(${p.id}, '${escapeHtml(p.name).replace(/'/g, "\\'")}')">Reçete</button>
+        <button type="button" class="btn-toggle" onclick="toggleProductStatus(${p.id}, ${p.active !== false})">${p.active !== false ? 'Pasif Yap' : 'Aktif Yap'}</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// Reçete modalı içindeki EKLE butonunu bağlıyoruz
+document.addEventListener("click", function(e) {
+  const target = e.target;
+  if (!target) return;
+
+  if (target.id === "addRecipeItemBtn") {
+    e.preventDefault();
+    addRecipeItem();
+    return;
+  }
+});
