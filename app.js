@@ -1,10 +1,11 @@
-/* KAPTAN NİLİ BULUT POS - ÇALIŞAN SAF SÜRÜM + KANALLAR VE TEMA İYİLEŞTİRMESİ */
+/* KAPTAN NİLİ BULUT POS - FULL TEMİZ VE SORUNSUZ SÜRÜM v3 */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// DOM Elemanları
 const loginScreen = document.getElementById("loginScreen");
 const appShell = document.getElementById("appShell");
 const loginPassword = document.getElementById("loginPassword");
@@ -29,11 +30,14 @@ const DEFAULT_TABLES = [
 
 async function checkRecipeTable() {
   try {
-    await client.from("recipes").select("*").limit(1);
-  } catch (e) {}
+    const { error: recipeErr } = await client.from("recipes").select("*").limit(1);
+    if (!recipeErr) return "recipes";
+  } catch (err) {
+    console.error("Tablo hatası:", err.message);
+  }
 }
 
-// 1. TEMA RENK YÖNETİMİ VE KALICILIK
+// TEMA RENK YÖNETİMİ
 const THEME_STORAGE_KEY = "knpos_primary_color_v1";
 
 async function loadThemeColor() {
@@ -44,14 +48,9 @@ async function loadThemeColor() {
     } else {
       applyThemeColor('#2d5a27');
     }
-  } catch (err) {}
-}
-
-function changeThemeColor(primaryHex) {
-  try {
-    localStorage.setItem(THEME_STORAGE_KEY, primaryHex);
-    applyThemeColor(primaryHex);
-  } catch (err) {}
+  } catch (err) {
+    console.log("Tema yüklenemedi, varsayılan kullanılıyor.");
+  }
 }
 
 function applyThemeColor(primaryHex) {
@@ -63,20 +62,19 @@ function applyThemeColor(primaryHex) {
   else if (primaryHex === '#78350f') darkHex = '#451a03';
   else if (primaryHex === '#1e3a8a') darkHex = '#172554';
   else if (primaryHex === '#9d174d') darkHex = '#831843';
-  else if (primaryHex === '#000000') darkHex = '#1c1917'; // Siyah
-  else if (primaryHex === '#ef4444') darkHex = '#dc2626'; // Açık Kırmızı
-  else if (primaryHex === '#eab308') darkHex = '#ca8a04'; // Sarı
-  else if (primaryHex === '#06b6d4') darkHex = '#0891b2'; // Açık Mavi
-  else if (primaryHex === '#ec4899') darkHex = '#be185d'; // Pembe
-  else if (primaryHex === '#f97316') darkHex = '#c2410c'; // Turuncu
-  else if (primaryHex === '#8b5cf6') darkHex = '#6d28d9'; // Mor
+  else if (primaryHex === '#000000') darkHex = '#1c1917';
+  else if (primaryHex === '#eab308') darkHex = '#ca8a04';
+  else if (primaryHex === '#06b6d4') darkHex = '#0891b2';
+  else if (primaryHex === '#f97316') darkHex = '#c2410c';
+  else if (primaryHex === '#ffffff') darkHex = '#cbd5e1';
 
   document.documentElement.style.setProperty('--primary-dark', darkHex);
 }
 
-// 2. GİRİŞ İŞLEMİ
+// 1. GİRİŞ İŞLEMİ
 async function login() {
   const password = loginPassword ? loginPassword.value : "";
+
   if (!password) {
     alert("Lütfen şifrenizi giriniz.");
     return;
@@ -89,7 +87,7 @@ async function login() {
     });
 
     if (error) {
-      alert("Giriş Başarısız: Şifre hatalı.");
+      alert("Giriş Başarısız: Şifre hatalı veya kullanıcı bulunamadı.");
       return;
     }
 
@@ -105,6 +103,7 @@ async function login() {
     await renderSales();
     await loadIngredientsForDashboard();
     await checkRecipeTable();
+
   } catch (err) {
     alert("Bağlantı hatası: " + err.message);
   }
@@ -119,7 +118,7 @@ function logout() {
   }
 }
 
-// 3. SAYFA GEÇİŞLERİ
+// 2. SAYFA GEÇİŞLERİ
 function showPage(pageName) {
   const pages = {
     tables: document.getElementById("pageTables"),
@@ -158,6 +157,8 @@ function showPage(pageName) {
     loadManagementProducts();
   } else if (pageName === "ingredients") {
     loadIngredients();
+    initLogDates();
+    loadStockMovements();
   } else if (pageName === "reports") {
     initReportDates();
     fetchAndRenderReports();
@@ -167,10 +168,12 @@ function showPage(pageName) {
 }
 
 function setupNavigation() {
-  document.querySelectorAll("header nav button").forEach(btn => {
+  const allNavButtons = document.querySelectorAll("header nav button");
+  allNavButtons.forEach(btn => {
     btn.onclick = (e) => {
       e.preventDefault();
       const txt = (btn.textContent || "").trim().toUpperCase();
+
       if (txt.includes("ANA MENÜ")) showPage("tables");
       else if (txt.includes("MALZEMELER")) showPage("ingredients");
       else if (txt.includes("İNTERNET")) showPage("internet");
@@ -181,6 +184,7 @@ function setupNavigation() {
   });
 }
 
+// 3. MASA YÖNETİMİ
 function getTables() {
   try {
     const saved = JSON.parse(localStorage.getItem(TABLE_STORAGE_KEY));
@@ -197,6 +201,7 @@ function saveTables(tables) {
 function renderTables() {
   const grid = document.getElementById("tablesGrid");
   if (!grid) return;
+
   const tables = getTables();
   grid.innerHTML = "";
 
@@ -246,7 +251,7 @@ function deleteTable() {
   if (!table) return;
 
   if (table.orders && table.orders.length > 0) {
-    alert("İçinde açık sipariş olan masayı silemezsiniz!");
+    alert("İçinde açık sipariş olan masayı silemezsiniz! Önce masayı boşaltın.");
     return;
   }
 
@@ -258,10 +263,12 @@ function deleteTable() {
   }
 }
 
+// 4. KASA DURUMU
 async function loadCashStatus() {
   const cashStatus = document.getElementById("cashStatus");
   const openPanel = document.getElementById("openCashPanel");
   const closePanel = document.getElementById("closeCashPanel");
+
   if (!cashStatus) return;
 
   try {
@@ -291,9 +298,10 @@ async function loadCashStatus() {
   }
 }
 
+// 5. MASA SİPARİŞ MODALI
 async function openTableModal(tableId) {
   if (!currentCashSession) {
-    alert("⚠️ Kasa kapalı! Lütfen önce kasayı açınız.");
+    alert("⚠️ Kasa kapalı! Satış yapabilmek veya masa açabilmek için lütfen önce KASAYI AÇINIZ.");
     return;
   }
 
@@ -318,6 +326,7 @@ async function openTableModal(tableId) {
 
   await loadProducts();
   renderCart();
+  
   if (tableModal) tableModal.style.display = "flex";
 }
 
@@ -331,7 +340,9 @@ function clearCurrentTable() {
   if (!selectedTableId) return;
   const tables = getTables();
   const table = tables.find(t => t.id === selectedTableId);
-  if (confirm("Masadaki tüm siparişleri silmek istediğinize emin misiniz?")) {
+  const tableName = table ? table.name : "Seçili masa";
+
+  if (confirm(`${tableName} masasındaki tüm siparişleri silmek ve masayı boşaltmak istediğinize emin misiniz?`)) {
     if (table) {
       table.status = "closed";
       table.openedAt = null;
@@ -344,6 +355,7 @@ function clearCurrentTable() {
   }
 }
 
+// 6. ÜRÜNLER (SATIŞ KATALOĞU)
 async function loadProducts() {
   try {
     const { data, error } = await client.from("products").select("*").eq("active", true).order("name", { ascending: true });
@@ -351,7 +363,9 @@ async function loadProducts() {
     saleProducts = data || [];
     renderCategories();
     renderSaleProducts();
-  } catch (err) {}
+  } catch (err) {
+    console.error("Ürün hatası:", err.message);
+  }
 }
 
 function getProductEmoji(category) {
@@ -394,6 +408,11 @@ function renderSaleProducts() {
   const filtered = saleProducts.filter(p => selectedCategory === "Tümü" || (p.category || "Diğer") === selectedCategory);
   
   grid.innerHTML = "";
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding:20px;">Bu kategoride ürün bulunamadı.</div>';
+    return;
+  }
+
   filtered.forEach(product => {
     const orderItem = table?.orders?.find(o => o.productId === product.id);
     const quantity = orderItem ? orderItem.quantity : 0;
@@ -469,6 +488,7 @@ function renderCart() {
 
     row.querySelector(".qty-minus").onclick = () => changeQty(item.productId, -1);
     row.querySelector(".qty-plus").onclick = () => changeQty(item.productId, 1);
+
     cartList.appendChild(row);
   });
 
@@ -495,6 +515,7 @@ function changeQty(productId, delta) {
   renderTables();
 }
 
+// 7. MALZEMELER VE ÜRETİM
 async function loadIngredientsForDashboard() {
   try {
     const { data, error } = await client.from("ingredients").select("*").order("name", { ascending: true });
@@ -502,7 +523,9 @@ async function loadIngredientsForDashboard() {
       allIngredients = data;
       populateProductionDropdown();
     }
-  } catch (err) {}
+  } catch (err) {
+    console.error("Malzemeler yüklenemedi:", err.message);
+  }
 }
 
 async function loadIngredients() {
@@ -512,16 +535,22 @@ async function loadIngredients() {
     allIngredients = data || [];
     renderIngredientsTable(allIngredients);
     populateProductionDropdown();
-  } catch (err) {}
+  } catch (err) {
+    alert("Malzemeler yüklenirken hata oluştu: " + err.message);
+  }
 }
 
 function populateProductionDropdown() {
   const select = document.getElementById("prodInputIngSelect");
   if (!select) return;
+  if (!allIngredients || allIngredients.length === 0) {
+    select.innerHTML = '<option value="">Önce Malzeme Ekleyin</option>';
+    return;
+  }
   select.innerHTML = allIngredients.map(i => `<option value="${i.id}">${escapeHtml(i.name)} (${i.unit || 'gr'})</option>`).join("");
 }
 
-// 4. ÖDEME KANALLARI YÖNETİMİ (Ekleme ve Silme Tam Fonksiyonel)
+// 8. ÖDEME KANALLARI
 async function loadPaymentMethods() {
   const defaultMethods = [
     { id: 1, name: "Nakit" },
@@ -542,58 +571,9 @@ async function loadPaymentMethods() {
   } catch (err) {
     paymentMethods = defaultMethods;
   }
-  renderPaymentMethodsList();
 }
 
-function renderPaymentMethodsList() {
-  const container = document.getElementById("paymentMethodsList");
-  if (!container) return;
-
-  if (!paymentMethods || paymentMethods.length === 0) {
-    container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:10px; font-size:13px;">Kayıtlı ödeme kanalı yok.</div>';
-    return;
-  }
-
-  container.innerHTML = paymentMethods.map(m => `
-    <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid var(--border-color); font-size:13px;">
-      <span><strong>${escapeHtml(m.name)}</strong></span>
-      <button type="button" style="background:#dc2626; color:white; border:none; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;" onclick="deletePaymentMethod(${m.id})">Sil</button>
-    </div>
-  `).join("");
-}
-
-async function addPaymentMethod() {
-  const input = document.getElementById("newPaymentMethodInput");
-  const name = input ? input.value.trim() : "";
-
-  if (!name) {
-    alert("Lütfen ödeme kanalı adı giriniz.");
-    return;
-  }
-
-  try {
-    const { error } = await client.from("payment_methods").insert({ name: name, active: true });
-    if (error) throw error;
-    if (input) input.value = "";
-    await loadPaymentMethods();
-    alert(`'${name}' ödeme kanalı başarıyla eklendi!`);
-  } catch (err) {
-    alert("Ödeme kanalı eklenemedi: " + err.message);
-  }
-}
-
-async function deletePaymentMethod(id) {
-  if (!confirm("Bu ödeme kanalını silmek istediğinize emin misiniz?")) return;
-  try {
-    const { error } = await client.from("payment_methods").delete().eq("id", id);
-    if (error) throw error;
-    await loadPaymentMethods();
-    alert("Ödeme kanalı silindi.");
-  } catch (err) {
-    alert("Silinemedi: " + err.message);
-  }
-}
-
+// 9. ÖDEME VE ADİSYON DETAY KAYIT
 function openPaymentModal() {
   const table = getTables().find(t => t.id === selectedTableId);
   const paymentModal = document.getElementById("paymentModal");
@@ -604,6 +584,17 @@ function openPaymentModal() {
 
   if (paymentTitle) {
     paymentTitle.innerHTML = `<strong>${escapeHtml(table.name)}</strong> • Ödenecek Tutar: <strong style="color:var(--primary); font-size:18px;">${formatMoney(table.total)}</strong>`;
+  }
+
+  if (!paymentMethods || paymentMethods.length === 0) {
+    paymentMethods = [
+      { id: 1, name: "Nakit" },
+      { id: 2, name: "Kredi Kartı" },
+      { id: 3, name: "Yemeksepeti" },
+      { id: 4, name: "Trendyol" },
+      { id: 5, name: "Getir" },
+      { id: 6, name: "KaptanNili.com" }
+    ];
   }
 
   grid.innerHTML = paymentMethods.map(m => `
@@ -641,7 +632,11 @@ async function completePaymentWithChannel(channelName) {
       await client.from("sale_items").insert(saleItems);
     }
 
-    try { await deductStockFromRecipe(table.orders); } catch (e) {}
+    try {
+      await deductStockFromRecipe(table.orders);
+    } catch (stockErr) {
+      console.log("Stok düşüşü uyarısı:", stockErr.message);
+    }
 
     table.status = "closed";
     table.openedAt = null;
@@ -649,17 +644,20 @@ async function completePaymentWithChannel(channelName) {
     table.orders = [];
     saveTables(tables);
 
-    document.getElementById("paymentModal").style.display = "none";
+    const paymentModal = document.getElementById("paymentModal");
+    if (paymentModal) paymentModal.style.display = "none";
+
     closeTableModal();
     renderTables();
     await renderSales();
 
     alert(`Satış [ ${channelName} ] başarıyla tamamlandı!`);
   } catch (err) {
-    alert("Satış kaydedilemedi: " + err.message);
+    alert("Satış kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
   }
 }
 
+// 10. ANLIK SATIŞLAR VE BÜYÜTEÇ DETAY
 async function renderSales() {
   const list = document.getElementById("salesList");
   const totalElem = document.getElementById("salesDailyTotal");
@@ -697,6 +695,7 @@ async function renderSales() {
 
     if (totalElem) totalElem.textContent = formatMoney(sum);
   } catch (err) {
+    list.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Satışlar çekilemedi.</div>';
     if (totalElem) totalElem.textContent = formatMoney(0);
   }
 }
@@ -719,9 +718,16 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
     const { data: items, error } = await client.from("sale_items").select("*").eq("sale_id", saleId);
     if (error) throw error;
 
+    if (!items || items.length === 0) {
+      container.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:12px;">Bu adisyona ait detay bulunamadı.</div>';
+      return;
+    }
+
     const { data: productsData } = await client.from("products").select("id, name");
     const productMap = {};
-    if (productsData) productsData.forEach(p => { productMap[p.id] = p.name; });
+    if (productsData) {
+      productsData.forEach(p => { productMap[p.id] = p.name; });
+    }
 
     container.innerHTML = items.map(item => {
       const prodName = productMap[item.product_id] || "Ürün";
@@ -732,40 +738,66 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
             <strong>${escapeHtml(prodName)}</strong><br>
             <span style="font-size:11px; color:var(--text-muted);">${item.quantity} Adet × ${formatMoney(item.unit_price)}</span>
           </div>
-          <div style="font-weight:bold; color:var(--primary); align-self:center;">${formatMoney(lineTotal)}</div>
+          <div style="font-weight:bold; color:var(--primary); align-self:center;">
+            ${formatMoney(lineTotal)}
+          </div>
         </div>
       `;
     }).join("");
-  } catch (err) {}
+  } catch (err) {
+    container.innerHTML = '<div style="text-align:center; padding:15px; color:#dc2626; font-size:12px;">Adisyon içeriği çekilemedi.</div>';
+  }
 }
 
+// 11. REÇETEDEN STOK DÜŞME
 async function deductStockFromRecipe(orders) {
   try {
     for (const item of orders) {
-      const { data: recipeItems } = await client.from("recipes").select("*").eq("product_id", item.productId);
+      const { data: recipeItems } = await client
+        .from("recipes")
+        .select("ingredient_id, quantity_required, quantity")
+        .eq("product_id", item.productId);
+
       if (!recipeItems) continue;
+
       for (const r of recipeItems) {
-        const totalDeduct = Number(r.quantity_required || r.quantity || 0) * Number(item.quantity);
-        const { data: ingData } = await client.from("ingredients").select("stock_quantity").eq("id", r.ingredient_id).single();
+        const qtyPerItem = Number(r.quantity_required || r.quantity || 0);
+        const totalDeduct = qtyPerItem * Number(item.quantity);
+
+        const { data: ingData } = await client
+          .from("ingredients")
+          .select("stock_quantity")
+          .eq("id", r.ingredient_id)
+          .single();
+
         if (ingData) {
-          const newStock = Math.max(0, Number(ingData.stock_quantity ?? 0) - totalDeduct);
+          const currentStock = ingData.stock_quantity ?? 0;
+          const newStock = Math.max(0, Number(currentStock) - totalDeduct);
           await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", r.ingredient_id);
         }
       }
     }
-  } catch (err) {}
+  } catch (err) {
+    console.error("Stok düşüş hatası:", err.message);
+  }
 }
 
+// 12. ÜRÜN YÖNETİMİ VE YENİ ÜRÜN KAYDETME (ÇİFTE KONTROLLÜ)
 async function loadManagementProducts() {
   const tbody = document.getElementById("managementProductsTbody");
   if (!tbody) return;
 
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Ürünler yükleniyor...</td></tr>';
+
   try {
     const { data, error } = await client.from("products").select("*").order("name", { ascending: true });
     if (error) throw error;
+    
     window.kaptanManagementList = data || [];
     renderManagementProductsTable(window.kaptanManagementList);
-  } catch (err) {}
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Ürünler yüklenemedi.</td></tr>';
+  }
 }
 
 function renderManagementProductsTable(products) {
@@ -812,29 +844,63 @@ async function handleNewProductSubmit() {
 
   if (!nameVal) {
     alert("Lütfen ürün adı giriniz.");
+    if (nameInput) nameInput.focus();
     return;
   }
   if (isNaN(priceVal) || priceVal < 0) {
-    alert("Lütfen geçerli bir fiyat giriniz.");
+    alert("Lütfen geçerli bir satış fiyatı giriniz.");
+    if (priceInput) priceInput.focus();
     return;
   }
 
   try {
     if (!editId) {
-      await client.from("products").insert({ name: nameVal, category: catVal, price: priceVal, image_url: imageVal, active: true });
+      // 1. Yeni kayıt: Aynı isimde ürün var mı kontrol et (Mükerrer engelleme)
+      const { data: existing, error: checkErr } = await client
+        .from("products")
+        .select("id, name")
+        .ilike("name", nameVal);
+
+      if (checkErr) throw checkErr;
+
+      if (existing && existing.length > 0) {
+        alert(`⚠️ Kayıt Yapılamadı: '${nameVal}' isminde bir ürün zaten sistemde kayıtlı! Aynı ürünü tekrar ekleyemezsiniz.`);
+        return;
+      }
+
+      // Kayıt ekle
+      const { error: insertErr } = await client.from("products").insert({
+        name: nameVal,
+        category: catVal,
+        price: priceVal,
+        image_url: imageVal,
+        active: true
+      });
+
+      if (insertErr) throw insertErr;
       alert(`✅ '${nameVal}' başarıyla eklendi!`);
     } else {
-      await client.from("products").update({ name: nameVal, category: catVal, price: priceVal, image_url: imageVal }).eq("id", editId);
-      alert(`✅ Ürün güncellendi!`);
+      // Güncelleme
+      const { error: updateErr } = await client.from("products").update({
+        name: nameVal,
+        category: catVal,
+        price: priceVal,
+        image_url: imageVal
+      }).eq("id", editId);
+
+      if (updateErr) throw updateErr;
+      alert(`✅ Ürün başarıyla güncellendi!`);
       resetProductForm();
     }
 
+    // Formu temizle
     if (nameInput) nameInput.value = "";
     if (priceInput) priceInput.value = "";
     if (imageInput) imageInput.value = "";
 
     await loadManagementProducts();
     await loadProducts();
+
   } catch (err) {
     alert("İşlem başarısız: " + err.message);
   }
@@ -850,6 +916,7 @@ function editManagementProduct(id) {
   document.getElementById("prodCategorySelect").value = product.category || "Profiterol";
   document.getElementById("prodPriceInput").value = product.price;
   document.getElementById("prodImageInput").value = product.image_url || "";
+
   document.getElementById("productFormTitle").textContent = "Ürün Düzenle";
   document.getElementById("resetProductFormBtn").style.display = "inline-block";
 }
@@ -865,10 +932,13 @@ function resetProductForm() {
 
 async function toggleProductStatus(id, currentStatus) {
   try {
-    await client.from("products").update({ active: !currentStatus }).eq("id", id);
+    const { error } = await client.from("products").update({ active: !currentStatus }).eq("id", id);
+    if (error) throw error;
     await loadManagementProducts();
     await loadProducts();
-  } catch (err) {}
+  } catch (err) {
+    alert("Ürün durumu değiştirilemedi: " + err.message);
+  }
 }
 
 function formatMoney(val) {
@@ -889,18 +959,49 @@ document.addEventListener("click", function(e) {
     clearCurrentTable();
     return;
   }
+
   if (target.id === "topClosePanelButton" || target.id === "cancelTableButton") {
     e.preventDefault();
     closeTableModal();
     return;
   }
-  if (target.id === "addNewTableBtn") { e.preventDefault(); addNewTable(); return; }
-  if (target.id === "renameTableBtn") { e.preventDefault(); renameTable(); return; }
-  if (target.id === "deleteTableBtn") { e.preventDefault(); deleteTable(); return; }
-  if (target.id === "closeReceiptDetailBtn") { e.preventDefault(); document.getElementById("receiptDetailModal").style.display = "none"; return; }
-  if (target.id === "saveProductBtn") { e.preventDefault(); handleNewProductSubmit(); return; }
-  if (target.id === "resetProductFormBtn") { e.preventDefault(); resetProductForm(); return; }
-  if (target.id === "addPaymentMethodBtn") { e.preventDefault(); addPaymentMethod(); return; }
+
+  if (target.id === "addNewTableBtn") {
+    e.preventDefault();
+    addNewTable();
+    return;
+  }
+
+  if (target.id === "renameTableBtn") {
+    e.preventDefault();
+    renameTable();
+    return;
+  }
+
+  if (target.id === "deleteTableBtn") {
+    e.preventDefault();
+    deleteTable();
+    return;
+  }
+
+  if (target.id === "closeReceiptDetailBtn") {
+    e.preventDefault();
+    document.getElementById("receiptDetailModal").style.display = "none";
+    return;
+  }
+
+  // Ürünler sayfasındaki KAYDET butonuna basıldığında
+  if (target.id === "saveProductBtn") {
+    e.preventDefault();
+    handleNewProductSubmit();
+    return;
+  }
+
+  if (target.id === "resetProductFormBtn") {
+    e.preventDefault();
+    resetProductForm();
+    return;
+  }
 });
 
 function bindEvents() {
@@ -920,7 +1021,10 @@ function bindEvents() {
 
   const cancelPayBtn = document.getElementById("cancelPaymentButton");
   if (cancelPayBtn) {
-    cancelPayBtn.onclick = () => { document.getElementById("paymentModal").style.display = "none"; };
+    cancelPayBtn.onclick = () => {
+      const paymentModal = document.getElementById("paymentModal");
+      if (paymentModal) paymentModal.style.display = "none";
+    };
   }
 
   const openCashBtn = document.getElementById("openCashButton");
@@ -928,13 +1032,24 @@ function bindEvents() {
     openCashBtn.onclick = async () => {
       const openingInput = document.getElementById("openingAmount");
       const amount = Number(openingInput?.value || 0);
-      if (!openingInput || amount < 0) { alert("Geçersiz tutar."); return; }
+
+      if (!openingInput || openingInput.value === "" || amount < 0) {
+        alert("Lütfen geçerli bir açılış tutarı giriniz.");
+        return;
+      }
+
       try {
-        await client.from("cash_sessions").insert({ opening_amount: amount, status: "open", opened_at: new Date().toISOString() });
+        await client.from("cash_sessions").insert({
+          opening_amount: amount,
+          status: "open",
+          opened_at: new Date().toISOString()
+        });
         openingInput.value = "";
-        alert("Kasa açıldı!");
+        alert("Kasa başarıyla açıldı!");
         await loadCashStatus();
-      } catch (err) {}
+      } catch (err) {
+        alert("Kasa açılamadı: " + err.message);
+      }
     };
   }
 
@@ -944,14 +1059,23 @@ function bindEvents() {
       if (!currentCashSession) return;
       const closingInput = document.getElementById("closingAmount");
       const amount = Number(closingInput?.value || 0);
+
       if (!confirm("Kasayı kapatmak istediğinize emin misiniz?")) return;
+
       try {
-        await client.from("cash_sessions").update({ closing_amount: amount, closed_at: new Date().toISOString(), status: "closed" }).eq("id", currentCashSession.id);
+        await client.from("cash_sessions").update({
+          closing_amount: amount,
+          closed_at: new Date().toISOString(),
+          status: "closed"
+        }).eq("id", currentCashSession.id);
+
         if (closingInput) closingInput.value = "";
-        alert("Kasa kapatıldı!");
+        alert("Kasa başarıyla kapatıldı!");
         currentCashSession = null;
         await loadCashStatus();
-      } catch (err) {}
+      } catch (err) {
+        alert("Kasa kapatılamadı: " + err.message);
+      }
     };
   }
 }
@@ -959,11 +1083,540 @@ function bindEvents() {
 // İLK AÇILIŞ
 document.addEventListener("DOMContentLoaded", () => {
   loadThemeColor();
-  loadPaymentMethods();
 });
 
 if (loginButton) loginButton.addEventListener("click", login);
 if (logoutButton) logoutButton.addEventListener("click", logout);
 if (loginPassword) {
-  loginPassword.addEventListener("keydown", (e) => { e.key === "Enter" && login(); });
+  loginPassword.addEventListener("keydown", (e) => {
+    e.key === "Enter" && login();
+  });
 }
+
+// 14. EKSİK MALZEME TABLOSU RENDER FONKSİYONU
+function renderIngredientsTable(ingredients) {
+  const tbody = document.getElementById("ingredientsTbody");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+  if (!ingredients || ingredients.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:20px;">Kayıtlı malzeme bulunamadı.</td></tr>';
+    return;
+  }
+
+  ingredients.forEach(ing => {
+    const tr = document.createElement("tr");
+    const currentStock = ing.stock_quantity ?? 0;
+    const isCritical = Number(currentStock) <= 0;
+
+    tr.innerHTML = `
+      <td><strong>${escapeHtml(ing.name)}</strong></td>
+      <td><strong style="font-size:15px; color:${isCritical ? '#dc2626' : 'var(--primary)'};">${currentStock}</strong></td>
+      <td>${escapeHtml(ing.unit || 'gr')}</td>
+      <td>${isCritical ? '<span class="badge-critical">⚠️ Kritik Stok</span>' : '<span class="badge-active">Normal</span>'}</td>
+      <td style="text-align: right;">
+        <button type="button" class="btn-edit" onclick="editIngredient(${ing.id})">Düzenle</button>
+        <button type="button" class="btn-toggle" onclick="adjustIngredientStock(${ing.id})">Stok Ekle/Düş</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// Malzeme düzenleme ve stok artırma/azaltma için yardımcılar
+async function adjustIngredientStock(id) {
+  const ing = allIngredients.find(i => i.id === id);
+  if (!ing) return;
+
+  const currentStock = ing.stock_quantity ?? 0;
+  const amountStr = prompt(`'${ing.name}' için eklenecek (+) veya düşülecek (-) miktarı giriniz (Örn: 500 veya -250):`);
+  if (!amountStr) return;
+
+  const delta = parseFloat(amountStr);
+  if (isNaN(delta)) {
+    alert("Geçersiz miktar girdiniz.");
+    return;
+  }
+
+  const newStock = Math.max(0, Number(currentStock) + delta);
+
+  try {
+    const { error: updateErr } = await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", id);
+    if (updateErr) throw updateErr;
+
+    alert(`✅ Başarılı! '${ing.name}' stoğu güncellendi.`);
+    await loadIngredients();
+  } catch (err) {
+    alert("Stok güncellenemedi: " + err.message);
+  }
+}
+
+function editIngredient(id) {
+  const ing = allIngredients.find(i => i.id === id);
+  if (!ing) return;
+
+  document.getElementById("editIngId").value = ing.id;
+  document.getElementById("ingNameInput").value = ing.name;
+  document.getElementById("ingUnitSelect").value = ing.unit || "gr";
+  document.getElementById("ingStockInput").value = ing.stock_quantity ?? 0;
+
+  document.getElementById("ingFormTitle").textContent = "Malzeme Düzenle";
+  document.getElementById("resetIngFormBtn").style.display = "inline-block";
+}
+
+// 15. ÜRÜN REÇETE YÖNETİMİ VE MODALI
+let selectedRecipeProductId = null;
+
+async function openRecipeModal(productId, productName) {
+  selectedRecipeProductId = productId;
+  const modal = document.getElementById("recipeModal");
+  const title = document.getElementById("recipeModalTitle");
+  const select = document.getElementById("recipeIngSelect");
+
+  if (!modal) return;
+
+  if (title) title.textContent = `Reçete: ${productName}`;
+  
+  // Malzeme dropdown'ını doldur
+  if (select) {
+    if (!allIngredients || allIngredients.length === 0) {
+      try {
+        const { data } = await client.from("ingredients").select("*").order("name", { ascending: true });
+        allIngredients = data || [];
+      } catch (e) {}
+    }
+    select.innerHTML = allIngredients.map(i => `<option value="${i.id}">${escapeHtml(i.name)} (${i.unit || 'gr'})</option>`).join("");
+  }
+
+  modal.style.display = "flex";
+  await loadRecipeItemsForProduct(productId);
+}
+
+async function loadRecipeItemsForProduct(productId) {
+  const container = document.getElementById("recipeItemsList");
+  if (!container) return;
+
+  container.innerHTML = '<div style="text-align:center; padding:15px; color:var(--text-muted);">Reçete bileşenleri yükleniyor...</div>';
+
+  try {
+    const { data: recipeItems, error } = await client
+      .from("recipes")
+      .select("*")
+      .eq("product_id", productId);
+
+    if (error) throw error;
+
+    if (!recipeItems || recipeItems.length === 0) {
+      container.innerHTML = '<div style="text-align:center; padding:15px; color:#94a3b8; font-size:13px;">Bu ürün için henüz reçete bileşeni eklenmemiş.</div>';
+      return;
+    }
+
+    // Malzeme isimlerini eşleştirmek için ingredients listesini kullanalım
+    container.innerHTML = recipeItems.map(r => {
+      const ing = allIngredients.find(i => i.id === r.ingredient_id);
+      const ingName = ing ? ing.name : "Malzeme #" + r.ingredient_id;
+      const qty = r.quantity_required || r.quantity || 0;
+      const unit = ing ? (ing.unit || 'gr') : 'gr';
+
+      return `
+        <div class="recipe-item-row" style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border-color);">
+          <div><strong>${escapeHtml(ingName)}</strong>: <span style="color:var(--primary); font-weight:bold;">${qty} ${unit}</span></div>
+          <button type="button" class="btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteRecipeItem(${r.id}, ${productId})">Kaldır</button>
+        </div>
+      `;
+    }).join("");
+
+  } catch (err) {
+    container.innerHTML = '<div style="text-align:center; padding:15px; color:#dc2626; font-size:13px;">Reçete yüklenemedi.</div>';
+  }
+}
+
+async function addRecipeItem() {
+  if (!selectedRecipeProductId) return;
+
+  const select = document.getElementById("recipeIngSelect");
+  const qtyInput = document.getElementById("recipeQtyInput");
+
+  const ingId = select ? select.value : "";
+  const qty = qtyInput ? parseFloat(qtyInput.value) : 0;
+
+  if (!ingId || isNaN(qty) || qty <= 0) {
+    alert("Lütfen geçerli bir malzeme seçin ve miktar girin.");
+    return;
+  }
+
+  try {
+    const { error } = await client.from("recipes").insert({
+      product_id: selectedRecipeProductId,
+      ingredient_id: Number(ingId),
+      quantity_required: qty
+    });
+
+    if (error) throw error;
+
+    if (qtyInput) qtyInput.value = "";
+    await loadRecipeItemsForProduct(selectedRecipeProductId);
+    alert("✅ Reçeteye malzeme eklendi!");
+
+  } catch (err) {
+    alert("Eklenemedi: " + err.message);
+  }
+}
+
+async function deleteRecipeItem(recipeId, productId) {
+  if (!confirm("Bu malzemeyi reçeteden kaldırmak istediğinize emin misiniz?")) return;
+
+  try {
+    const { error } = await client.from("recipes").delete().eq("id", recipeId);
+    if (error) throw error;
+    await loadRecipeItemsForProduct(productId);
+  } catch (err) {
+    alert("Kaldırılamadı: " + err.message);
+  }
+}
+
+// Ürünler tablosuna Reçete butonunu entegre etmek için render fonksiyonunu güncelliyoruz:
+function renderManagementProductsTable(products) {
+  const tbody = document.getElementById("managementProductsTbody");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+  if (!products || products.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Kayıtlı ürün bulunamadı.</td></tr>';
+    return;
+  }
+
+  products.forEach(p => {
+    const tr = document.createElement("tr");
+    const imageHtml = p.image_url ? `<img src="${escapeHtml(p.image_url)}" style="width:30px;height:30px;object-fit:contain;">` : "🍰";
+    
+    tr.innerHTML = `
+      <td>${imageHtml}</td>
+      <td><strong>${escapeHtml(p.name)}</strong></td>
+      <td>${escapeHtml(p.category || "Genel")}</td>
+      <td><strong style="color:var(--primary);">${formatMoney(p.price)}</strong></td>
+      <td>${p.active !== false ? '<span class="badge-active">Aktif</span>' : '<span class="badge-passive">Pasif</span>'}</td>
+      <td style="text-align: right;">
+        <button type="button" class="btn-edit" onclick="editManagementProduct(${p.id})">Düzenle</button>
+        <button type="button" class="btn-recipe" onclick="openRecipeModal(${p.id}, '${escapeHtml(p.name).replace(/'/g, "\\'")}')">Reçete</button>
+        <button type="button" class="btn-toggle" onclick="toggleProductStatus(${p.id}, ${p.active !== false})">${p.active !== false ? 'Pasif Yap' : 'Aktif Yap'}</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// GLOBAL EVENT DELEGATION (GÜNCELLENMİŞ)
+document.addEventListener("click", function(e) {
+  const target = e.target;
+  if (!target) return;
+
+  if (target.id === "clearTableButton" || target.closest("#clearTableButton")) {
+    e.preventDefault();
+    clearCurrentTable();
+    return;
+  }
+
+  if (target.id === "topClosePanelButton" || target.id === "cancelTableButton") {
+    e.preventDefault();
+    closeTableModal();
+    return;
+  }
+
+  if (target.id === "addNewTableBtn") {
+    e.preventDefault();
+    addNewTable();
+    return;
+  }
+
+  if (target.id === "renameTableBtn") {
+    e.preventDefault();
+    renameTable();
+    return;
+  }
+
+  if (target.id === "deleteTableBtn") {
+    e.preventDefault();
+    deleteTable();
+    return;
+  }
+
+  if (target.id === "closeReceiptDetailBtn") {
+    e.preventDefault();
+    document.getElementById("receiptDetailModal").style.display = "none";
+    return;
+  }
+
+  // REÇETE MODALI KAPAT BUTONU DÜZELTMESİ
+  if (target.id === "closeRecipeModalBtn" || target.closest("#closeRecipeModalBtn")) {
+    e.preventDefault();
+    const recipeModal = document.getElementById("recipeModal");
+    if (recipeModal) recipeModal.style.display = "none";
+    return;
+  }
+
+  // Ürünler sayfasındaki KAYDET butonuna basıldığında
+  if (target.id === "saveProductBtn") {
+    e.preventDefault();
+    handleNewProductSubmit();
+    return;
+  }
+
+  if (target.id === "resetProductFormBtn") {
+    e.preventDefault();
+    resetProductForm();
+    return;
+  }
+});
+
+// 16. RAPORLAR TARİH FİLTRE BUTONLARI AKTİF RENK YÖNETİMİ
+function setReportDateRange(type) {
+  const startInput = document.getElementById("reportStartDate");
+  const endInput = document.getElementById("reportEndDate");
+  const now = new Date();
+  
+  const todayStr = now.toISOString().split("T")[0];
+  endInput.value = todayStr;
+
+  // Butonların aktif sınıfını güncelle
+  ['reportFilterTodayBtn', 'reportFilterWeekBtn', 'reportFilterMonthBtn'].forEach(btnId => {
+    const btn = document.getElementById(btnId);
+    if (btn) btn.classList.remove("active-date-btn");
+  });
+
+  if (type === "today") {
+    startInput.value = todayStr;
+    const btn = document.getElementById("reportFilterTodayBtn");
+    if (btn) btn.classList.add("active-date-btn");
+  } else if (type === "week") {
+    const firstDay = new Date(now.setDate(now.getDate() - now.getDay() + 1));
+    startInput.value = firstDay.toISOString().split("T")[0];
+    const btn = document.getElementById("reportFilterWeekBtn");
+    if (btn) btn.classList.add("active-date-btn");
+  } else if (type === "month") {
+    const firstDayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    startInput.value = firstDayStr;
+    const btn = document.getElementById("reportFilterMonthBtn");
+    if (btn) btn.classList.add("active-date-btn");
+  }
+
+  if (typeof fetchAndRenderReports === "function") {
+    fetchAndRenderReports();
+  }
+}
+
+// Sayfa ilk açıldığında rapor tarihlerini ve varsayılan butonu set edelim
+function initReportDates() {
+  const startInput = document.getElementById("reportStartDate");
+  const endInput = document.getElementById("reportEndDate");
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  if (startInput && !startInput.value) startInput.value = todayStr;
+  if (endInput && !endInput.value) endInput.value = todayStr;
+
+  const todayBtn = document.getElementById("reportFilterTodayBtn");
+  if (todayBtn) todayBtn.classList.add("active-date-btn");
+}
+
+
+// 17. RAPORLAR MODÜLÜ GRAFİK VE VERİ MOTORU
+function switchReportTab(tabId) {
+  const tabs = ['tabSummary', 'tabPayments', 'tabCategories', 'tabProducts'];
+  tabs.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = (id === tabId) ? "block" : "none";
+  });
+
+  const buttons = document.querySelectorAll(".report-tab-strip button");
+  buttons.forEach(btn => {
+    btn.classList.remove("active-tab");
+    if ((tabId === 'tabSummary' && btn.textContent.includes("Özet")) ||
+        (tabId === 'tabPayments' && btn.textContent.includes("Ödeme")) ||
+        (tabId === 'tabCategories' && btn.textContent.includes("Kategori")) ||
+        (tabId === 'tabProducts' && btn.textContent.includes("Performans"))) {
+      btn.classList.add("active-tab");
+    }
+  });
+
+  if (tabId === 'tabPayments' || tabId === 'tabCategories' || tabId === 'tabProducts') {
+    fetchAndRenderReports();
+  }
+}
+
+async function fetchAndRenderReports() {
+  const startInput = document.getElementById("reportStartDate");
+  const endInput = document.getElementById("reportEndDate");
+
+  const startDate = startInput ? startInput.value : new Date().toISOString().split('T')[0];
+  const endDate = endInput ? endInput.value : new Date().toISOString().split('T')[0];
+
+  console.log("Rapor çekiliyor, tarih aralığı:", startDate, "ile", endDate);
+
+  try {
+    // Saat filtresini kaldırarak tüm günü kapsayacak şekilde esnetiyoruz
+    const { data: sales, error: salesErr } = await client
+      .from("sales")
+      .select("*")
+      .gte("created_at", startDate)
+      .lte("created_at", endDate + "T23:59:59");
+
+    if (salesErr) {
+      console.error("Sales sorgu hatası:", salesErr.message);
+      throw salesErr;
+    }
+
+    console.log("Çekilen satışlar:", sales);
+
+    const saleIds = (sales || []).map(s => s.id);
+    let saleItems = [];
+    if (saleIds.length > 0) {
+      const { data: items, error: itemsErr } = await client
+        .from("sale_items")
+        .select("*")
+        .in("sale_id", saleIds);
+      if (!itemsErr) saleItems = items || [];
+    }
+
+    const { data: productsData } = await client.from("products").select("id, name, category");
+    const productMap = {};
+    if (productsData) {
+      productsData.forEach(p => { productMap[p.id] = p; });
+    }
+
+    let totalRevenue = 0;
+    let totalSalesCount = (sales || []).length;
+    let totalItemsSold = 0;
+
+    const paymentMap = {};
+    const categoryMap = {};
+    const productSalesMap = {};
+
+    (sales || []).forEach(s => {
+      const amt = Number(s.total_amount || 0);
+      totalRevenue += amt;
+      const ch = s.payment_type || "Nakit";
+      paymentMap[ch] = (paymentMap[ch] || { count: 0, total: 0 });
+      paymentMap[ch].count += 1;
+      paymentMap[ch].total += amt;
+    });
+
+    saleItems.forEach(item => {
+      const qty = Number(item.quantity || 0);
+      const lineTot = Number(item.line_total || (qty * Number(item.unit_price || 0)) || 0);
+      totalItemsSold += qty;
+
+      const prod = productMap[item.product_id] || { name: "Bilinmeyen Ürün", category: "Diğer" };
+      const cat = prod.category || "Diğer";
+      categoryMap[cat] = (categoryMap[cat] || 0) + lineTot;
+
+      if (!productSalesMap[item.product_id]) {
+        productSalesMap[item.product_id] = { name: prod.name, category: cat, qty: 0, total: 0 };
+      }
+      productSalesMap[item.product_id].qty += qty;
+      productSalesMap[item.product_id].total += lineTot;
+    });
+
+    document.getElementById("metricTotalRevenue").textContent = formatMoney(totalRevenue);
+    document.getElementById("metricTotalSalesCount").textContent = totalSalesCount;
+    document.getElementById("metricTotalItemsSold").textContent = totalItemsSold + " Adet";
+
+    const paymentTbody = document.getElementById("paymentReportTbody");
+    if (paymentTbody) {
+      paymentTbody.innerHTML = Object.keys(paymentMap).length === 0 
+        ? '<tr><td colspan="3" style="text-align:center; color:#94a3b8; padding:15px;">Bu tarih aralığında satış bulunamadı.</td></tr>'
+        : Object.keys(paymentMap).map(k => `
+            <tr>
+              <td><strong>${escapeHtml(k)}</strong></td>
+              <td>${paymentMap[k].count}</td>
+              <td style="text-align:right; font-weight:bold; color:var(--primary);">${formatMoney(paymentMap[k].total)}</td>
+            </tr>
+          `).join("");
+    }
+
+    const productTbody = document.getElementById("productReportTbody");
+    const productArr = Object.values(productSalesMap).sort((a,b) => b.total - a.total);
+    if (productTbody) {
+      productTbody.innerHTML = productArr.length === 0
+        ? '<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:15px;">Satış detayı bulunamadı.</td></tr>'
+        : productArr.map(p => `
+            <tr>
+              <td><strong>${escapeHtml(p.name)}</strong></td>
+              <td>${escapeHtml(p.category)}</td>
+              <td>${p.qty} Adet</td>
+              <td style="text-align:right; font-weight:bold; color:var(--primary);">${formatMoney(p.total)}</td>
+            </tr>
+          `).join("");
+    }
+
+    renderCharts(paymentMap, categoryMap, productArr);
+
+  } catch (err) {
+    console.error("Raporlar yüklenirken kritik hata:", err.message);
+  }
+}
+function renderCharts(paymentMap, categoryMap, productArr) {
+  // 1. Ödeme Grafiği
+  const payCtx = document.getElementById("paymentChart")?.getContext("2d");
+  if (payCtx) {
+    if (window.myPaymentChart) window.myPaymentChart.destroy();
+    window.myPaymentChart = new Chart(payCtx, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(paymentMap),
+        datasets: [{
+          data: Object.keys(paymentMap).map(k => paymentMap[k].total),
+          backgroundColor: ['#2d5a27', '#0284c7', '#7c3aed', '#f59e0b', '#dc2626', '#10b981']
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+
+  // 2. Kategori Grafiği
+  const catCtx = document.getElementById("categoryChart")?.getContext("2d");
+  if (catCtx) {
+    if (window.myCategoryChart) window.myCategoryChart.destroy();
+    window.myCategoryChart = new Chart(catCtx, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(categoryMap),
+        datasets: [{
+          label: 'Ciro (TL)',
+          data: Object.keys(categoryMap).map(k => categoryMap[k]),
+          backgroundColor: '#2d5a27'
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+
+  // 3. Ürün Performans Grafiği (Top 10)
+  const prodCtx = document.getElementById("productChart")?.getContext("2d");
+  if (prodCtx) {
+    const top10 = productArr.slice(0, 10);
+    if (window.myProductChart) window.myProductChart.destroy();
+    window.myProductChart = new Chart(prodCtx, {
+      type: 'bar',
+      data: {
+        labels: top10.map(p => p.name),
+        datasets: [{
+          label: 'Ürün Cirosu (TL)',
+          data: top10.map(p => p.total),
+          backgroundColor: '#0284c7'
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+}
+
+// Raporlar filtrele butonu dinleyicisi
+document.addEventListener("click", function(e) {
+  const target = e.target;
+  if (!target) return;
+
+  if (target.id === "runReportBtn") {
+    e.preventDefault();
+    fetchAndRenderReports();
+  }
+});
