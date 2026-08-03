@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - FULL TEMİZ VE SORUNSUZ SÜRÜM v4 */
+/* KAPTAN NİLİ BULUT POS - FULL TEMİZ VE SORUNSUZ SÜRÜM v5 */
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -420,9 +420,10 @@ function renderSaleProducts() {
     card.type = "button";
     card.className = "sale-product-card";
 
+    const emoji = getProductEmoji(product.category);
     const imageHtml = product.image_url
-      ? `<img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.name)}" onerror="this.parentElement.textContent='${getProductEmoji(product.category)}'">`
-      : getProductEmoji(product.category);
+      ? '<img src="' + escapeHtml(product.image_url) + '" alt="' + escapeHtml(product.name) + '" onerror="this.parentElement.textContent=\'' + emoji + '\'">'
+      : emoji;
 
     card.innerHTML = `
       <div class="quantity-badge ${quantity > 0 ? "show" : ""}">${quantity}</div>
@@ -930,11 +931,9 @@ function renderManagementProductsTable(products) {
 
   products.forEach(p => {
     const tr = document.createElement("tr");
-    
-    // Doğru fonksiyon çağrısı ile emoji veya görsel tespiti
     const emoji = getProductEmoji(p.category);
     const imageHtml = p.image_url 
-      ? `<img src="${escapeHtml(p.image_url)}" style="width:30px;height:30px;object-fit:contain;" onerror="this.parentElement.textContent='${emoji}'">` 
+      ? '<img src="' + escapeHtml(p.image_url) + '" style="width:30px;height:30px;object-fit:contain;" onerror="this.parentElement.textContent=\'' + emoji + '\'">' 
       : emoji;
     
     tr.innerHTML = `
@@ -952,6 +951,7 @@ function renderManagementProductsTable(products) {
     tbody.appendChild(tr);
   });
 }
+
 async function handleNewProductSubmit() {
   const nameInput = document.getElementById("prodNameInput");
   const categorySelect = document.getElementById("prodCategorySelect");
