@@ -1092,3 +1092,74 @@ if (loginPassword) {
     e.key === "Enter" && login();
   });
 }
+
+// 14. EKSİK MALZEME TABLOSU RENDER FONKSİYONU
+function renderIngredientsTable(ingredients) {
+  const tbody = document.getElementById("ingredientsTbody");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+  if (!ingredients || ingredients.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:20px;">Kayıtlı malzeme bulunamadı.</td></tr>';
+    return;
+  }
+
+  ingredients.forEach(ing => {
+    const tr = document.createElement("tr");
+    const currentStock = ing.stock_quantity ?? 0;
+    const isCritical = Number(currentStock) <= 0;
+
+    tr.innerHTML = `
+      <td><strong>${escapeHtml(ing.name)}</strong></td>
+      <td><strong style="font-size:15px; color:${isCritical ? '#dc2626' : 'var(--primary)'};">${currentStock}</strong></td>
+      <td>${escapeHtml(ing.unit || 'gr')}</td>
+      <td>${isCritical ? '<span class="badge-critical">⚠️ Kritik Stok</span>' : '<span class="badge-active">Normal</span>'}</td>
+      <td style="text-align: right;">
+        <button type="button" class="btn-edit" onclick="editIngredient(${ing.id})">Düzenle</button>
+        <button type="button" class="btn-toggle" onclick="adjustIngredientStock(${ing.id})">Stok Ekle/Düş</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// Malzeme düzenleme ve stok artırma/azaltma için yardımcılar
+async function adjustIngredientStock(id) {
+  const ing = allIngredients.find(i => i.id === id);
+  if (!ing) return;
+
+  const currentStock = ing.stock_quantity ?? 0;
+  const amountStr = prompt(`'${ing.name}' için eklenecek (+) veya düşülecek (-) miktarı giriniz (Örn: 500 veya -250):`);
+  if (!amountStr) return;
+
+  const delta = parseFloat(amountStr);
+  if (isNaN(delta)) {
+    alert("Geçersiz miktar girdiniz.");
+    return;
+  }
+
+  const newStock = Math.max(0, Number(currentStock) + delta);
+
+  try {
+    const { error: updateErr } = await client.from("ingredients").update({ stock_quantity: newStock }).eq("id", id);
+    if (updateErr) throw updateErr;
+
+    alert(`✅ Başarılı! '${ing.name}' stoğu güncellendi.`);
+    await loadIngredients();
+  } catch (err) {
+    alert("Stok güncellenemedi: " + err.message);
+  }
+}
+
+function editIngredient(id) {
+  const ing = allIngredients.find(i => i.id === id);
+  if (!ing) return;
+
+  document.getElementById("editIngId").value = ing.id;
+  document.getElementById("ingNameInput").value = ing.name;
+  document.getElementById("ingUnitSelect").value = ing.unit || "gr";
+  document.getElementById("ingStockInput").value = ing.stock_quantity ?? 0;
+
+  document.getElementById("ingFormTitle").textContent = "Malzeme Düzenle";
+  document.getElementById("resetIngFormBtn").style.display = "inline-block";
+}
