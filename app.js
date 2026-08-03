@@ -53,23 +53,33 @@ async function loadThemeColor() {
   }
 }
 
-function applyThemeColor(primaryHex) {
+function applyThemeColor(primaryHex, darkHex) {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, primaryHex);
+    if (darkHex) localStorage.setItem(THEME_DARK_STORAGE_KEY, darkHex);
+  } catch (err) {}
+
   document.documentElement.style.setProperty('--primary', primaryHex);
   
-  let darkHex = primaryHex;
-  if (primaryHex === '#2d5a27') darkHex = '#1e3d1a';
-  else if (primaryHex === '#0f766e') darkHex = '#115e59';
-  else if (primaryHex === '#78350f') darkHex = '#451a03';
-  else if (primaryHex === '#1e3a8a') darkHex = '#172554';
-  else if (primaryHex === '#9d174d') darkHex = '#831843';
-  else if (primaryHex === '#000000') darkHex = '#1c1917';
-  else if (primaryHex === '#eab308') darkHex = '#ca8a04';
-  else if (primaryHex === '#06b6d4') darkHex = '#0891b2';
-  else if (primaryHex === '#f97316') darkHex = '#c2410c';
-  else if (primaryHex === '#ffffff') darkHex = '#cbd5e1';
+  let resolvedDark = darkHex || primaryHex;
+  if (!darkHex) {
+    if (primaryHex === '#2d5a27') resolvedDark = '#1e3d1a';
+    else if (primaryHex === '#0f766e') resolvedDark = '#115e59';
+    else if (primaryHex === '#78350f') resolvedDark = '#451a03';
+    else if (primaryHex === '#1e3a8a') resolvedDark = '#172554';
+    else if (primaryHex === '#9d174d') resolvedDark = '#831843';
+    else if (primaryHex === '#000000') resolvedDark = '#1c1917';
+    else if (primaryHex === '#ef4444') resolvedDark = '#dc2626';
+    else if (primaryHex === '#eab308') resolvedDark = '#ca8a04';
+    else if (primaryHex === '#06b6d4') resolvedDark = '#0891b2';
+    else if (primaryHex === '#ec4899') resolvedDark = '#be185d';
+    else if (primaryHex === '#f97316') resolvedDark = '#c2410c';
+    else if (primaryHex === '#8b5cf6') resolvedDark = '#6d28d9';
+  }
 
-  document.documentElement.style.setProperty('--primary-dark', darkHex);
+  document.documentElement.style.setProperty('--primary-dark', resolvedDark);
 }
+
 
 // 1. GİRİŞ İŞLEMİ
 async function login() {
