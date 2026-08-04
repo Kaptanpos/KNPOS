@@ -1789,10 +1789,16 @@ function processInternetOrder(orderId) {
 
 // GÜÇLÜ ZİL SESİ ÇALMA FONKSİYONU
 function playOrderAlert() {
-  const audio = document.getElementById("orderAlertSound");
+  const audio = document.getElementById('orderAlertSound');
   if (audio) {
     audio.currentTime = 0;
-    audio.play().catch(e => console.log("Ses çalma tarayıcı engeline takıldı:", e));
+    audio.volume = 1.0;
+    audio.play().then(() => {
+      console.log("Zil başarıyla çaldı!");
+    }).catch(err => {
+      console.log("Tarayıcı sesi engelledi:", err);
+      alert("Zil için tarayıcı izni gerekiyor, lütfen ekrandaki '🔔 Zil Test' butonuna bir kez tıklayın.");
+    });
   }
 }
 
