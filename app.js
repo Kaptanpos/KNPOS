@@ -1,5 +1,15 @@
 /* KAPTAN NİLİ BULUT POS - FULL TEMİZ VE SORUNSUZ SÜRÜM v3 */
-
+// GÜÇLÜ ZİS SESİ FONKSİYONU
+function playOrderAlert() {
+  const audio = document.getElementById('orderAlertSound');
+  if (audio) {
+    audio.currentTime = 0; // Başa sar
+    audio.volume = 1.0;    // Son ses (Tam güç)
+    audio.play().catch(err => {
+      console.log("Tarayıcı otomatik ses engeline takıldı, kullanıcı etkileşimi bekleniyor.", err);
+    });
+  }
+}
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
 
