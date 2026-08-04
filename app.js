@@ -182,6 +182,10 @@ function showPage(pageName) {
     fetchAndRenderReports();
   } else if (pageName === "settings") {
     loadPaymentMethods();
+} else if (pageName === "internet") {
+      loadInternetOrders();
+      initRealtimeOrders();
+    
   }
 }
 
