@@ -1693,12 +1693,36 @@ async function deletePaymentMethod(id) {
 
 
 
-// ZİL SESİ ÇALMA FONKSİYONU
+// GÜÇLÜ WEBSPEECH / WEB AUDIO BİP & ZİL MOTORU
 function playOrderAlert() {
-  const audio = document.getElementById("orderAlertSound");
-  if (audio) {
-    audio.currentTime = 0;
-    audio.play().catch(e => console.log("Ses çalma tarayıcı engeline takıldı:", e));
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Çift tonlu zil efekti (Ding-Dong)
+    function playTone(frequency, startTime, duration) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(frequency, audioCtx.currentTime + startTime);
+      
+      gain.gain.setValueAtTime(0.5, audioCtx.currentTime + startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + startTime + duration);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      osc.start(audioCtx.currentTime + startTime);
+      osc.stop(audioCtx.currentTime + startTime + duration);
+    }
+
+    // İlk ton (Yüksek)
+    playTone(880, 0, 0.3); // A5 nota
+    // İkinci ton (Daha yüksek ve kalıcı - Yemeksepeti / POS tarzı tını)
+    playTone(1320, 0.25, 0.6); // E6 nota
+
+  } catch (e) {
+    console.log("Ses çalınamadı:", e);
   }
 }
 
