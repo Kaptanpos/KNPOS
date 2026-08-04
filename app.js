@@ -1749,4 +1749,72 @@ function processInternetOrder(orderId) {
   alert(`Sipariş #${orderId} işleme alındı!`);
 }
 
+// ==========================================
+// İNTERNET SİPARİŞLERİ VE CANLI ZİL SİSTEMİ
+// ==========================================
 
+// GÜÇLÜ ZİL SESİ ÇALMA FONKSİYONU
+function playOrderAlert() {
+  const audio = document.getElementById("orderAlertSound");
+  if (audio) {
+    audio.currentTime = 0;
+    audio.play().catch(e => console.log("Ses çalma tarayıcı engeline takıldı:", e));
+  }
+}
+
+// İNTERNET SİPARİŞLERİNİ LİSTELEME
+async function loadInternetOrders() {
+  const tbody = document.getElementById("internetOrdersTbody");
+  if (!tbody) return;
+
+  try {
+    const { data: orders, error } = await client
+      .from("orders")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (error) throw error;
+
+    if (!orders || orders.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:20px;">Henüz internetten gelen sipariş yok.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = orders.map(o => {
+      const timeStr = o.created_at ? new Date(o.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit', second:'2-digit'}) : "Şimdi";
+      const totalFormatted = formatMoney(o.total_price || o.total_amount || 0);
+      return `
+        <tr>
+          <td><strong>${timeStr}</strong></td>
+          <td>Sipariş #${o.id} • <strong style="color:var(--primary);">${totalFormatted}</strong></td>
+          <td>KaptanNili.com</td>
+          <td><span class="badge-active">Yeni Sipariş</span></td>
+          <td style="text-align: right;">
+            <button type="button" class="btn-primary" style="padding:4px 10px; font-size:11px;" onclick="processInternetOrder(${o.id})">İşleme Al</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#dc2626; padding:20px;">Siparişler yüklenemedi.</td></tr>';
+  }
+}
+
+// SUPABASE REALTIME (CANLI) DİNLEME BAŞLATMA
+function initRealtimeOrders() {
+  client
+    .channel('public:orders')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, payload => {
+      console.log('Yeni internet siparişi geldi!', payload.new);
+      playOrderAlert(); 
+      loadInternetOrders(); 
+      alert("🚨 YENİ İNTERNET SİPARİŞİ GELDİ!");
+    })
+    .subscribe();
+}
+
+function processInternetOrder(orderId) {
+  alert(`Sipariş #${orderId} işleme alındı!`);
+}
