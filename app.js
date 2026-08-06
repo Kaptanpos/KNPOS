@@ -1802,7 +1802,7 @@ function playOrderAlert() {
   }
 }
 
-// İNTERNET SİPARİŞLERİNİ LİSTELEME
+// İNTERNET SİPARİŞLERİNİ LİSTELEME (Ürün Adı ve Adet Gösteren Güncel Hali)
 async function loadInternetOrders() {
   const tbody = document.getElementById("internetOrdersTbody");
   if (!tbody) return;
@@ -1824,10 +1824,29 @@ async function loadInternetOrders() {
     tbody.innerHTML = orders.map(o => {
       const timeStr = o.created_at ? new Date(o.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit', second:'2-digit'}) : "Şimdi";
       const totalFormatted = formatMoney(o.total_price || o.total_amount || 0);
+      
+      // Ürünleri JSON formatından okuyup ekrana yazdıralım
+      let productsSummary = "Ürün bilgisi yok";
+      try {
+        let prods = o.products;
+        if (typeof prods === 'string') {
+          prods = JSON.parse(prods);
+        }
+        if (Array.isArray(prods) && prods.length > 0) {
+          productsSummary = prods.map(p => `${escapeHtml(p.name)} (${p.qty || p.quantity || 1} Adet)`).join(", ");
+        }
+      } catch (e) {
+        productsSummary = "Ürün detayları yüklenemedi";
+      }
+
       return `
         <tr>
           <td><strong>${timeStr}</strong></td>
-          <td>Sipariş #${o.id} • <strong style="color:var(--primary);">${totalFormatted}</strong></td>
+          <td>
+            Sipariş #${escapeHtml(o.order_id || o.id)}<br>
+            <span style="font-size:12px; color:var(--text-muted);">📦 ${productsSummary}</span>
+          </td>
+          <td><strong style="color:var(--primary);">${totalFormatted}</strong></td>
           <td>KaptanNili.com</td>
           <td><span class="badge-active">Yeni Sipariş</span></td>
           <td style="text-align: right;">
@@ -1841,8 +1860,6 @@ async function loadInternetOrders() {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#dc2626; padding:20px;">Siparişler yüklenemedi.</td></tr>';
   }
 }
-
-// SUPABASE REALTIME (CANLI) DİNLEME BAŞLATMA
 function initRealtimeOrders() {
   client
     .channel('public:orders')
