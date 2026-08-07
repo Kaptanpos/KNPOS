@@ -1901,7 +1901,6 @@ function openInternetOrderDetail(order) {
 
   modal.style.display = "flex";
 }
-
 // ==========================================
 // İNTERNET SİPARİŞLERİ VE CANLI ZİL SİSTEMİ
 // ==========================================
