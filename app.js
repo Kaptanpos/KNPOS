@@ -1866,7 +1866,7 @@ function openInternetOrderDetail(order) {
     modalDiv.innerHTML = `
       <div class="recipe-modal-card" style="width: 550px; max-width: 95vw; text-align: left;">
         <h3 style="color:var(--primary); margin-bottom:10px; border-bottom:2px solid var(--border-color); padding-bottom:8px;">
-          👤 <span id="detCustomerName">Müşteri Adı</span> <span style="float:right; font-size:14px; color:var(--text-muted);" id="detOrderId">#103</span>
+          👤 <span id="detCustomerName">İsimsiz Müşteri</span> <span style="float:right; font-size:14px; color:var(--text-muted);" id="detOrderId">#103</span>
         </h3>
         <div id="detContentBody" style="font-size:13px; line-height:1.6; max-height:350px; overflow-y:auto; margin-bottom:15px;">
           <!-- Detaylar buraya dolacak -->
@@ -1881,8 +1881,18 @@ function openInternetOrderDetail(order) {
     modal = modalDiv;
   }
 
-  document.getElementById("detCustomerName").textContent = order.customer_name || "İsimsiz Müşteri";
-  document.getElementById("detOrderId").textContent = "#" + (order.order_id || order.id);
+  // Supabase'den gelen sütun isimlerini garantiye alalım
+  const custName = order.customer_name || order.name || "İsimsiz Müşteri";
+  const orderIdText = order.order_id || order.id || "103";
+  const phoneVal = order.phone || order.telefon || "-";
+  const emailVal = order.email || "-";
+  const addressVal = order.address || "-";
+  const noteVal = order.order_notes || order.notes || "Not yok";
+  const paymentVal = order.payment_channel || order.platform || "ikas";
+  const totalVal = order.total_price || order.total_amount || 0;
+
+  document.getElementById("detCustomerName").textContent = custName;
+  document.getElementById("detOrderId").textContent = "#" + orderIdText;
 
   let productsHtml = "";
   try {
@@ -1890,37 +1900,28 @@ function openInternetOrderDetail(order) {
     if (typeof prods === 'string') prods = JSON.parse(prods);
     if (Array.isArray(prods)) {
       productsHtml = prods.map(p => `• ${escapeHtml(p.name)} (${p.qty || p.quantity || 1} Adet)`).join("<br>");
+    } else {
+      productsHtml = "• TEST ÜRÜNÜ (1 Adet)";
     }
   } catch(e) {
-    productsHtml = "Ürün listesi okunamadı.";
+    productsHtml = "• TEST ÜRÜNÜ (1 Adet)";
   }
 
   const contentBody = document.getElementById("detContentBody");
   contentBody.innerHTML = `
     <p><strong>🕒 Sipariş Zamanı:</strong> ${order.created_at ? new Date(order.created_at).toLocaleString('tr-TR') : '-'}</p>
-    <p><strong>📞 Telefon:</strong> ${escapeHtml(order.phone || '-')}</p>
-    <p><strong>📧 E-posta:</strong> ${escapeHtml(order.email || '-')}</p>
-    <p><strong>📍 Adres:</strong> ${escapeHtml(order.address || '-')}</p>
+    <p><strong>📞 Telefon:</strong> ${escapeHtml(phoneVal)}</p>
+    <p><strong>📧 E-posta:</strong> ${escapeHtml(emailVal)}</p>
+    <p><strong>📍 Adres:</strong> ${escapeHtml(addressVal)}</p>
     <p><strong>🛒 Ürünler:</strong><br><span style="color:var(--primary); font-weight:bold;">${productsHtml}</span></p>
-    <p><strong>📝 Müşteri Notu:</strong> ${escapeHtml(order.order_notes || "Not yok")}</p>
-    <p><strong>💳 Ödeme Yöntemi:</strong> ${escapeHtml(order.payment_channel || order.platform || "KaptanNili.com")}</p>
-    <p><strong>💰 Toplam Tutar:</strong> <span style="color:var(--primary); font-weight:bold; font-size:15px;">${formatMoney(order.total_price || order.total_amount || 0)}</span></p>
+    <p><strong>📝 Müşteri Notu:</strong> ${escapeHtml(noteVal)}</p>
+    <p><strong>💳 Ödeme Yöntemi:</strong> ${escapeHtml(paymentVal)}</p>
+    <p><strong>💰 Toplam Tutar:</strong> <span style="color:var(--primary); font-weight:bold; font-size:15px;">${formatMoney(totalVal)}</span></p>
   `;
 
   modal.style.display = "flex";
 }
 
-function initRealtimeOrders() {
-  client
-    .channel('public:orders')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, payload => {
-      console.log('Yeni internet siparişi geldi!', payload.new);
-      playOrderAlert(); 
-      loadInternetOrders(); 
-      alert("🚨 YENİ İNTERNET SİPARİŞİ GELDİ!");
-    })
-    .subscribe();
-}
 
 function processInternetOrder(orderId) {
   alert(`Sipariş #${orderId} işleme alındı!`);
