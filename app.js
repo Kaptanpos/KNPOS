@@ -1801,8 +1801,7 @@ function playOrderAlert() {
     });
   }
 }
-
-// İNTERNET SİPARİŞLERİNİ LİSTELEME (Ürün Adı ve Adet Gösteren Güncel Hali)
+// İNTERNET SİPARİŞLERİNİ LİSTELEME (İstediğin Sırada)
 async function loadInternetOrders() {
   const tbody = document.getElementById("internetOrdersTbody");
   if (!tbody) return;
@@ -1817,21 +1816,21 @@ async function loadInternetOrders() {
     if (error) throw error;
 
     if (!orders || orders.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:20px;">Henüz internetten gelen sipariş yok.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Henüz internetten gelen sipariş yok.</td></tr>';
       return;
     }
 
     tbody.innerHTML = orders.map(o => {
-      const timeStr = o.created_at ? new Date(o.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit', second:'2-digit'}) : "Şimdi";
+      const timeStr = o.created_at ? new Date(o.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}) : "Şimdi";
+      const orderNo = escapeHtml(o.order_id || o.id);
       const totalFormatted = formatMoney(o.total_price || o.total_amount || 0);
-      
-      // Ürünleri JSON formatından okuyup ekrana yazdıralım
+      const paymentChannel = escapeHtml(o.payment_channel || o.platform || "KaptanNili.com");
+
+      // Ürünleri JSON formatından okuyup özet yapalım
       let productsSummary = "Ürün bilgisi yok";
       try {
         let prods = o.products;
-        if (typeof prods === 'string') {
-          prods = JSON.parse(prods);
-        }
+        if (typeof prods === 'string') prods = JSON.parse(prods);
         if (Array.isArray(prods) && prods.length > 0) {
           productsSummary = prods.map(p => `${escapeHtml(p.name)} (${p.qty || p.quantity || 1} Adet)`).join(", ");
         }
@@ -1842,24 +1841,77 @@ async function loadInternetOrders() {
       return `
         <tr>
           <td><strong>${timeStr}</strong></td>
-          <td>
-            Sipariş #${escapeHtml(o.order_id || o.id)}<br>
-            <span style="font-size:12px; color:var(--text-muted);">📦 ${productsSummary}</span>
-          </td>
+          <td><strong>#${orderNo}</strong></td>
+          <td>${productsSummary}</td>
           <td><strong style="color:var(--primary);">${totalFormatted}</strong></td>
-          <td>KaptanNili.com</td>
-          <td><span class="badge-active">Yeni Sipariş</span></td>
+          <td>${paymentChannel}</td>
           <td style="text-align: right;">
-            <button type="button" class="btn-primary" style="padding:4px 10px; font-size:11px;" onclick="processInternetOrder(${o.id})">İşleme Al</button>
+            <button type="button" class="btn-primary" style="padding:5px 12px; font-size:12px;" onclick='openInternetOrderDetail(${JSON.stringify(o)})'>🔍 Detay</button>
           </td>
         </tr>
       `;
     }).join("");
 
   } catch (err) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#dc2626; padding:20px;">Siparişler yüklenemedi.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Siparişler yüklenemedi.</td></tr>';
   }
 }
+
+// FOTOĞRAFKİ GİBİ DETAYLARI AÇAN MODAL FONKSİYONU
+function openInternetOrderDetail(order) {
+  let modal = document.getElementById("internetOrderDetailModal");
+  if (!modal) {
+    // Eğer HTML'de modal henüz yoksa dinamik olarak oluşturalım
+    const modalDiv = document.createElement("div");
+    modalDiv.id = "internetOrderDetailModal";
+    modalDiv.className = "modal-overlay";
+    modalDiv.innerHTML = `
+      <div class="recipe-modal-card" style="width: 550px; max-width: 95vw; text-align: left;">
+        <h3 style="color:var(--primary); margin-bottom:10px; border-bottom:2px solid var(--border-color); padding-bottom:8px;">
+          👤 <span id="detCustomerName">Müşteri Adı</span> <span style="float:right; font-size:14px; color:var(--text-muted);" id="detOrderId">#103</span>
+        </h3>
+        <div id="detContentBody" style="font-size:13px; line-height:1.6; max-height:350px; overflow-y:auto; margin-bottom:15px;">
+          <!-- Detaylar buraya dolacak -->
+        </div>
+        <div style="text-align:right;">
+          <button type="button" class="btn-secondary" onclick="document.getElementById('internetOrderDetailModal').style.display='none'">KAPAT</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modalDiv);
+    modal = modalDiv;
+  }
+
+  // Alanları doldur
+  document.getElementById("detCustomerName").textContent = order.customer_name || "İsimsiz Müşteri";
+  document.getElementById("detOrderId").textContent = "#" + (order.order_id || order.id);
+
+  let productsHtml = "";
+  try {
+    let prods = order.products;
+    if (typeof prods === 'string') prods = JSON.parse(prods);
+    if (Array.isArray(prods)) {
+      productsHtml = prods.map(p => `• ${escapeHtml(p.name)} (${p.qty || p.quantity || 1} Adet)`).join("<br>");
+    }
+  } catch(e) {
+    productsHtml = "Ürün listesi okunamadı.";
+  }
+
+  const contentBody = document.getElementById("detContentBody");
+  contentBody.innerHTML = `
+    <p><strong>🕒 Sipariş Zamanı:</strong> ${order.created_at ? new Date(order.created_at).toLocaleString('tr-TR') : '-'}</p>
+    <p><strong>📞 Telefon:</strong> ${escapeHtml(order.phone || '-')}</p>
+    <p><strong>📧 E-posta:</strong> ${escapeHtml(order.email || '-')}</p>
+    <p><strong>📍 Adres:</strong> ${escapeHtml(order.address || '-')}</p>
+    <p><strong>🛒 Ürünler:</strong><br><span style="color:var(--primary); font-weight:bold;">${productsHtml}</span></p>
+    <p><strong>📝 Müşteri Notu:</strong> ${escapeHtml(order.order_notes || "Not yok")}</p>
+    <p><strong>💳 Ödeme Yöntemi:</strong> ${escapeHtml(order.payment_channel || order.platform || "KaptanNili.com")}</p>
+    <p><strong>💰 Toplam Tutar:</strong> <span style="color:var(--primary); font-weight:bold; font-size:15px;">${formatMoney(order.total_price || order.total_amount || 0)}</span></p>
+  `;
+
+  modal.style.display = "flex";
+}
+
 function initRealtimeOrders() {
   client
     .channel('public:orders')
