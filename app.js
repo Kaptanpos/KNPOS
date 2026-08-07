@@ -1857,11 +1857,9 @@ async function loadInternetOrders() {
   }
 }
 
-// FOTOĞRAFKİ GİBİ DETAYLARI AÇAN MODAL FONKSİYONU
 function openInternetOrderDetail(order) {
   let modal = document.getElementById("internetOrderDetailModal");
   if (!modal) {
-    // Eğer HTML'de modal henüz yoksa dinamik olarak oluşturalım
     const modalDiv = document.createElement("div");
     modalDiv.id = "internetOrderDetailModal";
     modalDiv.className = "modal-overlay";
@@ -1873,7 +1871,8 @@ function openInternetOrderDetail(order) {
         <div id="detContentBody" style="font-size:13px; line-height:1.6; max-height:350px; overflow-y:auto; margin-bottom:15px;">
           <!-- Detaylar buraya dolacak -->
         </div>
-        <div style="text-align:right;">
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" class="btn-primary" style="background:#16a34a;" onclick="window.print()">🖨️ YAZDIR</button>
           <button type="button" class="btn-secondary" onclick="document.getElementById('internetOrderDetailModal').style.display='none'">KAPAT</button>
         </div>
       </div>
@@ -1882,7 +1881,6 @@ function openInternetOrderDetail(order) {
     modal = modalDiv;
   }
 
-  // Alanları doldur
   document.getElementById("detCustomerName").textContent = order.customer_name || "İsimsiz Müşteri";
   document.getElementById("detOrderId").textContent = "#" + (order.order_id || order.id);
 
