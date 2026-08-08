@@ -1,15 +1,17 @@
-/* KAPTAN NİLİ BULUT POS - FULL TEMİZ VE SORUNSUZ SÜRÜM v3 */
-// GÜÇLÜ ZİS SESİ FONKSİYONU
+/* KAPTAN NİLİ BULUT POS - FULL TEMİZ VE SORUNSUZ SÜRÜM v3.7 */
+
+// GÜÇLÜ ZİL SESİ FONKSİYONU
 function playOrderAlert() {
   const audio = document.getElementById('orderAlertSound');
   if (audio) {
-    audio.currentTime = 0; // Başa sar
-    audio.volume = 1.0;    // Son ses (Tam güç)
+    audio.currentTime = 0;
+    audio.volume = 1.0;
     audio.play().catch(err => {
       console.log("Tarayıcı otomatik ses engeline takıldı, kullanıcı etkileşimi bekleniyor.", err);
     });
   }
 }
+
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
 
@@ -62,6 +64,7 @@ async function loadThemeColor() {
     console.log("Tema yüklenemedi, varsayılan kullanılıyor.");
   }
 }
+
 function changeThemeColor(primaryHex, darkHex) {
   try {
     localStorage.setItem(THEME_STORAGE_KEY, primaryHex);
@@ -71,10 +74,11 @@ function changeThemeColor(primaryHex, darkHex) {
     console.error("Tema değiştirilemedi:", err);
   }
 }
+
 function applyThemeColor(primaryHex, darkHex) {
   try {
     localStorage.setItem(THEME_STORAGE_KEY, primaryHex);
-    if (darkHex) localStorage.setItem(THEME_DARK_STORAGE_KEY, darkHex);
+    if (darkHex) localStorage.setItem("knpos_primary_dark_v1", darkHex);
   } catch (err) {}
 
   document.documentElement.style.setProperty('--primary', primaryHex);
@@ -97,7 +101,6 @@ function applyThemeColor(primaryHex, darkHex) {
 
   document.documentElement.style.setProperty('--primary-dark', resolvedDark);
 }
-
 
 // 1. GİRİŞ İŞLEMİ
 async function login() {
@@ -192,10 +195,9 @@ function showPage(pageName) {
     fetchAndRenderReports();
   } else if (pageName === "settings") {
     loadPaymentMethods();
-} else if (pageName === "internet") {
-      loadInternetOrders();
-      initRealtimeOrders();
-    
+  } else if (pageName === "internet") {
+    loadInternetOrders();
+    initRealtimeOrders();
   }
 }
 
@@ -814,7 +816,7 @@ async function deductStockFromRecipe(orders) {
   }
 }
 
-// 12. ÜRÜN YÖNETİMİ VE YENİ ÜRÜN KAYDETME (ÇİFTE KONTROLLÜ)
+// 12. ÜRÜN YÖNETİMİ VE YENİ ÜRÜN KAYDETME
 async function loadManagementProducts() {
   const tbody = document.getElementById("managementProductsTbody");
   if (!tbody) return;
@@ -854,6 +856,7 @@ function renderManagementProductsTable(products) {
       <td>${p.active !== false ? '<span class="badge-active">Aktif</span>' : '<span class="badge-passive">Pasif</span>'}</td>
       <td style="text-align: right;">
         <button type="button" class="btn-edit" onclick="editManagementProduct(${p.id})">Düzenle</button>
+        <button type="button" class="btn-recipe" onclick="openRecipeModal(${p.id}, '${escapeHtml(p.name).replace(/'/g, "\\'")}')">Reçete</button>
         <button type="button" class="btn-toggle" onclick="toggleProductStatus(${p.id}, ${p.active !== false})">${p.active !== false ? 'Pasif Yap' : 'Aktif Yap'}</button>
       </td>
     `;
@@ -887,7 +890,6 @@ async function handleNewProductSubmit() {
 
   try {
     if (!editId) {
-      // 1. Yeni kayıt: Aynı isimde ürün var mı kontrol et (Mükerrer engelleme)
       const { data: existing, error: checkErr } = await client
         .from("products")
         .select("id, name")
@@ -896,11 +898,10 @@ async function handleNewProductSubmit() {
       if (checkErr) throw checkErr;
 
       if (existing && existing.length > 0) {
-        alert(`⚠️ Kayıt Yapılamadı: '${nameVal}' isminde bir ürün zaten sistemde kayıtlı! Aynı ürünü tekrar ekleyemezsiniz.`);
+        alert(`⚠️ Kayıt Yapılamadı: '${nameVal}' isminde bir ürün zaten sistemde kayıtlı!`);
         return;
       }
 
-      // Kayıt ekle
       const { error: insertErr } = await client.from("products").insert({
         name: nameVal,
         category: catVal,
@@ -912,7 +913,6 @@ async function handleNewProductSubmit() {
       if (insertErr) throw insertErr;
       alert(`✅ '${nameVal}' başarıyla eklendi!`);
     } else {
-      // Güncelleme
       const { error: updateErr } = await client.from("products").update({
         name: nameVal,
         category: catVal,
@@ -925,7 +925,6 @@ async function handleNewProductSubmit() {
       resetProductForm();
     }
 
-    // Formu temizle
     if (nameInput) nameInput.value = "";
     if (priceInput) priceInput.value = "";
     if (imageInput) imageInput.value = "";
@@ -1022,7 +1021,13 @@ document.addEventListener("click", function(e) {
     return;
   }
 
-  // Ürünler sayfasındaki KAYDET butonuna basıldığında
+  if (target.id === "closeRecipeModalBtn" || target.closest("#closeRecipeModalBtn")) {
+    e.preventDefault();
+    const recipeModal = document.getElementById("recipeModal");
+    if (recipeModal) recipeModal.style.display = "none";
+    return;
+  }
+
   if (target.id === "saveProductBtn") {
     e.preventDefault();
     handleNewProductSubmit();
@@ -1125,7 +1130,7 @@ if (loginPassword) {
   });
 }
 
-// 14. EKSİK MALZEME TABLOSU RENDER FONKSİYONU
+// MALZEME VE REÇETE YÖNETİMİ
 function renderIngredientsTable(ingredients) {
   const tbody = document.getElementById("ingredientsTbody");
   if (!tbody) return;
@@ -1155,7 +1160,6 @@ function renderIngredientsTable(ingredients) {
   });
 }
 
-// Malzeme düzenleme ve stok artırma/azaltma için yardımcılar
 async function adjustIngredientStock(id) {
   const ing = allIngredients.find(i => i.id === id);
   if (!ing) return;
@@ -1196,7 +1200,6 @@ function editIngredient(id) {
   document.getElementById("resetIngFormBtn").style.display = "inline-block";
 }
 
-// 15. ÜRÜN REÇETE YÖNETİMİ VE MODALI
 let selectedRecipeProductId = null;
 
 async function openRecipeModal(productId, productName) {
@@ -1209,7 +1212,6 @@ async function openRecipeModal(productId, productName) {
 
   if (title) title.textContent = `Reçete: ${productName}`;
   
-  // Malzeme dropdown'ını doldur
   if (select) {
     if (!allIngredients || allIngredients.length === 0) {
       try {
@@ -1243,7 +1245,6 @@ async function loadRecipeItemsForProduct(productId) {
       return;
     }
 
-    // Malzeme isimlerini eşleştirmek için ingredients listesini kullanalım
     container.innerHTML = recipeItems.map(r => {
       const ing = allIngredients.find(i => i.id === r.ingredient_id);
       const ingName = ing ? ing.name : "Malzeme #" + r.ingredient_id;
@@ -1307,101 +1308,7 @@ async function deleteRecipeItem(recipeId, productId) {
   }
 }
 
-// Ürünler tablosuna Reçete butonunu entegre etmek için render fonksiyonunu güncelliyoruz:
-function renderManagementProductsTable(products) {
-  const tbody = document.getElementById("managementProductsTbody");
-  if (!tbody) return;
-
-  tbody.innerHTML = "";
-  if (!products || products.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Kayıtlı ürün bulunamadı.</td></tr>';
-    return;
-  }
-
-  products.forEach(p => {
-    const tr = document.createElement("tr");
-    const imageHtml = p.image_url ? `<img src="${escapeHtml(p.image_url)}" style="width:30px;height:30px;object-fit:contain;">` : "🍰";
-    
-    tr.innerHTML = `
-      <td>${imageHtml}</td>
-      <td><strong>${escapeHtml(p.name)}</strong></td>
-      <td>${escapeHtml(p.category || "Genel")}</td>
-      <td><strong style="color:var(--primary);">${formatMoney(p.price)}</strong></td>
-      <td>${p.active !== false ? '<span class="badge-active">Aktif</span>' : '<span class="badge-passive">Pasif</span>'}</td>
-      <td style="text-align: right;">
-        <button type="button" class="btn-edit" onclick="editManagementProduct(${p.id})">Düzenle</button>
-        <button type="button" class="btn-recipe" onclick="openRecipeModal(${p.id}, '${escapeHtml(p.name).replace(/'/g, "\\'")}')">Reçete</button>
-        <button type="button" class="btn-toggle" onclick="toggleProductStatus(${p.id}, ${p.active !== false})">${p.active !== false ? 'Pasif Yap' : 'Aktif Yap'}</button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-// GLOBAL EVENT DELEGATION (GÜNCELLENMİŞ)
-document.addEventListener("click", function(e) {
-  const target = e.target;
-  if (!target) return;
-
-  if (target.id === "clearTableButton" || target.closest("#clearTableButton")) {
-    e.preventDefault();
-    clearCurrentTable();
-    return;
-  }
-
-  if (target.id === "topClosePanelButton" || target.id === "cancelTableButton") {
-    e.preventDefault();
-    closeTableModal();
-    return;
-  }
-
-  if (target.id === "addNewTableBtn") {
-    e.preventDefault();
-    addNewTable();
-    return;
-  }
-
-  if (target.id === "renameTableBtn") {
-    e.preventDefault();
-    renameTable();
-    return;
-  }
-
-  if (target.id === "deleteTableBtn") {
-    e.preventDefault();
-    deleteTable();
-    return;
-  }
-
-  if (target.id === "closeReceiptDetailBtn") {
-    e.preventDefault();
-    document.getElementById("receiptDetailModal").style.display = "none";
-    return;
-  }
-
-  // REÇETE MODALI KAPAT BUTONU DÜZELTMESİ
-  if (target.id === "closeRecipeModalBtn" || target.closest("#closeRecipeModalBtn")) {
-    e.preventDefault();
-    const recipeModal = document.getElementById("recipeModal");
-    if (recipeModal) recipeModal.style.display = "none";
-    return;
-  }
-
-  // Ürünler sayfasındaki KAYDET butonuna basıldığında
-  if (target.id === "saveProductBtn") {
-    e.preventDefault();
-    handleNewProductSubmit();
-    return;
-  }
-
-  if (target.id === "resetProductFormBtn") {
-    e.preventDefault();
-    resetProductForm();
-    return;
-  }
-});
-
-// 16. RAPORLAR TARİH FİLTRE BUTONLARI AKTİF RENK YÖNETİMİ
+// RAPORLAR TARİH FİLTRELERİ
 function setReportDateRange(type) {
   const startInput = document.getElementById("reportStartDate");
   const endInput = document.getElementById("reportEndDate");
@@ -1410,7 +1317,6 @@ function setReportDateRange(type) {
   const todayStr = now.toISOString().split("T")[0];
   endInput.value = todayStr;
 
-  // Butonların aktif sınıfını güncelle
   ['reportFilterTodayBtn', 'reportFilterWeekBtn', 'reportFilterMonthBtn'].forEach(btnId => {
     const btn = document.getElementById(btnId);
     if (btn) btn.classList.remove("active-date-btn");
@@ -1437,7 +1343,6 @@ function setReportDateRange(type) {
   }
 }
 
-// Sayfa ilk açıldığında rapor tarihlerini ve varsayılan butonu set edelim
 function initReportDates() {
   const startInput = document.getElementById("reportStartDate");
   const endInput = document.getElementById("reportEndDate");
@@ -1450,8 +1355,6 @@ function initReportDates() {
   if (todayBtn) todayBtn.classList.add("active-date-btn");
 }
 
-
-// 17. RAPORLAR MODÜLÜ GRAFİK VE VERİ MOTORU
 function switchReportTab(tabId) {
   const tabs = ['tabSummary', 'tabPayments', 'tabCategories', 'tabProducts'];
   tabs.forEach(id => {
@@ -1482,22 +1385,14 @@ async function fetchAndRenderReports() {
   const startDate = startInput ? startInput.value : new Date().toISOString().split('T')[0];
   const endDate = endInput ? endInput.value : new Date().toISOString().split('T')[0];
 
-  console.log("Rapor çekiliyor, tarih aralığı:", startDate, "ile", endDate);
-
   try {
-    // Saat filtresini kaldırarak tüm günü kapsayacak şekilde esnetiyoruz
     const { data: sales, error: salesErr } = await client
       .from("sales")
       .select("*")
       .gte("created_at", startDate)
       .lte("created_at", endDate + "T23:59:59");
 
-    if (salesErr) {
-      console.error("Sales sorgu hatası:", salesErr.message);
-      throw salesErr;
-    }
-
-    console.log("Çekilen satışlar:", sales);
+    if (salesErr) throw salesErr;
 
     const saleIds = (sales || []).map(s => s.id);
     let saleItems = [];
@@ -1583,11 +1478,11 @@ async function fetchAndRenderReports() {
     renderCharts(paymentMap, categoryMap, productArr);
 
   } catch (err) {
-    console.error("Raporlar yüklenirken kritik hata:", err.message);
+    console.error("Raporlar yüklenirken hata:", err.message);
   }
 }
+
 function renderCharts(paymentMap, categoryMap, productArr) {
-  // 1. Ödeme Grafiği
   const payCtx = document.getElementById("paymentChart")?.getContext("2d");
   if (payCtx) {
     if (window.myPaymentChart) window.myPaymentChart.destroy();
@@ -1604,7 +1499,6 @@ function renderCharts(paymentMap, categoryMap, productArr) {
     });
   }
 
-  // 2. Kategori Grafiği
   const catCtx = document.getElementById("categoryChart")?.getContext("2d");
   if (catCtx) {
     if (window.myCategoryChart) window.myCategoryChart.destroy();
@@ -1622,7 +1516,6 @@ function renderCharts(paymentMap, categoryMap, productArr) {
     });
   }
 
-  // 3. Ürün Performans Grafiği (Top 10)
   const prodCtx = document.getElementById("productChart")?.getContext("2d");
   if (prodCtx) {
     const top10 = productArr.slice(0, 10);
@@ -1642,19 +1535,18 @@ function renderCharts(paymentMap, categoryMap, productArr) {
   }
 }
 
-// Raporlar filtrele butonu dinleyicisi
 document.addEventListener("click", function(e) {
   const target = e.target;
   if (!target) return;
-
   if (target.id === "runReportBtn") {
     e.preventDefault();
     fetchAndRenderReports();
   }
 });
-/* ÖDEME KANALLARI YÖNETİMİ EKLEMESİ */
+
+// ÖDEME KANALLARI YÖNETİMİ
 async function loadPaymentMethods() {
-  const defaultMethods = [{ id: 1, name: "Nakit" }, { id: 2, name: "Kredi Kartı" }, { id: 3, name: "Yemeksepeti" }, { id: 4, name: "Trendyol" }, { id: 5, name: "Getir" }];
+  const defaultMethods = [{ id: 1, name: "Nakit" }, { id: 2, name: "Kredi Kartı" }, { id: 3, name: "Yemeksepeti" }, { id: 4, name: "Trendyol" }, { id: 5, name: "Getir" }, { id: 6, name: "KaptanNili.com" }];
   try {
     const { data } = await client.from("payment_methods").select("*").order("id", { ascending: true });
     paymentMethods = (data && data.length > 0) ? data : defaultMethods;
@@ -1691,42 +1583,10 @@ async function deletePaymentMethod(id) {
   } catch (e) {}
 }
 
+// ==========================================
+// İNTERNET SİPARİŞLERİ VE CANLI ZİL SİSTEMİ
+// ==========================================
 
-
-// GÜÇLÜ WEBSPEECH / WEB AUDIO BİP & ZİL MOTORU
-function playOrderAlert() {
-  try {
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    
-    // Çift tonlu zil efekti (Ding-Dong)
-    function playTone(frequency, startTime, duration) {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(frequency, audioCtx.currentTime + startTime);
-      
-      gain.gain.setValueAtTime(0.5, audioCtx.currentTime + startTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + startTime + duration);
-      
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      
-      osc.start(audioCtx.currentTime + startTime);
-      osc.stop(audioCtx.currentTime + startTime + duration);
-    }
-
-    // İlk ton (Yüksek)
-    playTone(880, 0, 0.3); // A5 nota
-    // İkinci ton (Daha yüksek ve kalıcı - Yemeksepeti / POS tarzı tını)
-    playTone(1320, 0.25, 0.6); // E6 nota
-
-  } catch (e) {
-    console.log("Ses çalınamadı:", e);
-  }
-}
-
-// İNTERNET SİPARİŞLERİNİ LİSTELEME
 async function loadInternetOrders() {
   const tbody = document.getElementById("internetOrdersTbody");
   if (!tbody) return;
@@ -1741,32 +1601,46 @@ async function loadInternetOrders() {
     if (error) throw error;
 
     if (!orders || orders.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:20px;">Henüz internetten gelen sipariş yok.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Henüz internetten gelen sipariş yok.</td></tr>';
       return;
     }
 
     tbody.innerHTML = orders.map(o => {
-      const timeStr = o.created_at ? new Date(o.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit', second:'2-digit'}) : "Şimdi";
+      const timeStr = o.created_at ? new Date(o.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}) : "Şimdi";
+      const orderNo = escapeHtml(o.order_id || o.id);
       const totalFormatted = formatMoney(o.total_price || o.total_amount || 0);
+      const paymentChannel = escapeHtml(o.payment_channel || o.platform || "KaptanNili.com");
+
+      let productsSummary = "Ürün bilgisi yok";
+      try {
+        let prods = o.products;
+        if (typeof prods === 'string') prods = JSON.parse(prods);
+        if (Array.isArray(prods) && prods.length > 0) {
+          productsSummary = prods.map(p => `${escapeHtml(p.name)} (${p.qty || p.quantity || 1} Adet)`).join(", ");
+        }
+      } catch (e) {
+        productsSummary = "Ürün detayları yüklenemedi";
+      }
+
       return `
         <tr>
           <td><strong>${timeStr}</strong></td>
-          <td>Sipariş #${o.id} • <strong style="color:var(--primary);">${totalFormatted}</strong></td>
-          <td>KaptanNili.com</td>
-          <td><span class="badge-active">Yeni Sipariş</span></td>
+          <td><strong>#${orderNo}</strong></td>
+          <td>${productsSummary}</td>
+          <td><strong style="color:var(--primary);">${totalFormatted}</strong></td>
+          <td>${paymentChannel}</td>
           <td style="text-align: right;">
-            <button type="button" class="btn-primary" style="padding:4px 10px; font-size:11px;" onclick="processInternetOrder(${o.id})">İşleme Al</button>
+            <button type="button" class="btn-primary" style="padding:5px 12px; font-size:12px;" onclick='openInternetOrderDetail(${JSON.stringify(o)})'>🔍 Detay</button>
           </td>
         </tr>
       `;
     }).join("");
 
   } catch (err) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#dc2626; padding:20px;">Siparişler yüklenemedi.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Siparişler yüklenemedi.</td></tr>';
   }
 }
 
-// SUPABASE REALTIME (CANLI) DİNLEME
 function initRealtimeOrders() {
   client
     .channel('public:orders')
@@ -1779,6 +1653,7 @@ function initRealtimeOrders() {
     .subscribe();
 }
 
+// TEK VE KUSURSUZ İNTERNET SİPARİŞ DETAY FONKSİYONU
 function openInternetOrderDetail(order) {
   let modal = document.getElementById("internetOrderDetailModal");
   if (!modal) {
@@ -1805,7 +1680,6 @@ function openInternetOrderDetail(order) {
     modal = modalDiv;
   }
 
-  // Supabase'den gelen sütun isimlerini garantiye alalım
   const custName = order.customer_name || order.name || "İsimsiz Müşteri";
   const orderIdText = order.order_id || order.id || "103";
   const phoneVal = order.phone || order.telefon || "-";
@@ -1843,7 +1717,6 @@ function openInternetOrderDetail(order) {
     <p><strong>💰 Toplam Tutar:</strong> <span style="color:var(--primary); font-weight:bold; font-size:15px;">${formatMoney(totalVal)}</span></p>
   `;
 
-  // Kaydet butonuna tıklandığında siparişi satışlara işleme
   document.getElementById("saveInternetOrderBtn").onclick = async function() {
     if (!currentCashSession) {
       alert("⚠️ Kasa kapalı! İnternet siparişini onaylayıp ciroya eklemek için önce kasayı açmalısınız.");
@@ -1889,7 +1762,6 @@ function openInternetOrderDetail(order) {
     }
   };
 
-  // İptal butonuna tıklandığında
   document.getElementById("cancelInternetOrderBtn").onclick = async function() {
     if (confirm(`Sipariş #${orderIdText} iptal edilsin mi?`)) {
       await client.from("orders").update({ status: "cancelled" }).eq("id", order.id);
@@ -1901,145 +1773,6 @@ function openInternetOrderDetail(order) {
 
   modal.style.display = "flex";
 }
-// ==========================================
-// İNTERNET SİPARİŞLERİ VE CANLI ZİL SİSTEMİ
-// ==========================================
-
-// GÜÇLÜ ZİL SESİ ÇALMA FONKSİYONU
-function playOrderAlert() {
-  const audio = document.getElementById('orderAlertSound');
-  if (audio) {
-    audio.currentTime = 0;
-    audio.volume = 1.0;
-    audio.play().then(() => {
-      console.log("Zil başarıyla çaldı!");
-    }).catch(err => {
-      console.log("Tarayıcı sesi engelledi:", err);
-      alert("Zil için tarayıcı izni gerekiyor, lütfen ekrandaki '🔔 Zil Test' butonuna bir kez tıklayın.");
-    });
-  }
-}
-// İNTERNET SİPARİŞLERİNİ LİSTELEME (İstediğin Sırada)
-async function loadInternetOrders() {
-  const tbody = document.getElementById("internetOrdersTbody");
-  if (!tbody) return;
-
-  try {
-    const { data: orders, error } = await client
-      .from("orders")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(20);
-
-    if (error) throw error;
-
-    if (!orders || orders.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Henüz internetten gelen sipariş yok.</td></tr>';
-      return;
-    }
-
-    tbody.innerHTML = orders.map(o => {
-      const timeStr = o.created_at ? new Date(o.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}) : "Şimdi";
-      const orderNo = escapeHtml(o.order_id || o.id);
-      const totalFormatted = formatMoney(o.total_price || o.total_amount || 0);
-      const paymentChannel = escapeHtml(o.payment_channel || o.platform || "KaptanNili.com");
-
-      // Ürünleri JSON formatından okuyup özet yapalım
-      let productsSummary = "Ürün bilgisi yok";
-      try {
-        let prods = o.products;
-        if (typeof prods === 'string') prods = JSON.parse(prods);
-        if (Array.isArray(prods) && prods.length > 0) {
-          productsSummary = prods.map(p => `${escapeHtml(p.name)} (${p.qty || p.quantity || 1} Adet)`).join(", ");
-        }
-      } catch (e) {
-        productsSummary = "Ürün detayları yüklenemedi";
-      }
-
-      return `
-        <tr>
-          <td><strong>${timeStr}</strong></td>
-          <td><strong>#${orderNo}</strong></td>
-          <td>${productsSummary}</td>
-          <td><strong style="color:var(--primary);">${totalFormatted}</strong></td>
-          <td>${paymentChannel}</td>
-          <td style="text-align: right;">
-            <button type="button" class="btn-primary" style="padding:5px 12px; font-size:12px;" onclick='openInternetOrderDetail(${JSON.stringify(o)})'>🔍 Detay</button>
-          </td>
-        </tr>
-      `;
-    }).join("");
-
-  } catch (err) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Siparişler yüklenemedi.</td></tr>';
-  }
-}
-
-function openInternetOrderDetail(order) {
-  let modal = document.getElementById("internetOrderDetailModal");
-  if (!modal) {
-    const modalDiv = document.createElement("div");
-    modalDiv.id = "internetOrderDetailModal";
-    modalDiv.className = "modal-overlay";
-    modalDiv.innerHTML = `
-      <div class="recipe-modal-card" style="width: 550px; max-width: 95vw; text-align: left;">
-        <h3 style="color:var(--primary); margin-bottom:10px; border-bottom:2px solid var(--border-color); padding-bottom:8px;">
-          👤 <span id="detCustomerName">İsimsiz Müşteri</span> <span style="float:right; font-size:14px; color:var(--text-muted);" id="detOrderId">#103</span>
-        </h3>
-        <div id="detContentBody" style="font-size:13px; line-height:1.6; max-height:350px; overflow-y:auto; margin-bottom:15px;">
-          <!-- Detaylar buraya dolacak -->
-        </div>
-        <div style="display: flex; justify-content: flex-end; gap: 8px;">
-          <button type="button" class="btn-primary" style="background:#16a34a;" onclick="window.print()">🖨️ YAZDIR</button>
-          <button type="button" class="btn-secondary" onclick="document.getElementById('internetOrderDetailModal').style.display='none'">KAPAT</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modalDiv);
-    modal = modalDiv;
-  }
-
-  // Supabase'den gelen sütun isimlerini garantiye alalım
-  const custName = order.customer_name || order.name || "İsimsiz Müşteri";
-  const orderIdText = order.order_id || order.id || "103";
-  const phoneVal = order.phone || order.telefon || "-";
-  const emailVal = order.email || "-";
-  const addressVal = order.address || "-";
-  const noteVal = order.order_notes || order.notes || "Not yok";
-  const paymentVal = order.payment_channel || order.platform || "ikas";
-  const totalVal = order.total_price || order.total_amount || 0;
-
-  document.getElementById("detCustomerName").textContent = custName;
-  document.getElementById("detOrderId").textContent = "#" + orderIdText;
-
-  let productsHtml = "";
-  try {
-    let prods = order.products;
-    if (typeof prods === 'string') prods = JSON.parse(prods);
-    if (Array.isArray(prods)) {
-      productsHtml = prods.map(p => `• ${escapeHtml(p.name)} (${p.qty || p.quantity || 1} Adet)`).join("<br>");
-    } else {
-      productsHtml = "• TEST ÜRÜNÜ (1 Adet)";
-    }
-  } catch(e) {
-    productsHtml = "• TEST ÜRÜNÜ (1 Adet)";
-  }
-
-  const contentBody = document.getElementById("detContentBody");
-  contentBody.innerHTML = `
-    <p><strong>🕒 Sipariş Zamanı:</strong> ${order.created_at ? new Date(order.created_at).toLocaleString('tr-TR') : '-'}</p>
-    <p><strong>📞 Telefon:</strong> ${escapeHtml(phoneVal)}</p>
-    <p><strong>📧 E-posta:</strong> ${escapeHtml(emailVal)}</p>
-    <p><strong>📍 Adres:</strong> ${escapeHtml(addressVal)}</p>
-    <p><strong>🛒 Ürünler:</strong><br><span style="color:var(--primary); font-weight:bold;">${productsHtml}</span></p>
-    <p><strong>📝 Müşteri Notu:</strong> ${escapeHtml(noteVal)}</p>
-    <p><strong>💳 Ödeme Yöntemi:</strong> ${escapeHtml(paymentVal)}</p>
-    <p><strong>💰 Toplam Tutar:</strong> <span style="color:var(--primary); font-weight:bold; font-size:15px;">${formatMoney(totalVal)}</span></p>
-  `;
-
-  modal.style.display = "flex";
-}
-
 
 function processInternetOrder(orderId) {
   alert(`Sipariş #${orderId} işleme alındı!`);
