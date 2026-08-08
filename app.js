@@ -764,7 +764,8 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
     }
 
     container.innerHTML = items.map(item => {
-      const prodName = productMap[item.product_id] || "Ürün";
+      // Ürün adını veritabanından bulamazsa alternatif olarak kayıttakine bakar, o da yoksa "TEST ÜRÜNÜ" yazar
+      const prodName = productMap[item.product_id] || item.product_name || "TEST ÜRÜNÜ";
       const lineTotal = Number(item.line_total || (item.quantity * item.unit_price) || 0);
       return `
         <div class="receipt-detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-color);">
