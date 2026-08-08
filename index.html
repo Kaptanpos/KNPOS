@@ -272,30 +272,17 @@
               </div>
             </div>
 
-            <!-- HIZLI ÜRETİM GİRİŞİ -->
-            <div class="quick-prod-card">
-              <h3>🏭 Hızlı Üretim Girişi</h3>
-              <p>Üretilen miktarı girin, tarih/saat loglansın.</p>
+<div class="quick-prod-card" style="text-align: center; padding: 24px; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+  <div class="logo-ellipse-box" style="width: 210px; height: 80px; margin: 0 auto 10px auto; border: 3px solid var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; background: white; overflow: hidden; padding: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.08);">
+    <img src="logo.png" alt="Kaptan Nili Logo" style="max-width: 100%; max-height: 100%; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+    <span class="logo-fallback-text" style="display:none; font-weight: 800; color: var(--primary); font-size: 16px;">KAPTAN NİLİ</span>
+  </div>
+  <div style="font-size: 12px; font-weight: bold; color: var(--text-muted); letter-spacing: 0.5px;">BOUTIQUE DESSERT PRODUCTION</div>
+</div>
 
-              <div class="quick-prod-form-group">
-                <label>Malzeme / Yarı Mamul</label>
-                <select id="prodInputIngSelect"></select>
-              </div>
 
-              <div class="quick-prod-form-group">
-                <label>Üretilen Miktar</label>
-                <input type="number" id="prodInputQty" placeholder="Örn: 5000 (gr) veya 20" step="0.01">
-              </div>
 
-              <div class="quick-prod-form-group">
-                <label>Açıklama / Parti</label>
-                <input type="text" id="prodInputNote" placeholder="Örn: Sabah Vardiyası">
-              </div>
-
-              <button type="button" id="submitProductionBtn" class="btn-primary" style="width: 100%; background: #16a34a; margin-top: 4px; padding: 8px; font-size: 12px;">STOK ARTIR</button>
-            </div>
-
-          </div>
+            
 
           <div style="display: flex; flex-direction: column; gap: 24px;">
             <div class="tables-card">
