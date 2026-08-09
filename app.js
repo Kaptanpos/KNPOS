@@ -1773,7 +1773,27 @@ function openInternetOrderDetail(order) {
 
   modal.style.display = "flex";
 }
+// Raporlardaki gibi Bugünü ve Bu Ayı otomatik seçen yardımcı fonksiyon
+function setInternetFilter(type) {
+  const startInput = document.getElementById("netStartDate");
+  const endInput = document.getElementById("netEndDate");
+  if (!startInput || !endInput) return;
 
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+
+  if (type === 'today') {
+    const today = `${yyyy}-${mm}-${dd}`;
+    startInput.value = today;
+    endInput.value = today;
+  } else if (type === 'thisMonth') {
+    startInput.value = `${yyyy}-${mm}-01`;
+    endInput.value = `${yyyy}-${mm}-${new Date(yyyy, now.getMonth() + 1, 0).getDate()}`;
+  }
+  loadInternetOrders();
+}
 function processInternetOrder(orderId) {
   alert(`Sipariş #${orderId} işleme alındı!`);
 }
