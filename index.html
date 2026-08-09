@@ -636,28 +636,6 @@
 
 <section id="pageInternet" style="display: none; padding:20px; background:var(--card-bg); border-radius:16px; border:1px solid var(--border-color);">
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-// Raporlardaki gibi Bugünü ve Bu Ayı otomatik seçen yardımcı fonksiyon
-function setInternetFilter(type) {
-  const startInput = document.getElementById("netStartDate");
-  const endInput = document.getElementById("netEndDate");
-  if (!startInput || !endInput) return;
-
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-
-  if (type === 'today') {
-    const today = `${yyyy}-${mm}-${dd}`;
-    startInput.value = today;
-    endInput.value = today;
-  } else if (type === 'thisMonth') {
-    startInput.value = `${yyyy}-${mm}-01`;
-    endInput.value = `${yyyy}-${mm}-${new Date(yyyy, now.getMonth() + 1, 0).getDate()}`;
-  }
-  loadInternetOrders();
-}
-  
   <div>
     <h2 style="color: var(--primary); font-size: 20px;">🌐 KaptanNili.com İnternet Siparişleri</h2>
     <p style="font-size: 12px; color: var(--text-muted);">Siteden gelen yeni siparişler burada canlı olarak listelenir ve zil çalınır.</p>
