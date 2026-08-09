@@ -634,41 +634,50 @@
         </div>
       </section>
 
-<section id="pageInternet" style="display: none; padding:20px; background:var(--card-bg); border-radius:16px; border:1px solid var(--border-color);">
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-  <div>
-    <h2 style="color: var(--primary); font-size: 20px;">🌐 KaptanNili.com İnternet Siparişleri</h2>
-    <p style="font-size: 12px; color: var(--text-muted);">Siteden gelen yeni siparişler burada canlı olarak listelenir ve zil çalınır.</p>
-  </div>
-  <div style="display: flex; gap: 10px;">
-    <button type="button" class="btn-primary" onclick="playOrderAlert()" style="background:#10b981;">🔔 Zil Test</button>
-    <button type="button" class="btn-primary" onclick="loadInternetOrders()">🔄 Yenile</button>
-  </div>
-</div>
+<!-- 3. İNTERNET PANELİ -->
+      <section id="pageInternet" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+          <div>
+            <h2>KaptanNili.com İnternet Siparişleri</h2>
+            <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Siteden gelen yeni siparişler burada canlı olarak listelenir ve zil çalınır.</p>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn-primary" style="background: #eab308; color: black;" onclick="playOrderAlert()">🔔 Zil Test</button>
+            <button type="button" class="btn-primary" onclick="loadInternetOrders()">🔄 Yenile</button>
+          </div>
+        </div>
 
-<audio id="orderAlertSound" preload="auto">
-  <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
-</audio>
+        <!-- TARİH FİLTRELEME ÇUBUĞU -->
+        <div class="filter-bar" style="display: flex; align-items: center; gap: 10px; background: white; padding: 16px; border-radius: 16px; border: 1px solid var(--border-color); box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom: 20px;">
+          <span style="font-weight: 700;">📅 Tarih Aralığı:</span>
+          <input type="date" id="netStartDate" style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px;">
+          <span>-</span>
+          <input type="date" id="netEndDate" style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px;">
+          
+          <button type="button" onclick="setNetFilter('today')" style="padding: 8px 16px; background: #f1f5f9; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Bugün</button>
+          <button type="button" onclick="setNetFilter('thisMonth')" style="padding: 8px 16px; background: #f1f5f9; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Bu Ay</button>
+          <button type="button" class="btn-primary" onclick="loadInternetOrders()" style="padding: 8px 18px; font-size: 13px;">Filtrele</button>
+        </div>
 
-  <div class="admin-list-card" style="padding: 0; box-shadow: none;">
-    <table class="admin-table">
-      <thead>
-        <tr>
-          <th>Sipariş Saati</th>
-          <th>Sipariş Numarası</th>
-          <th>Ürün Adı Miktarı</th>
-          <th>Toplam Fiyat</th>
-          <th>Ödeme Kanalı</th>
-          <th style="text-align: right;">Sipariş Detayı</th>
-        </tr>
-      </thead>
-      <tbody id="internetOrdersTbody">
-        <tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">İnternet siparişleri yükleniyor...</td></tr>
-      </tbody>
-    </table>
-  </div>
-</section>
-
+        <div class="admin-list-card">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Sipariş Saati</th>
+                <th>Sipariş Numarası</th>
+                <th>Ürün Adı Miktarı</th>
+                <th>Toplam Fiyat</th>
+                <th>Ödeme Kanalı</th>
+                <th style="text-align: right;">Sipariş Detayı</th>
+              </tr>
+            </thead>
+            <tbody id="internetOrdersTbody">
+              <tr><td colspan="6" style="text-align:center; padding:20px;">Siparişler yükleniyor...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      
     </main>
   </div>
 
