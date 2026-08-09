@@ -184,7 +184,12 @@
     .excel-bar { display: flex; gap: 10px; margin-bottom: 20px; background: var(--card-bg); padding: 14px 18px; border-radius: 14px; border: 1px solid var(--border-color); align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
     .btn-excel-export { background: #16a34a; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px; }
     .btn-excel-import { background: #2563eb; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
-
+/* İNTERNET PANELİ TABLO SÜTUNLARI İÇİN FORCE CSS */
+  #pageInternet .admin-table th, 
+  #pageInternet .admin-table td {
+    display: table-cell !important;
+    visibility: visible !important;
+  }
     /* TEMA KUTULARI */
     .theme-picker-box { display: flex; gap: 10px; margin-top: 8px; }
     .theme-color-btn { width: 36px; height: 36px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.25); transition: 0.2s; }
