@@ -206,7 +206,7 @@
   <div id="loginScreen" class="login-screen">
     <div class="login-card">
       <div class="logo-ellipse-box">
-        <img src="logo.jpg" alt="Kaptan Nili Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+        <img src="logo.png" alt="Kaptan Nili Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
         <span class="logo-fallback-text" style="display:none;">KAPTAN NİLİ</span>
       </div>
       <h1 class="brand-title">KAPTAN NİLİ</h1>
@@ -243,12 +243,10 @@
     <main class="main-content">
       
       <!-- 1. ANA MENÜ -->
-      <!-- 1. ANA MENÜ -->
       <section id="pageTables">
-        <div class="pos-grid" style="display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start;">
+        <div class="pos-grid">
           
-          <!-- SOL KOLON: Kasa ve Logo -->
-          <div class="left-column" style="display: flex; flex-direction: column; gap: 20px;">
+          <div class="left-column">
             
             <div class="cash-card">
               <h3>Kasa</h3>
@@ -274,18 +272,31 @@
               </div>
             </div>
 
-            <!-- YÜKSEKLİĞİ ARTIRILMIŞ ŞIK LOGO KUTUSU -->
-            <div class="quick-prod-card" style="text-align: center; padding: 36px 20px; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 16px; border: 1px solid var(--border-color); box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
-              <div style="width: 100%; max-width: 280px; height: 145px; margin: 0 auto 14px auto; display: flex; align-items: center; justify-content: center; background: white; overflow: hidden;">
-                <img src="logo.jpg" alt="Kaptan Nili Logo" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                <span class="logo-fallback-text" style="display:none; font-weight: 800; color: var(--primary); font-size: 20px;">KAPTAN NİLİ</span>
+            <!-- HIZLI ÜRETİM GİRİŞİ -->
+            <div class="quick-prod-card">
+              <h3>🏭 Hızlı Üretim Girişi</h3>
+              <p>Üretilen miktarı girin, tarih/saat loglansın.</p>
+
+              <div class="quick-prod-form-group">
+                <label>Malzeme / Yarı Mamul</label>
+                <select id="prodInputIngSelect"></select>
               </div>
-              <div style="font-size: 13px; font-weight: 800; color: var(--text-muted); letter-spacing: 1px;">BOUTIQUE DESSERT PRODUCTION</div>
+
+              <div class="quick-prod-form-group">
+                <label>Üretilen Miktar</label>
+                <input type="number" id="prodInputQty" placeholder="Örn: 5000 (gr) veya 20" step="0.01">
+              </div>
+
+              <div class="quick-prod-form-group">
+                <label>Açıklama / Parti</label>
+                <input type="text" id="prodInputNote" placeholder="Örn: Sabah Vardiyası">
+              </div>
+
+              <button type="button" id="submitProductionBtn" class="btn-primary" style="width: 100%; background: #16a34a; margin-top: 4px; padding: 8px; font-size: 12px;">STOK ARTIR</button>
             </div>
 
           </div>
 
-          <!-- SAĞ KOLON: Masalar ve Anlık Satışlar -->
           <div style="display: flex; flex-direction: column; gap: 24px;">
             <div class="tables-card">
               <div class="tables-header">
@@ -315,7 +326,7 @@
 
         </div>
       </section>
-      </section>
+
       <!-- 2. MALZEMELER / YARI MAMUL VE ÜRETİM LOGLARI SAYFASI -->
       <section id="pageIngredients" style="display: none;">
         
@@ -388,15 +399,37 @@
               </div>
 
               <!-- TARİH FİLTRELEME ÇUBUĞU -->
-              <div class="date-filter-group">
-  <label>Tarih Aralığı:</label>
-  <input type="date" id="startDate">
-  <span>-</span>
-  <input type="date" id="endDate">
-  
-  <button type="button" onclick="setFilter('today')">Bugün</button>
-  <button type="button" onclick="setFilter('thisMonth')">Bu Ay</button>
-</div>
+              <div class="filter-bar" style="margin-bottom: 14px; padding: 10px;">
+                <label style="font-weight:bold; font-size:12px;">📅 Tarih:</label>
+                <input type="date" id="logStartDate" style="padding:6px; font-size:12px;">
+                <span>-</span>
+                <input type="date" id="logEndDate" style="padding:6px; font-size:12px;">
+
+                <button type="button" id="logFilterTodayBtn" class="btn-date-filter" onclick="setLogDateRange('today')">Bugün</button>
+                <button type="button" id="logFilterWeekBtn" class="btn-date-filter" onclick="setLogDateRange('week')">Bu Hafta</button>
+                <button type="button" id="logFilterMonthBtn" class="btn-date-filter" onclick="setLogDateRange('month')">Bu Ay</button>
+                
+                <button type="button" id="runLogFilterBtn" class="btn-primary" style="padding:6px 12px; font-size:12px; margin-left:auto;">FİLTRELE</button>
+              </div>
+
+              <div style="max-height: 220px; overflow-y: auto;">
+                <table class="admin-table" style="font-size: 13px;">
+                  <thead>
+                    <tr>
+                      <th>Tarih & Saat</th>
+                      <th>Malzeme</th>
+                      <th>Eklenen Miktar</th>
+                      <th>Not</th>
+                    </tr>
+                  </thead>
+                  <tbody id="stockMovementsTbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
 
       <!-- 3. ÜRÜNLER SAYFASI -->
       <section id="pageProducts" style="display: none;">

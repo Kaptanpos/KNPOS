@@ -764,8 +764,7 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
     }
 
     container.innerHTML = items.map(item => {
-      // Ürün adını veritabanından bulamazsa alternatif olarak kayıttakine bakar, o da yoksa "TEST ÜRÜNÜ" yazar
-      const prodName = productMap[item.product_id] || item.product_name || "TEST ÜRÜNÜ";
+      const prodName = productMap[item.product_id] || "Ürün";
       const lineTotal = Number(item.line_total || (item.quantity * item.unit_price) || 0);
       return `
         <div class="receipt-detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-color);">
@@ -1641,25 +1640,7 @@ async function loadInternetOrders() {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Siparişler yüklenemedi.</td></tr>';
   }
 }
-function setFilter(type) {
-  const now = new Date();
-  const startInput = document.getElementById('startDate');
-  const endInput = document.getElementById('endDate');
 
-  if (type === 'today') {
-    const today = now.toISOString().split('T')[0];
-    startInput.value = today;
-    endInput.value = today;
-  } else if (type === 'thisMonth') {
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 2).toISOString().split('T')[0];
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().split('T')[0];
-    startInput.value = firstDay;
-    endInput.value = lastDay;
-  }
-  
-  // Filtreleme fonksiyonunu tetikle
-  applySalesFilter(); 
-}
 function initRealtimeOrders() {
   client
     .channel('public:orders')
