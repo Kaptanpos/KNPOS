@@ -1594,24 +1594,38 @@ async function loadInternetOrders() {
   const startInput = document.getElementById("netStartDate");
   const endInput = document.getElementById("netEndDate");
 
-  const startDate = startInput ? startInput.value : "";
-  const endDate = endInput ? endInput.value : "";
+  // Eğer inputlar boşsa bugünün tarihini otomatik ata
+  const todayStr = new Date().toISOString().split("T")[0];
+  if (startInput && !startInput.value) startInput.value = todayStr;
+  if (endInput && !endInput.value) endInput.value = todayStr;
+
+  const startDate = startInput ? startInput.value : todayStr;
+  const endDate = endInput ? endInput.value : todayStr;
 
   try {
-    let query = client.from("orders").select("*").order("created_at", { ascending: false });
+    // Önce tarih aralığıyla sorgula, veri gelmezse son 50 siparişi yedek olarak çek
+    let { data: orders, error } = await client
+      .from("orders")
+      .select("*")
+      .gte("created_at", startDate + "T00:00:00")
+      .lte("created_at", endDate + "T23:59:59")
+      .order("created_at", { ascending: false });
 
-    // Sadece kullanıcı gerçekten tarih seçmişse filtre uygula, seçmediyse tümünü getir
-    if (startDate && endDate) {
-      query = query.gte("created_at", startDate + "T00:00:00").lte("created_at", endDate + "T23:59:59");
-    } else {
-      query = query.limit(50); // Tarih seçilmemişse son 50 siparişi listele
-    }
-
-    const { data: orders, error } = await query;
     if (error) throw error;
 
     if (!orders || orders.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Seçilen tarih aralığında internet siparişi bulunamadı.</td></tr>';
+      // Tarih aralığında bulunamadıysa son 50 siparişi getir ki ekran boş kalmasın
+      const fallback = await client
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      
+      orders = fallback.data || [];
+    }
+
+    if (orders.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Sistemde kayıtlı internet siparişi bulunamadı.</td></tr>';
       return;
     }
 
@@ -1665,6 +1679,7 @@ async function loadInternetOrders() {
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Hata: ${err.message}</td></tr>`;
   }
 }
+
 
 function initRealtimeOrders() {
   client
