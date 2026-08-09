@@ -1602,14 +1602,14 @@ async function loadInternetOrders() {
   if (endInput && !endInput.value) endInput.value = todayStr;
 
   try {
-    // Tarih aralığını tam kapsayacak şekilde sorgu
-    const { data: orders, error } = await client
-      .from("orders")
-      .select("*")
-      .gte("created_at", startDate + "T00:00:00")
-      .lte("created_at", endDate + "T23:59:59")
-      .order("created_at", { ascending: false });
+    let query = client.from("orders").select("*").order("created_at", { ascending: false });
 
+    // Eğer tarih seçilmişse filtrele, boşsa tümünü getir
+    if (startDate && endDate) {
+      query = query.gte("created_at", startDate + "T00:00:00").lte("created_at", endDate + "T23:59:59");
+    }
+
+    const { data: orders, error } = await query;
     if (error) throw error;
 
     if (!orders || orders.length === 0) {
@@ -1667,7 +1667,6 @@ async function loadInternetOrders() {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Siparişler yüklenemedi.</td></tr>';
   }
 }
-
 
 
 function initRealtimeOrders() {
