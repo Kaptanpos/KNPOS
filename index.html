@@ -388,14 +388,14 @@
               </div>
 
               <!-- TARİH FİLTRELEME ÇUBUĞU -->
-            <div class="date-filter-group" style="display: flex; align-items: center; gap: 10px; background: white; padding: 16px; border-radius: 16px; border: 1px solid var(--border-color); box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
-  <span style="font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px;">📅 Tarih Aralığı:</span>
-  <input type="date" id="startDate" style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px;">
+              <div class="date-filter-group">
+  <label>Tarih Aralığı:</label>
+  <input type="date" id="startDate">
   <span>-</span>
-  <input type="date" id="endDate" style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px;">
+  <input type="date" id="endDate">
   
-  <button type="button" id="btnToday" onclick="setFilter('today')" style="padding: 8px 16px; background: #f1f5f9; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Bugün</button>
-  <button type="button" id="btnMonth" onclick="setFilter('thisMonth')" style="padding: 8px 16px; background: #f1f5f9; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Bu Ay</button>
+  <button type="button" onclick="setFilter('today')">Bugün</button>
+  <button type="button" onclick="setFilter('thisMonth')">Bu Ay</button>
 </div>
 
       <!-- 3. ÜRÜNLER SAYFASI -->
