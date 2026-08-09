@@ -1603,13 +1603,27 @@ function setNetFilter(type) {
   const now = new Date();
   const todayStr = now.toISOString().split("T")[0];
 
+  const btns = document.querySelectorAll("#pageInternet button[onclick^='setNetFilter']");
+  btns.forEach(b => {
+    b.style.background = "#f1f5f9";
+    b.style.color = "#000";
+  });
+
   if (type === 'today') {
     startInput.value = todayStr;
     endInput.value = todayStr;
+    if (event && event.target) {
+      event.target.style.background = "#000";
+      event.target.style.color = "#fff";
+    }
   } else if (type === 'thisMonth') {
     const firstDayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
     startInput.value = firstDayStr;
     endInput.value = todayStr;
+    if (event && event.target) {
+      event.target.style.background = "#000";
+      event.target.style.color = "#fff";
+    }
   }
   loadInternetOrders();
 }
