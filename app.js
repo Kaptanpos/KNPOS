@@ -1591,17 +1591,23 @@ async function loadInternetOrders() {
   const tbody = document.getElementById("internetOrdersTbody");
   if (!tbody) return;
 
-  try {
-    const { data: orders, error } = await client
-      .from("orders")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(20);
+  const startInput = document.getElementById("netStartDate");
+  const endInput = document.getElementById("netEndDate");
 
+  try {
+    let query = client.from("orders").select("*").order("created_at", { ascending: false });
+
+    if (startInput && startInput.value && endInput && endInput.value) {
+      const startDateTime = startInput.value + "T00:00:00";
+      const endDateTime = endInput.value + "T23:59:59";
+      query = query.gte("created_at", startDateTime).lte("created_at", endDateTime);
+    }
+
+    const { data: orders, error } = await query;
     if (error) throw error;
 
     if (!orders || orders.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Henüz internetten gelen sipariş yok.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Seçilen tarih aralığında internet siparişi bulunamadı.</td></tr>';
       return;
     }
 
@@ -1609,7 +1615,8 @@ async function loadInternetOrders() {
       const timeStr = o.created_at ? new Date(o.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}) : "Şimdi";
       const orderNo = escapeHtml(o.order_id || o.id);
       const totalFormatted = formatMoney(o.total_price || o.total_amount || 0);
-      const paymentChannel = escapeHtml(o.payment_channel || o.platform || "KaptanNili.com");
+      const paymentChannel = escapeHtml(o.payment_channel || o.platform || "kaptannilicom");
+      const orderStatus = o.status || "pending";
 
       let productsSummary = "Ürün bilgisi yok";
       try {
@@ -1622,6 +1629,20 @@ async function loadInternetOrders() {
         productsSummary = "Ürün detayları yüklenemedi";
       }
 
+      let actionButtons = `
+        <button type="button" class="btn-primary" style="padding:6px 12px; font-size:12px;" onclick='openInternetOrderDetail(${JSON.stringify(o)})'>🔍 Detay</button>
+      `;
+
+      if (orderStatus === "pending" || !o.status) {
+        actionButtons += `
+          <button type="button" class="btn-danger" style="padding:6px 10px; font-size:12px; margin-left:6px;" onclick="quickCancelInternetOrder('${o.id}', '${orderNo}')">❌ İptal</button>
+        `;
+      } else if (orderStatus === "completed") {
+        actionButtons += ` <span style="font-size:11px; color:#16a34a; font-weight:bold; margin-left:6px;">✓ Kaydedildi</span>`;
+      } else if (orderStatus === "cancelled") {
+        actionButtons += ` <span style="font-size:11px; color:#dc2626; font-weight:bold; margin-left:6px;">✕ İptal Edildi</span>`;
+      }
+
       return `
         <tr>
           <td><strong>${timeStr}</strong></td>
@@ -1629,18 +1650,17 @@ async function loadInternetOrders() {
           <td>${productsSummary}</td>
           <td><strong style="color:var(--primary);">${totalFormatted}</strong></td>
           <td>${paymentChannel}</td>
-          <td style="text-align: right;">
-            <button type="button" class="btn-primary" style="padding:5px 12px; font-size:12px;" onclick='openInternetOrderDetail(${JSON.stringify(o)})'>🔍 Detay</button>
+          <td style="text-align: right; white-space: nowrap;">
+            ${actionButtons}
           </td>
         </tr>
       `;
     }).join("");
 
   } catch (err) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Siparişler yüklenemedi.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Hata: ${err.message}</td></tr>`;
   }
 }
-
 function initRealtimeOrders() {
   client
     .channel('public:orders')
