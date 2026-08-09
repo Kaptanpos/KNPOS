@@ -1594,15 +1594,17 @@ async function loadInternetOrders() {
   const startInput = document.getElementById("netStartDate");
   const endInput = document.getElementById("netEndDate");
 
-  const todayStr = new Date().toISOString().split("T")[0];
-  const startDate = startInput && startInput.value ? startInput.value : todayStr;
-  const endDate = endInput && endInput.value ? endInput.value : todayStr;
+  const startDate = startInput ? startInput.value : "";
+  const endDate = endInput ? endInput.value : "";
 
   try {
     let query = client.from("orders").select("*").order("created_at", { ascending: false });
 
+    // Sadece kullanıcı gerçekten tarih seçmişse filtre uygula, seçmediyse tümünü getir
     if (startDate && endDate) {
       query = query.gte("created_at", startDate + "T00:00:00").lte("created_at", endDate + "T23:59:59");
+    } else {
+      query = query.limit(50); // Tarih seçilmemişse son 50 siparişi listele
     }
 
     const { data: orders, error } = await query;
