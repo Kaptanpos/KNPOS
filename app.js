@@ -1641,7 +1641,25 @@ async function loadInternetOrders() {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Siparişler yüklenemedi.</td></tr>';
   }
 }
+function setFilter(type) {
+  const now = new Date();
+  const startInput = document.getElementById('startDate');
+  const endInput = document.getElementById('endDate');
 
+  if (type === 'today') {
+    const today = now.toISOString().split('T')[0];
+    startInput.value = today;
+    endInput.value = today;
+  } else if (type === 'thisMonth') {
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 2).toISOString().split('T')[0];
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().split('T')[0];
+    startInput.value = firstDay;
+    endInput.value = lastDay;
+  }
+  
+  // Filtreleme fonksiyonunu tetikle
+  applySalesFilter(); 
+}
 function initRealtimeOrders() {
   client
     .channel('public:orders')
