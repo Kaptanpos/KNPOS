@@ -1309,29 +1309,31 @@ async function deleteRecipeItem(recipeId, productId) {
 }
 
 // RAPORLAR TARİH FİLTRELERİ
-// RAPORLAR TARİH FİLTRELERİ (GÜNCELLENDİ: BUGÜN VE BU AY)
-function setReportFilter(type) {
+function setReportDateRange(type) {
   const startInput = document.getElementById("reportStartDate");
   const endInput = document.getElementById("reportEndDate");
   const now = new Date();
   
   const todayStr = now.toISOString().split("T")[0];
-  
-  // Aktif buton stillerini temizle
-  ['reportFilterTodayBtn', 'reportFilterMonthBtn'].forEach(btnId => {
+  endInput.value = todayStr;
+
+  ['reportFilterTodayBtn', 'reportFilterWeekBtn', 'reportFilterMonthBtn'].forEach(btnId => {
     const btn = document.getElementById(btnId);
     if (btn) btn.classList.remove("active-date-btn");
   });
 
   if (type === "today") {
     startInput.value = todayStr;
-    endInput.value = todayStr;
     const btn = document.getElementById("reportFilterTodayBtn");
     if (btn) btn.classList.add("active-date-btn");
-  } else if (type === "thisMonth") {
+  } else if (type === "week") {
+    const firstDay = new Date(now.setDate(now.getDate() - now.getDay() + 1));
+    startInput.value = firstDay.toISOString().split("T")[0];
+    const btn = document.getElementById("reportFilterWeekBtn");
+    if (btn) btn.classList.add("active-date-btn");
+  } else if (type === "month") {
     const firstDayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
     startInput.value = firstDayStr;
-    endInput.value = todayStr;
     const btn = document.getElementById("reportFilterMonthBtn");
     if (btn) btn.classList.add("active-date-btn");
   }
@@ -1341,17 +1343,6 @@ function setReportFilter(type) {
   }
 }
 
-function initReportDates() {
-  const startInput = document.getElementById("reportStartDate");
-  const endInput = document.getElementById("reportEndDate");
-  const todayStr = new Date().toISOString().split("T")[0];
-
-  if (startInput && !startInput.value) startInput.value = todayStr;
-  if (endInput && !endInput.value) endInput.value = todayStr;
-
-  const todayBtn = document.getElementById("reportFilterTodayBtn");
-  if (todayBtn) todayBtn.classList.add("active-date-btn");
-}
 function initReportDates() {
   const startInput = document.getElementById("reportStartDate");
   const endInput = document.getElementById("reportEndDate");
