@@ -388,18 +388,15 @@
               </div>
 
               <!-- TARİH FİLTRELEME ÇUBUĞU -->
-              <div class="filter-bar" style="margin-bottom: 14px; padding: 10px;">
-                <label style="font-weight:bold; font-size:12px;">📅 Tarih:</label>
-                <input type="date" id="logStartDate" style="padding:6px; font-size:12px;">
-                <span>-</span>
-                <input type="date" id="logEndDate" style="padding:6px; font-size:12px;">
-
-                <button type="button" id="logFilterTodayBtn" class="btn-date-filter" onclick="setLogDateRange('today')">Bugün</button>
-                <button type="button" id="logFilterWeekBtn" class="btn-date-filter" onclick="setLogDateRange('week')">Bu Hafta</button>
-                <button type="button" id="logFilterMonthBtn" class="btn-date-filter" onclick="setLogDateRange('month')">Bu Ay</button>
-                
-                <button type="button" id="runLogFilterBtn" class="btn-primary" style="padding:6px 12px; font-size:12px; margin-left:auto;">FİLTRELE</button>
-              </div>
+              <div class="date-filter-group">
+  <label>Tarih Aralığı:</label>
+  <input type="date" id="startDate">
+  <span>-</span>
+  <input type="date" id="endDate">
+  
+  <button type="button" onclick="setFilter('today')">Bugün</button>
+  <button type="button" onclick="setFilter('thisMonth')">Bu Ay</button>
+</div>
 
               <div style="max-height: 220px; overflow-y: auto;">
                 <table class="admin-table" style="font-size: 13px;">
