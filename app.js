@@ -1591,18 +1591,25 @@ async function loadInternetOrders() {
   const tbody = document.getElementById("internetOrdersTbody");
   if (!tbody) return;
 
-  try {
-    // Hiçbir koşula takılmadan doğrudan en son siparişleri çekelim
-    const { data: orders, error } = await client
-      .from("orders")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(50);
+  const startInput = document.getElementById("netStartDate");
+  const endInput = document.getElementById("netEndDate");
 
+  const todayStr = new Date().toISOString().split("T")[0];
+  const startDate = startInput && startInput.value ? startInput.value : todayStr;
+  const endDate = endInput && endInput.value ? endInput.value : todayStr;
+
+  try {
+    let query = client.from("orders").select("*").order("created_at", { ascending: false });
+
+    if (startDate && endDate) {
+      query = query.gte("created_at", startDate + "T00:00:00").lte("created_at", endDate + "T23:59:59");
+    }
+
+    const { data: orders, error } = await query;
     if (error) throw error;
 
     if (!orders || orders.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Sistemde kayıtlı internet siparişi bulunamadı.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Seçilen tarih aralığında internet siparişi bulunamadı.</td></tr>';
       return;
     }
 
@@ -1656,7 +1663,6 @@ async function loadInternetOrders() {
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Hata: ${err.message}</td></tr>`;
   }
 }
-
 
 function initRealtimeOrders() {
   client
