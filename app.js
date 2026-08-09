@@ -1643,7 +1643,7 @@ async function loadInternetOrders() {
         actionButtons += ` <span style="font-size:11px; color:#dc2626; font-weight:bold; margin-left:6px;">✕ İptal Edildi</span>`;
       }
 
-      return `
+return `
         <tr>
           <td><strong>${timeStr}</strong></td>
           <td><strong>#${orderNo}</strong></td>
