@@ -1827,7 +1827,7 @@ function setInternetFilter(type) {
   const mm = String(now.getMonth() + 1).padStart(2, '0');
   const dd = String(now.getDate()).padStart(2, '0');
 
-  // Önce ikisini de pasif (gri) yap
+  // Önce her iki butondan da aktiflik sınıfını söküp gri yapıyoruz
   if (btnToday) btnToday.classList.remove('active-date-btn');
   if (btnMonth) btnMonth.classList.remove('active-date-btn');
 
@@ -1835,14 +1835,15 @@ function setInternetFilter(type) {
     const today = `${yyyy}-${mm}-${dd}`;
     startInput.value = today;
     endInput.value = today;
-    if (btnToday) btnToday.classList.add('active-date-btn'); // Aktif tema rengi
+    if (btnToday) btnToday.classList.add('active-date-btn'); // Sadece Bugün yeşil/tema rengi olur
   } else if (type === 'thisMonth') {
     startInput.value = `${yyyy}-${mm}-01`;
     endInput.value = `${yyyy}-${mm}-${new Date(yyyy, now.getMonth() + 1, 0).getDate()}`;
-    if (btnMonth) btnMonth.classList.add('active-date-btn'); // Aktif tema rengi
+    if (btnMonth) btnMonth.classList.add('active-date-btn'); // Sadece Bu Ay yeşil/tema rengi olur
   }
   loadInternetOrders();
 }
+
 
 // Güvenli İnternet Siparişleri Yükleme ve Ödeme Kanalı Filtresi
 async function loadInternetOrders() {
