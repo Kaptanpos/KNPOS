@@ -1618,8 +1618,12 @@ async function loadInternetOrders() {
       return;
     }
 
-    // Bugünün tarihini YYYY-MM-DD formatında al
-    const todayStr = new Date().toISOString().split('T')[0];
+    // Bugünün tarihini YYYY-MM-DD olarak al
+    const now = new Date();
+    const todayYyyy = now.getFullYear();
+    const todayMm = String(now.getMonth() + 1).padStart(2, '0');
+    const todayDd = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${todayYyyy}-${todayMm}-${todayDd}`;
 
     tbody.innerHTML = filteredOrders.map(o => {
       let dateTimeStr = "Bilinmiyor";
@@ -1630,10 +1634,14 @@ async function loadInternetOrders() {
         const yyyy = orderDateObj.getFullYear();
         const mm = String(orderDateObj.getMonth() + 1).padStart(2, '0');
         const dd = String(orderDateObj.getDate()).padStart(2, '0');
+        
         const datePart = `${dd}.${mm}.${yyyy}`;
         const timePart = orderDateObj.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
         
-        dateTimeStr = `${datePart} ${timePart}`;
+        // Tarih ve Saati yan yana yazdırıyoruz (Örn: 10.08.2026 17:24)
+        dateTimeStr = `${datePart} <span style="font-size:11px; color:var(--text-muted);">${timePart}</span>`;
+
+        // Sadece bugüne ait sipariş mi kontrolü
         if (`${yyyy}-${mm}-${dd}` === todayStr) {
           isToday = true;
         }
@@ -1659,7 +1667,7 @@ async function loadInternetOrders() {
         <button type="button" class="btn-primary" style="padding:6px 12px; font-size:12px;" onclick='openInternetOrderDetail(${JSON.stringify(o)})'>🔍 Detay</button>
       `;
 
-      // İptal butonu SADECE bugüne ait ve durumu pending/boş olan siparişlerde çıkar
+      // İptal butonu SADECE bugüne ait siparişlerde görünecek
       if ((orderStatus === "pending" || !o.status) && isToday) {
         actionButtons += `
           <button type="button" class="btn-danger" style="padding:6px 10px; font-size:12px; margin-left:6px;" onclick="quickCancelInternetOrder('${o.id}', '${orderNo}')">❌ İptal</button>
