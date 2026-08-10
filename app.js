@@ -1593,29 +1593,55 @@ async function loadInternetOrders() {
 
   const startInput = document.getElementById("netStartDate");
   const endInput = document.getElementById("netEndDate");
+  const channelSelect = document.getElementById("netPaymentChannelFilter");
 
   try {
     let query = client.from("orders").select("*").order("created_at", { ascending: false });
 
     if (startInput && startInput.value && endInput && endInput.value) {
-      const startDateTime = startInput.value + "T00:00:00";
-      const endDateTime = endInput.value + "T23:59:59";
-      query = query.gte("created_at", startDateTime).lte("created_at", endDateTime);
+      query = query.gte("created_at", startInput.value + "T00:00:00").lte("created_at", endInput.value + "T23:59:59");
     }
 
     const { data: orders, error } = await query;
     if (error) throw error;
 
-    if (!orders || orders.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Seçilen tarih aralığında internet siparişi bulunamadı.</td></tr>';
+    let filteredOrders = orders || [];
+    if (channelSelect && channelSelect.value) {
+      filteredOrders = filteredOrders.filter(o => {
+        const channel = o.payment_channel || o.platform || o.payment_method || "kaptannilicom";
+        return channel.toLowerCase() === channelSelect.value.toLowerCase();
+      });
+    }
+
+    if (filteredOrders.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Seçilen kriterlere uygun internet siparişi bulunamadı.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = orders.map(o => {
-      const timeStr = o.created_at ? new Date(o.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}) : "Şimdi";
+    // Bugünün tarihini YYYY-MM-DD formatında al
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    tbody.innerHTML = filteredOrders.map(o => {
+      let dateTimeStr = "Bilinmiyor";
+      let isToday = false;
+
+      if (o.created_at) {
+        const orderDateObj = new Date(o.created_at);
+        const yyyy = orderDateObj.getFullYear();
+        const mm = String(orderDateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(orderDateObj.getDate()).padStart(2, '0');
+        const datePart = `${dd}.${mm}.${yyyy}`;
+        const timePart = orderDateObj.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+        
+        dateTimeStr = `${datePart} ${timePart}`;
+        if (`${yyyy}-${mm}-${dd}` === todayStr) {
+          isToday = true;
+        }
+      }
+
       const orderNo = escapeHtml(o.order_id || o.id);
       const totalFormatted = formatMoney(o.total_price || o.total_amount || 0);
-      const paymentChannel = escapeHtml(o.payment_channel || o.platform || "kaptannilicom");
+      const paymentChannel = escapeHtml(o.payment_channel || o.platform || o.payment_method || "kaptannilicom");
       const orderStatus = o.status || "pending";
 
       let productsSummary = "Ürün bilgisi yok";
@@ -1633,7 +1659,8 @@ async function loadInternetOrders() {
         <button type="button" class="btn-primary" style="padding:6px 12px; font-size:12px;" onclick='openInternetOrderDetail(${JSON.stringify(o)})'>🔍 Detay</button>
       `;
 
-      if (orderStatus === "pending" || !o.status) {
+      // İptal butonu SADECE bugüne ait ve durumu pending/boş olan siparişlerde çıkar
+      if ((orderStatus === "pending" || !o.status) && isToday) {
         actionButtons += `
           <button type="button" class="btn-danger" style="padding:6px 10px; font-size:12px; margin-left:6px;" onclick="quickCancelInternetOrder('${o.id}', '${orderNo}')">❌ İptal</button>
         `;
@@ -1643,9 +1670,9 @@ async function loadInternetOrders() {
         actionButtons += ` <span style="font-size:11px; color:#dc2626; font-weight:bold; margin-left:6px;">✕ İptal Edildi</span>`;
       }
 
-return `
+      return `
         <tr>
-          <td><strong>${timeStr}</strong></td>
+          <td><strong>${dateTimeStr}</strong></td>
           <td><strong>#${orderNo}</strong></td>
           <td>${productsSummary}</td>
           <td><strong style="color:var(--primary);">${totalFormatted}</strong></td>
@@ -1661,6 +1688,9 @@ return `
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Hata: ${err.message}</td></tr>`;
   }
 }
+
+
+
 function initRealtimeOrders() {
   client
     .channel('public:orders')
