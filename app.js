@@ -1618,12 +1618,9 @@ async function loadInternetOrders() {
       return;
     }
 
-    // Bugünün tarihini YYYY-MM-DD olarak al
+    // Bugünün tarihini güvenli şekilde al
     const now = new Date();
-    const todayYyyy = now.getFullYear();
-    const todayMm = String(now.getMonth() + 1).padStart(2, '0');
-    const todayDd = String(now.getDate()).padStart(2, '0');
-    const todayStr = `${todayYyyy}-${todayMm}-${todayDd}`;
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     tbody.innerHTML = filteredOrders.map(o => {
       let dateTimeStr = "Bilinmiyor";
@@ -1638,7 +1635,7 @@ async function loadInternetOrders() {
         const datePart = `${dd}.${mm}.${yyyy}`;
         const timePart = orderDateObj.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
         
-        // Tarih ve Saati alt alta / yan yana şık bir şekilde yazdırıyoruz
+        // Tarih ve Saati alt alta yazdırıyoruz
         dateTimeStr = `${datePart}<br><span style="font-size:11px; color:var(--text-muted);">${timePart}</span>`;
 
         if (`${yyyy}-${mm}-${dd}` === todayStr) {
@@ -1666,7 +1663,7 @@ async function loadInternetOrders() {
         <button type="button" class="btn-primary" style="padding:6px 12px; font-size:12px;" onclick='openInternetOrderDetail(${JSON.stringify(o)})'>🔍 Detay</button>
       `;
 
-      // İptal butonu SADECE bugüne ait olanlarda çıkar, geçmiş aylarda/günlerde çıkmaz
+      // İptal butonu SADECE bugüne ait siparişlerde çıkar
       if ((orderStatus === "pending" || !o.status) && isToday) {
         actionButtons += `
           <button type="button" class="btn-danger" style="padding:6px 10px; font-size:12px; margin-left:6px;" onclick="quickCancelInternetOrder('${o.id}', '${orderNo}')">❌ İptal</button>
@@ -1695,7 +1692,6 @@ async function loadInternetOrders() {
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Hata: ${err.message}</td></tr>`;
   }
 }
-
 
 function initRealtimeOrders() {
   client
