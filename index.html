@@ -386,31 +386,19 @@
               </div>
 
               <!-- TARİH FİLTRELEME ÇUBUĞU -->
-              <<!-- RAPORLARDAKİ İLE BİREBİR AYNI FİLTRE ÇUBUĞU -->
-        
-                <!-- RAPORLAR SAYFASIYLA BİREBİR AYNI FİLTRE ÇUBUĞU -->
-        <div class="filter-bar">
-          <label style="font-weight:bold; font-size:13px;">📅 Tarih Aralığı:</label>
-          <input type="date" id="netStartDate">
-          <span>-</span>
-          <input type="date" id="netEndDate">
+              <div class="filter-bar" style="margin-bottom: 14px; padding: 10px;">
+                <label style="font-weight:bold; font-size:12px;">📅 Tarih:</label>
+                <input type="date" id="logStartDate" style="padding:6px; font-size:12px;">
+                <span>-</span>
+                <input type="date" id="logEndDate" style="padding:6px; font-size:12px;">
 
-          <!-- Ödeme Kanalı Seçim Kutusu -->
-          <select id="netPaymentChannelFilter" style="padding: 9px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; background: white;">
-            <option value="">Tüm Ödeme Kanalları</option>
-            <option value="kaptannilicom">kaptannilicom</option>
-            <option value="Kapıda Ödeme">Kapıda Ödeme</option>
-            <option value="Kredi Kartı">Kredi Kartı</option>
-          </select>
+                <button type="button" id="logFilterTodayBtn" class="btn-date-filter" onclick="setLogDateRange('today')">Bugün</button>
+                <button type="button" id="logFilterMonthBtn" class="btn-date-filter" onclick="setLogDateRange('month')">Bu Ay</button>
+                
+                <button type="button" id="runLogFilterBtn" class="btn-primary" style="padding:6px 12px; font-size:12px; margin-left:auto;">FİLTRELE</button>
+              </div>
 
-          <button type="button" id="btnNetToday" class="btn-date-filter" onclick="setInternetFilter('today')">Bugün</button>
-          <button type="button" id="btnNetMonth" class="btn-date-filter" onclick="setInternetFilter('thisMonth')">Bu Ay</button>
-          
-          <button type="button" class="btn-primary" onclick="loadInternetOrders()" style="margin-left:auto;">📊 FİLTRELE</button>
-        </div>
-                
-                
-                <div style="max-height: 220px; overflow-y: auto;">
+              <div style="max-height: 220px; overflow-y: auto;">
                 <table class="admin-table" style="font-size: 13px;">
                   <thead>
                     <tr>
