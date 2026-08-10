@@ -1638,10 +1638,9 @@ async function loadInternetOrders() {
         const datePart = `${dd}.${mm}.${yyyy}`;
         const timePart = orderDateObj.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
         
-        // Tarih ve Saati yan yana yazdırıyoruz (Örn: 10.08.2026 17:24)
-        dateTimeStr = `${datePart} <span style="font-size:11px; color:var(--text-muted);">${timePart}</span>`;
+        // Tarih ve Saati alt alta / yan yana şık bir şekilde yazdırıyoruz
+        dateTimeStr = `${datePart}<br><span style="font-size:11px; color:var(--text-muted);">${timePart}</span>`;
 
-        // Sadece bugüne ait sipariş mi kontrolü
         if (`${yyyy}-${mm}-${dd}` === todayStr) {
           isToday = true;
         }
@@ -1667,7 +1666,7 @@ async function loadInternetOrders() {
         <button type="button" class="btn-primary" style="padding:6px 12px; font-size:12px;" onclick='openInternetOrderDetail(${JSON.stringify(o)})'>🔍 Detay</button>
       `;
 
-      // İptal butonu SADECE bugüne ait siparişlerde görünecek
+      // İptal butonu SADECE bugüne ait olanlarda çıkar, geçmiş aylarda/günlerde çıkmaz
       if ((orderStatus === "pending" || !o.status) && isToday) {
         actionButtons += `
           <button type="button" class="btn-danger" style="padding:6px 10px; font-size:12px; margin-left:6px;" onclick="quickCancelInternetOrder('${o.id}', '${orderNo}')">❌ İptal</button>
@@ -1696,7 +1695,6 @@ async function loadInternetOrders() {
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Hata: ${err.message}</td></tr>`;
   }
 }
-
 
 
 function initRealtimeOrders() {
