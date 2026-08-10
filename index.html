@@ -635,14 +635,24 @@
       </section>
 
 <section id="pageInternet" style="display: none; padding:20px; background:var(--card-bg); border-radius:16px; border:1px solid var(--border-color);">
-  <!-- TARİH FİLTRE ÇUBUĞU -->
+  <!-- TARİH VE ÖDEME KANALI FİLTRE ÇUBUĞU -->
         <div style="display: flex; gap: 10px; margin-bottom: 20px; background: white; padding: 14px 18px; border-radius: 14px; border: 1px solid var(--border-color); align-items: center; flex-wrap: wrap;">
           <span style="font-size:13px; font-weight:bold; color:var(--primary);">📅 Tarih Aralığı:</span>
           <input type="date" id="netStartDate" style="padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px;">
           <span>ile</span>
           <input type="date" id="netEndDate" style="padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px;">
-          <button type="button" class="btn-primary" onclick="setInternetFilter('today')" style="background:#475569; font-size:12px; padding:8px 12px;">Bugün</button>
-          <button type="button" class="btn-primary" onclick="setInternetFilter('thisMonth')" style="background:#475569; font-size:12px; padding:8px 12px;">Bu Ay</button>
+          
+          <!-- Ödeme Kanalı Seçim Kutusu -->
+          <select id="netPaymentChannelFilter" style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; background: white;">
+            <option value="">Tüm Ödeme Kanalları</option>
+            <option value="kaptannilicom">kaptannilicom</option>
+            <option value="Kapıda Ödeme">Kapıda Ödeme</option>
+            <option value="Kredi Kartı">Kredi Kartı</option>
+          </select>
+
+          <!-- Aktif olunca rengi koyulaşan butonlar -->
+          <button type="button" id="btnNetToday" class="btn-primary" onclick="setInternetFilter('today')" style="background:#475569; font-size:12px; padding:8px 12px;">Bugün</button>
+          <button type="button" id="btnNetMonth" class="btn-primary" onclick="setInternetFilter('thisMonth')" style="background:#475569; font-size:12px; padding:8px 12px;">Bu Ay</button>
           <button type="button" class="btn-primary" onclick="loadInternetOrders()" style="font-size:12px; padding:8px 16px;">Filtrele</button>
         </div>
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
