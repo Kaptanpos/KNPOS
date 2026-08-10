@@ -1586,36 +1586,44 @@ async function deletePaymentMethod(id) {
 // ==========================================
 // İNTERNET SİPARİŞLERİ VE CANLI ZİL SİSTEMİ
 // ==========================================
-
 async function loadInternetOrders() {
   const tbody = document.getElementById("internetOrdersTbody");
   if (!tbody) return;
 
   const startInput = document.getElementById("netStartDate");
   const endInput = document.getElementById("netEndDate");
+  const channelSelect = document.getElementById("netPaymentChannelFilter");
 
   try {
     let query = client.from("orders").select("*").order("created_at", { ascending: false });
 
+    // Tarih filtresi varsa ekle
     if (startInput && startInput.value && endInput && endInput.value) {
-      const startDateTime = startInput.value + "T00:00:00";
-      const endDateTime = endInput.value + "T23:59:59";
-      query = query.gte("created_at", startDateTime).lte("created_at", endDateTime);
+      query = query.gte("created_at", startInput.value + "T00:00:00").lte("created_at", endInput.value + "T23:59:59");
     }
 
     const { data: orders, error } = await query;
     if (error) throw error;
 
-    if (!orders || orders.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Seçilen tarih aralığında internet siparişi bulunamadı.</td></tr>';
+    // Eğer ödeme kanalı seçildiyse javascript tarafında filtrele (veritabanı sütun hatasına takılmamak için)
+    let filteredOrders = orders;
+    if (channelSelect && channelSelect.value) {
+      filteredOrders = orders.filter(o => {
+        const channel = o.payment_channel || o.platform || o.payment_method || "kaptannilicom";
+        return channel.toLowerCase() === channelSelect.value.toLowerCase();
+      });
+    }
+
+    if (!filteredOrders || filteredOrders.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Seçilen kriterlere uygun internet siparişi bulunamadı.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = orders.map(o => {
+    tbody.innerHTML = filteredOrders.map(o => {
       const timeStr = o.created_at ? new Date(o.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}) : "Şimdi";
       const orderNo = escapeHtml(o.order_id || o.id);
       const totalFormatted = formatMoney(o.total_price || o.total_amount || 0);
-      const paymentChannel = escapeHtml(o.payment_channel || o.platform || "kaptannilicom");
+      const paymentChannel = escapeHtml(o.payment_channel || o.platform || o.payment_method || "kaptannilicom");
       const orderStatus = o.status || "pending";
 
       let productsSummary = "Ürün bilgisi yok";
@@ -1643,7 +1651,7 @@ async function loadInternetOrders() {
         actionButtons += ` <span style="font-size:11px; color:#dc2626; font-weight:bold; margin-left:6px;">✕ İptal Edildi</span>`;
       }
 
-return `
+      return `
         <tr>
           <td><strong>${timeStr}</strong></td>
           <td><strong>#${orderNo}</strong></td>
@@ -1661,6 +1669,8 @@ return `
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Hata: ${err.message}</td></tr>`;
   }
 }
+
+
 function initRealtimeOrders() {
   client
     .channel('public:orders')
