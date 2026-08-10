@@ -1794,9 +1794,12 @@ function openInternetOrderDetail(order) {
   modal.style.display = "flex";
 }
 // Raporlardaki gibi Bugünü ve Bu Ayı otomatik seçen yardımcı fonksiyon
+
 function setInternetFilter(type) {
   const startInput = document.getElementById("netStartDate");
   const endInput = document.getElementById("netEndDate");
+  const btnToday = document.getElementById("btnNetToday");
+  const btnMonth = document.getElementById("btnNetMonth");
   if (!startInput || !endInput) return;
 
   const now = new Date();
@@ -1804,16 +1807,24 @@ function setInternetFilter(type) {
   const mm = String(now.getMonth() + 1).padStart(2, '0');
   const dd = String(now.getDate()).padStart(2, '0');
 
+  // Önce her iki butondan da aktif sınıfı sök
+  if (btnToday) btnToday.classList.remove('active-date-btn');
+  if (btnMonth) btnMonth.classList.remove('active-date-btn');
+
   if (type === 'today') {
     const today = `${yyyy}-${mm}-${dd}`;
     startInput.value = today;
     endInput.value = today;
+    if (btnToday) btnToday.classList.add('active-date-btn'); // Tıklayınca tema rengi (yeşil) olur
   } else if (type === 'thisMonth') {
     startInput.value = `${yyyy}-${mm}-01`;
     endInput.value = `${yyyy}-${mm}-${new Date(yyyy, now.getMonth() + 1, 0).getDate()}`;
+    if (btnMonth) btnMonth.classList.add('active-date-btn'); // Tıklayınca tema rengi (yeşil) olur
   }
   loadInternetOrders();
 }
+
+
 // Seçileni tema rengi, diğerini gri yapan filtre fonksiyonu
 function setInternetFilter(type) {
   const startInput = document.getElementById("netStartDate");
