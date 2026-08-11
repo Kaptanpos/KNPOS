@@ -1,6 +1,7 @@
 /* KAPTAN NİLİ BULUT POS - FULL TEMİZ VE SORUNSUZ SÜRÜM v3.7 */
 
 // GÜÇLÜ ZİL SESİ FONKSİYONU
+console.log("Çalıştı");
 function playOrderAlert() {
   const audio = document.getElementById('orderAlertSound');
   if (audio) {
