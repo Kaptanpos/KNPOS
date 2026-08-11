@@ -1799,9 +1799,9 @@ window.setInternetFilter = function(type) {
     startInput.value = `${yyyy}-${mm}-01`;
     endInput.value = `${yyyy}-${mm}-${new Date(yyyy, now.getMonth() + 1, 0).getDate()}`;
   }
+
   loadInternetOrders();
 };
-
 async function loadInternetOrders() {
   const tbody = document.getElementById("internetOrdersTbody");
   if (!tbody) return;
