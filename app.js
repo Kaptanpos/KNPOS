@@ -1934,3 +1934,37 @@ async function loadInternetOrders() {
 function processInternetOrder(orderId) {
   alert(`Sipariş #${orderId} işleme alındı!`);
 }
+// HTML'e dokunma, JS butonları kendisi yakalar
+document.addEventListener("DOMContentLoaded", () => {
+  const btnToday = document.getElementById("btnNetToday");
+  const btnMonth = document.getElementById("btnNetMonth");
+
+  function setActiveButtonStyle(activeBtn) {
+    // Önce hepsini gri yap
+    [btnToday, btnMonth].forEach(b => {
+      if (b) {
+        b.style.backgroundColor = "#e2e8f0"; // Gri
+        b.style.color = "#334155";
+      }
+    });
+    // Seçileni koyu yap
+    if (activeBtn) {
+      activeBtn.style.backgroundColor = "var(--primary)";
+      activeBtn.style.color = "#ffffff";
+    }
+  }
+
+  if (btnToday) {
+    btnToday.onclick = () => {
+      setActiveButtonStyle(btnToday);
+      setInternetFilter('today');
+    };
+  }
+
+  if (btnMonth) {
+    btnMonth.onclick = () => {
+      setActiveButtonStyle(btnMonth);
+      setInternetFilter('thisMonth');
+    };
+  }
+});
