@@ -1829,6 +1829,9 @@ function openInternetOrderDetail(order) {
 // Raporlardaki gibi Bugünü ve Bu Ayı otomatik seçen yardımcı fonksiyon
 
 // Seçilen butona tema rengini verir, diğerini gri tutar
+// Test etmek ve konsolda görmek için:
+console.log("İnternet paneli scriptleri aktif!");
+
 function setInternetFilter(type) {
   const startInput = document.getElementById("netStartDate");
   const endInput = document.getElementById("netEndDate");
