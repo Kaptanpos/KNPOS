@@ -26,16 +26,39 @@ function applyThemeColor(primaryHex) {
 // 1. GİRİŞ VE SİSTEM FONKSİYONLARI (LOGIN, LOGOUT, NAV)
 async function login() {
   const password = document.getElementById("loginPassword")?.value;
-  if (!password) return alert("Şifre giriniz.");
-  const { error } = await client.auth.signInWithPassword({ email: "denizmazlumoglu@gmail.com", password });
-  if (error) return alert("Giriş başarısız!");
-  document.getElementById("loginScreen").style.display = "none";
-  document.getElementById("appShell").style.display = "block";
-  bindEvents();
-  renderTables();
-  await loadProducts();
-}
+  if (!password) return alert("Lütfen şifrenizi giriniz.");
 
+  try {
+    const { error } = await client.auth.signInWithPassword({
+      email: "denizmazlumoglu@gmail.com",
+      password: password
+    });
+
+    if (error) {
+      alert("Giriş Başarısız: Şifre hatalı.");
+      return;
+    }
+
+    // GİRİŞ BAŞARILI OLUNCA EKRANI KAPAT VE UYGULAMAYI AÇ
+    const loginScreen = document.getElementById("loginScreen");
+    const appShell = document.getElementById("appShell");
+    if (loginScreen) loginScreen.style.display = "none";
+    if (appShell) appShell.style.display = "block";
+
+    bindEvents();
+    renderTables();
+    await loadThemeColor();
+    await loadCashStatus();
+    await loadProducts();
+    await loadPaymentMethods();
+    await renderSales();
+    await loadIngredientsForDashboard();
+    await checkRecipeTable();
+
+  } catch (err) {
+    alert("Bağlantı hatası: " + err.message);
+  }
+}
 function showPage(pageName) {
   const pages = ["pageTables", "pageIngredients", "pageInternet", "pageProducts", "pageReports", "pageSettings"];
   pages.forEach(id => document.getElementById(id).style.display = (id === "page"+pageName.charAt(0).toUpperCase()+pageName.slice(1)) ? "block" : "none");
