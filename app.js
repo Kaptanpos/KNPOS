@@ -1782,10 +1782,18 @@ console.log("İnternet paneli scriptleri aktif!");
 // ==========================================
 // İNTERNET SİPARİŞLERİ VE FİLTRELEME (KESİN VE SORUNSUZ)
 // ==========================================
-window.setInternetFilter = function(type) {
+window.setInternetFilter = function(type, clickedBtn) {
   const startInput = document.getElementById("netStartDate");
   const endInput = document.getElementById("netEndDate");
   if (!startInput || !endInput) return;
+
+  // Tüm tarih filtre butonlarındaki aktiflik sınıfını temizle (tıpkı kategoriler gibi)
+  document.querySelectorAll(".btn-date-filter").forEach(b => b.classList.remove("active-category", "active-date-btn"));
+  
+  // Tıklanan butona aktiflik sınıfını bas
+  if (clickedBtn) {
+    clickedBtn.classList.add("active-category", "active-date-btn");
+  }
 
   const now = new Date();
   const yyyy = now.getFullYear();
