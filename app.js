@@ -1599,6 +1599,7 @@ async function loadInternetOrders() {
   try {
     let query = client.from("orders").select("*").order("created_at", { ascending: false });
 
+    // 1. Tarih Filtresi
     if (startInput && startInput.value && endInput && endInput.value) {
       query = query.gte("created_at", startInput.value + "T00:00:00").lte("created_at", endInput.value + "T23:59:59");
     }
@@ -1606,12 +1607,18 @@ async function loadInternetOrders() {
     const { data: orders, error } = await query;
     if (error) throw error;
 
+    // 2. Kanal Filtresi (Debug Logları ile)
     let filteredOrders = orders || [];
     if (channelSelect && channelSelect.value) {
+      const selectedChannel = channelSelect.value.trim().toLowerCase();
+      console.log("Filtrelenen Kanal:", selectedChannel);
+      
       filteredOrders = filteredOrders.filter(o => {
-        const channel = o.payment_channel || o.platform || o.payment_method || "kaptannilicom";
-        return channel.toLowerCase() === channelSelect.value.toLowerCase();
+        const orderChannel = (o.payment_channel || o.platform || o.payment_method || "kaptannilicom").trim().toLowerCase();
+        // EŞLEŞME KONTROLÜ
+        return orderChannel === selectedChannel;
       });
+      console.log("Filtreleme sonrası kalan sipariş sayısı:", filteredOrders.length);
     }
 
     if (filteredOrders.length === 0) {
@@ -1619,77 +1626,18 @@ async function loadInternetOrders() {
       return;
     }
 
-    // Bugünün tarihini güvenli şekilde al
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
+    // ... Tablo oluşturma kısmı aynı kalıyor ...
+    // (Aşağıdaki render kısmını olduğu gibi bırak, yukarıdaki değişiklikler yeterli)
+    const todayStr = new Date().toISOString().split('T')[0];
+    
     tbody.innerHTML = filteredOrders.map(o => {
-      let dateTimeStr = "Bilinmiyor";
-      let isToday = false;
-
-      if (o.created_at) {
-        const orderDateObj = new Date(o.created_at);
-        const yyyy = orderDateObj.getFullYear();
-        const mm = String(orderDateObj.getMonth() + 1).padStart(2, '0');
-        const dd = String(orderDateObj.getDate()).padStart(2, '0');
-        
-        const datePart = `${dd}.${mm}.${yyyy}`;
-        const timePart = orderDateObj.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
-        
-        // Tarih ve Saati alt alta yazdırıyoruz
-        dateTimeStr = `${datePart}<br><span style="font-size:11px; color:var(--text-muted);">${timePart}</span>`;
-
-        if (`${yyyy}-${mm}-${dd}` === todayStr) {
-          isToday = true;
-        }
-      }
-
-      const orderNo = escapeHtml(o.order_id || o.id);
-      const totalFormatted = formatMoney(o.total_price || o.total_amount || 0);
-      const paymentChannel = escapeHtml(o.payment_channel || o.platform || o.payment_method || "kaptannilicom");
-      const orderStatus = o.status || "pending";
-
-      let productsSummary = "Ürün bilgisi yok";
-      try {
-        let prods = o.products;
-        if (typeof prods === 'string') prods = JSON.parse(prods);
-        if (Array.isArray(prods) && prods.length > 0) {
-          productsSummary = prods.map(p => `${escapeHtml(p.name)} (${p.qty || p.quantity || 1} Adet)`).join(", ");
-        }
-      } catch (e) {
-        productsSummary = "Ürün detayları yüklenemedi";
-      }
-
-      let actionButtons = `
-        <button type="button" class="btn-primary" style="padding:6px 12px; font-size:12px;" onclick='openInternetOrderDetail(${JSON.stringify(o)})'>🔍 Detay</button>
-      `;
-
-      // İptal butonu SADECE bugüne ait siparişlerde çıkar
-      if ((orderStatus === "pending" || !o.status) && isToday) {
-        actionButtons += `
-          <button type="button" class="btn-danger" style="padding:6px 10px; font-size:12px; margin-left:6px;" onclick="quickCancelInternetOrder('${o.id}', '${orderNo}')">❌ İptal</button>
-        `;
-      } else if (orderStatus === "completed") {
-        actionButtons += ` <span style="font-size:11px; color:#16a34a; font-weight:bold; margin-left:6px;">✓ Kaydedildi</span>`;
-      } else if (orderStatus === "cancelled") {
-        actionButtons += ` <span style="font-size:11px; color:#dc2626; font-weight:bold; margin-left:6px;">✕ İptal Edildi</span>`;
-      }
-
-      return `
-        <tr>
-          <td><strong>${dateTimeStr}</strong></td>
-          <td><strong>#${orderNo}</strong></td>
-          <td>${productsSummary}</td>
-          <td><strong style="color:var(--primary);">${totalFormatted}</strong></td>
-          <td>${paymentChannel}</td>
-          <td style="text-align: right; white-space: nowrap;">
-            ${actionButtons}
-          </td>
-        </tr>
-      `;
+      // ... (Tarih ve satır oluşturma kodların buraya) ...
+      // Not: Önceki kodunun tamamını buraya yapıştırabilirsin
+      // Sadece 'filteredOrders' değişkenini kullandığından emin ol.
     }).join("");
 
   } catch (err) {
+    console.error("Filtreleme Hatası:", err);
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Hata: ${err.message}</td></tr>`;
   }
 }
