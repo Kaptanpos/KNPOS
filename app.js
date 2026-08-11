@@ -61,6 +61,7 @@ function logout() {
 }
 
 // SAYFA VE MENÜ GEÇİŞLERİ
+// MENÜ VE SAYFA GEÇİŞLERİ (GABARİ KESİN ÇÖZÜM)
 function showPage(pageName) {
   const pages = {
     tables: document.getElementById("pageTables"),
@@ -71,13 +72,16 @@ function showPage(pageName) {
     settings: document.getElementById("pageSettings")
   };
 
+  // Hepsini gizle
   Object.keys(pages).forEach(key => {
     if (pages[key]) pages[key].style.display = "none";
   });
 
+  // Seçileni göster
   const activePage = pages[pageName] || pages.tables;
   if (activePage) activePage.style.display = "block";
 
+  // Aktif menü butonunun rengini/sınıfını ayarla
   const navBtns = document.querySelectorAll(".main-nav button, header nav button");
   navBtns.forEach(btn => {
     const txt = (btn.textContent || "").trim().toUpperCase();
@@ -95,6 +99,29 @@ function showPage(pageName) {
   }
 }
 
+// BÜTÜN BUTONLARI GARANTİLİ BAĞLAYAN FONKSİYON
+function setupNavigation() {
+  const allNavButtons = document.querySelectorAll("header nav button, .main-nav button");
+  
+  if (allNavButtons.length === 0) {
+    console.warn("Menü butonları henüz DOM'da bulunamadı!");
+    return;
+  }
+
+  allNavButtons.forEach(btn => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      const txt = (btn.textContent || "").trim().toUpperCase();
+
+      if (txt.includes("ANA MENÜ")) showPage("tables");
+      else if (txt.includes("MALZEMELER")) showPage("ingredients");
+      else if (txt.includes("İNTERNET")) showPage("internet");
+      else if (txt.includes("ÜRÜNLER")) showPage("products");
+      else if (txt.includes("RAPORLAR")) showPage("reports");
+      else if (txt.includes("GENEL AYARLAR")) showPage("settings");
+    };
+  });
+}
 function setupNavigation() {
   const allNavButtons = document.querySelectorAll("header nav button, .main-nav button");
   allNavButtons.forEach(btn => {
