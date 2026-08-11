@@ -401,10 +401,8 @@
   <option value="Kredi Kartı">Kredi Kartı</option>
 </select>
 
-<button type="button" id="btnNetToday" class="btn-date-filter" onclick="this.style.backgroundColor='var(--primary)'; this.style.color='#fff'; document.getElementById('btnNetMonth').style.backgroundColor=''; document.getElementById('btnNetMonth').style.color=''; setInternetFilter('today');">Bugün</button>
-
-<button type="button" id="btnNetMonth" class="btn-date-filter" onclick="this.style.backgroundColor='var(--primary)'; this.style.color='#fff'; document.getElementById('btnNetToday').style.backgroundColor=''; document.getElementById('btnNetToday').style.color=''; setInternetFilter('thisMonth');">Bu Ay</button>
-
+<button type="button" id="btnNetToday" class="btn-date-filter" onclick="setInternetFilter('today', this)">Bugün</button>
+<button type="button" id="btnNetMonth" class="btn-date-filter" onclick="setInternetFilter('thisMonth', this)">Bu Ay</button>
 <button type="button" class="btn-primary" onclick="loadInternetOrders()" style="margin-left:auto;">📊 FİLTRELE</button>
     
         
