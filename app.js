@@ -1827,6 +1827,7 @@ function openInternetOrderDetail(order) {
 }
 // Raporlardaki gibi Bugünü ve Bu Ayı otomatik seçen yardımcı fonksiyon
 
+// Seçilen butona tema rengini verir, diğerini gri tutar
 function setInternetFilter(type) {
   const startInput = document.getElementById("netStartDate");
   const endInput = document.getElementById("netEndDate");
@@ -1839,7 +1840,7 @@ function setInternetFilter(type) {
   const mm = String(now.getMonth() + 1).padStart(2, '0');
   const dd = String(now.getDate()).padStart(2, '0');
 
-  // Önce her iki butondan da aktif sınıfı sök
+  // Önce ikisinden de aktif sınıfı kaldır (gri yap)
   if (btnToday) btnToday.classList.remove('active-date-btn');
   if (btnMonth) btnMonth.classList.remove('active-date-btn');
 
@@ -1847,49 +1848,17 @@ function setInternetFilter(type) {
     const today = `${yyyy}-${mm}-${dd}`;
     startInput.value = today;
     endInput.value = today;
-    if (btnToday) btnToday.classList.add('active-date-btn'); // Tıklayınca yeşil/tema rengi olur
+    if (btnToday) btnToday.classList.add('active-date-btn'); // Aktif tema rengi
   } else if (type === 'thisMonth') {
     startInput.value = `${yyyy}-${mm}-01`;
     endInput.value = `${yyyy}-${mm}-${new Date(yyyy, now.getMonth() + 1, 0).getDate()}`;
-    if (btnMonth) btnMonth.classList.add('active-date-btn'); // Tıklayınca yeşil/tema rengi olur
+    if (btnMonth) btnMonth.classList.add('active-date-btn'); // Aktif tema rengi
   }
 
-  // Butona tıklandığı an filtrelemeyi otomatik çalıştır
   loadInternetOrders();
 }
 
-// Seçileni tema rengi, diğerini gri yapan filtre fonksiyonu
-function setInternetFilter(type) {
-  const startInput = document.getElementById("netStartDate");
-  const endInput = document.getElementById("netEndDate");
-  const btnToday = document.getElementById("btnNetToday");
-  const btnMonth = document.getElementById("btnNetMonth");
-  if (!startInput || !endInput) return;
-
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-
-  // Önce her iki butondan da aktiflik sınıfını söküp gri yapıyoruz
-  if (btnToday) btnToday.classList.remove('active-date-btn');
-  if (btnMonth) btnMonth.classList.remove('active-date-btn');
-
-  if (type === 'today') {
-    const today = `${yyyy}-${mm}-${dd}`;
-    startInput.value = today;
-    endInput.value = today;
-    if (btnToday) btnToday.classList.add('active-date-btn'); // Sadece Bugün yeşil/tema rengi olur
-  } else if (type === 'thisMonth') {
-    startInput.value = `${yyyy}-${mm}-01`;
-    endInput.value = `${yyyy}-${mm}-${new Date(yyyy, now.getMonth() + 1, 0).getDate()}`;
-    if (btnMonth) btnMonth.classList.add('active-date-btn'); // Sadece Bu Ay yeşil/tema rengi olur
-  }
-  loadInternetOrders();
-}
-
-
-// Güvenli İnternet Siparişleri Yükleme ve Ödeme Kanalı Filtresi
+// Ödeme kanalını ve tarih aralığını hatasız filtreleyen fonksiyon
 async function loadInternetOrders() {
   const tbody = document.getElementById("internetOrdersTbody");
   if (!tbody) return;
@@ -1909,10 +1878,13 @@ async function loadInternetOrders() {
     if (error) throw error;
 
     let filteredOrders = orders || [];
+    
+    // Ödeme kanalına göre kesin filtreleme
     if (channelSelect && channelSelect.value) {
+      const selectedChannel = channelSelect.value.trim().toLowerCase();
       filteredOrders = filteredOrders.filter(o => {
-        const channel = o.payment_channel || o.platform || o.payment_method || "kaptannilicom";
-        return channel.toLowerCase() === channelSelect.value.toLowerCase();
+        const channel = (o.payment_channel || o.platform || o.payment_method || "kaptannilicom").trim().toLowerCase();
+        return channel === selectedChannel;
       });
     }
 
@@ -1921,8 +1893,29 @@ async function loadInternetOrders() {
       return;
     }
 
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
     tbody.innerHTML = filteredOrders.map(o => {
-      const timeStr = o.created_at ? new Date(o.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}) : "Şimdi";
+      let dateTimeStr = "Bilinmiyor";
+      let isToday = false;
+
+      if (o.created_at) {
+        const orderDateObj = new Date(o.created_at);
+        const yyyy = orderDateObj.getFullYear();
+        const mm = String(orderDateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(orderDateObj.getDate()).padStart(2, '0');
+        
+        const datePart = `${dd}.${mm}.${yyyy}`;
+        const timePart = orderDateObj.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+        
+        dateTimeStr = `${datePart}<br><span style="font-size:11px; color:var(--text-muted);">${timePart}</span>`;
+
+        if (`${yyyy}-${mm}-${dd}` === todayStr) {
+          isToday = true;
+        }
+      }
+
       const orderNo = escapeHtml(o.order_id || o.id);
       const totalFormatted = formatMoney(o.total_price || o.total_amount || 0);
       const paymentChannel = escapeHtml(o.payment_channel || o.platform || o.payment_method || "kaptannilicom");
@@ -1943,7 +1936,7 @@ async function loadInternetOrders() {
         <button type="button" class="btn-primary" style="padding:6px 12px; font-size:12px;" onclick='openInternetOrderDetail(${JSON.stringify(o)})'>🔍 Detay</button>
       `;
 
-      if (orderStatus === "pending" || !o.status) {
+      if ((orderStatus === "pending" || !o.status) && isToday) {
         actionButtons += `
           <button type="button" class="btn-danger" style="padding:6px 10px; font-size:12px; margin-left:6px;" onclick="quickCancelInternetOrder('${o.id}', '${orderNo}')">❌ İptal</button>
         `;
@@ -1955,7 +1948,7 @@ async function loadInternetOrders() {
 
       return `
         <tr>
-          <td><strong>${timeStr}</strong></td>
+          <td><strong>${dateTimeStr}</strong></td>
           <td><strong>#${orderNo}</strong></td>
           <td>${productsSummary}</td>
           <td><strong style="color:var(--primary);">${totalFormatted}</strong></td>
@@ -1971,6 +1964,7 @@ async function loadInternetOrders() {
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Hata: ${err.message}</td></tr>`;
   }
 }
+
 function processInternetOrder(orderId) {
   alert(`Sipariş #${orderId} işleme alındı!`);
 }
