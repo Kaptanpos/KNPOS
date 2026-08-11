@@ -1779,6 +1779,9 @@ function openInternetOrderDetail(order) {
 // Seçilen butona tema rengini verir, diğerini gri tutar
 // Test etmek ve konsolda görmek için:
 console.log("İnternet paneli scriptleri aktif!");
+// ==========================================
+// İNTERNET SİPARİŞLERİ VE FİLTRELEME (KESİN VE SORUNSUZ)
+// ==========================================
 
 window.setInternetFilter = function(type) {
   const startInput = document.getElementById("netStartDate");
@@ -1792,26 +1795,22 @@ window.setInternetFilter = function(type) {
   const mm = String(now.getMonth() + 1).padStart(2, '0');
   const dd = String(now.getDate()).padStart(2, '0');
 
-  // Önce tüm butonları nötr (gri) yap
   if (btnToday) btnToday.style.backgroundColor = "";
   if (btnMonth) btnMonth.style.backgroundColor = "";
 
   if (type === 'today') {
     startInput.value = `${yyyy}-${mm}-${dd}`;
     endInput.value = `${yyyy}-${mm}-${dd}`;
-    if (btnToday) btnToday.style.backgroundColor = "var(--primary)"; // Aktif renk
+    if (btnToday) btnToday.style.backgroundColor = "var(--primary)";
   } else if (type === 'thisMonth') {
     startInput.value = `${yyyy}-${mm}-01`;
     endInput.value = `${yyyy}-${mm}-${new Date(yyyy, now.getMonth() + 1, 0).getDate()}`;
-    if (btnMonth) btnMonth.style.backgroundColor = "var(--primary)"; // Aktif renk
+    if (btnMonth) btnMonth.style.backgroundColor = "var(--primary)";
   }
 
   loadInternetOrders();
 };
-  loadInternetOrders();
-}
 
-// Ödeme kanalını ve tarih aralığını hatasız filtreleyen fonksiyon
 async function loadInternetOrders() {
   const tbody = document.getElementById("internetOrdersTbody");
   if (!tbody) return;
@@ -1832,7 +1831,6 @@ async function loadInternetOrders() {
 
     let filteredOrders = orders || [];
     
-    // Ödeme kanalına göre kesin filtreleme
     if (channelSelect && channelSelect.value) {
       const selectedChannel = channelSelect.value.trim().toLowerCase();
       filteredOrders = filteredOrders.filter(o => {
@@ -1917,25 +1915,7 @@ async function loadInternetOrders() {
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Hata: ${err.message}</td></tr>`;
   }
 }
-// Sayfa yüklendiğinde butonlara otomatik olay dinleyicisi bağlayalım
-document.addEventListener("DOMContentLoaded", () => {
-  const btnToday = document.getElementById("btnNetToday");
-  const btnMonth = document.getElementById("btnNetMonth");
 
-  if (btnToday) {
-    btnToday.addEventListener("click", () => {
-      console.log("Bugün butonuna tıklandı");
-      setInternetFilter('today');
-    });
-  }
-
-  if (btnMonth) {
-    btnMonth.addEventListener("click", () => {
-      console.log("Bu Ay butonuna tıklandı");
-      setInternetFilter('thisMonth');
-    });
-  }
-});
 function processInternetOrder(orderId) {
   alert(`Sipariş #${orderId} işleme alındı!`);
 }
