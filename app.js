@@ -1606,10 +1606,32 @@ function initRealtimeOrders() {
     .subscribe();
 }
 
-async function quickCancelInternetOrder(orderId, orderNo) {
+// Sadece AYNI GÜN içindeki siparişler iptal edilebilir
+function isSameLocalDay(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function canCancelInternetOrder(order) {
+  if (!order || !order.created_at) return false;
+  const created = new Date(order.created_at);
+  if (Number.isNaN(created.getTime())) return false;
+  return isSameLocalDay(created, new Date());
+}
+
+async function quickCancelInternetOrder(orderId, orderNo, createdAt) {
+  if (!canCancelInternetOrder({ created_at: createdAt })) {
+    alert("Bu sipariş bugüne ait değil. Sadece aynı gün içindeki siparişler iptal edilebilir.");
+    return;
+  }
   if (!confirm(`Sipariş #${orderNo} iptal edilsin mi?`)) return;
 
   try {
+    const { data: existing, error: fetchError } = await client.from("orders").select("created_at").eq("id", orderId).single();
+    if (fetchError) throw fetchError;
+    if (!canCancelInternetOrder(existing)) {
+      alert("Bu sipariş bugüne ait değil. Sadece aynı gün içindeki siparişler iptal edilebilir.");
+      return;
+    }
     const { error } = await client.from("orders").update({ status: "cancelled" }).eq("id", orderId);
     if (error) throw error;
     await loadInternetOrders();
@@ -1727,7 +1749,14 @@ function openInternetOrderDetail(order) {
     }
   };
 
-  document.getElementById("cancelInternetOrderBtn").onclick = async function() {
+  const cancelBtnEl = document.getElementById("cancelInternetOrderBtn");
+  const cancellable = canCancelInternetOrder(order);
+  cancelBtnEl.style.display = cancellable ? "" : "none";
+  cancelBtnEl.onclick = async function() {
+    if (!canCancelInternetOrder(order)) {
+      alert("Bu sipariş bugüne ait değil. Sadece aynı gün içindeki siparişler iptal edilebilir.");
+      return;
+    }
     if (confirm(`Sipariş #${orderIdText} iptal edilsin mi?`)) {
       await client.from("orders").update({ status: "cancelled" }).eq("id", order.id);
       alert("❌ Sipariş iptal edildi.");
@@ -1869,7 +1898,11 @@ async function loadInternetOrders() {
       let actionButtons = `<button type="button" class="btn-primary" style="padding:6px 12px; font-size:12px;" onclick="openInternetOrderDetail(JSON.parse(decodeURIComponent('${encodedOrder}')))">🔍 Detay</button>`;
 
       if (orderStatus === "pending" || !order.status) {
-        actionButtons += ` <button type="button" class="btn-danger" style="padding:6px 10px; font-size:12px; margin-left:6px;" onclick="quickCancelInternetOrder('${escapeHtml(order.id)}', '${orderNo}')">❌ İptal</button>`;
+        if (canCancelInternetOrder(order)) {
+          actionButtons += ` <button type="button" class="btn-danger" style="padding:6px 10px; font-size:12px; margin-left:6px;" onclick="quickCancelInternetOrder('${escapeHtml(order.id)}', '${orderNo}', '${escapeHtml(order.created_at || "")}')">❌ İptal</button>`;
+        } else {
+          actionButtons += ' <span style="font-size:11px; color:#64748b; margin-left:6px;">İptal süresi doldu</span>';
+        }
       } else if (orderStatus === "completed") {
         actionButtons += ' <span style="font-size:11px; color:#16a34a; font-weight:bold; margin-left:6px;">✓ Kaydedildi</span>';
       } else if (orderStatus === "cancelled") {
