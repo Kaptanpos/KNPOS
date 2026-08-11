@@ -10,7 +10,34 @@ function playOrderAlert() {
   const audio = document.getElementById('orderAlertSound');
   if (audio) { audio.currentTime = 0; audio.volume = 1.0; audio.play().catch(e => console.log(e)); }
 }
+function renderTables() {
+  const grid = document.getElementById("tablesGrid");
+  if (!grid) return;
+  const tables = JSON.parse(localStorage.getItem("knpos_tables_v1")) || [
+    { id: 1, name: "Masa 01", status: "closed", orders: [], total: 0 },
+    { id: 2, name: "Masa 02", status: "closed", orders: [], total: 0 },
+    { id: 3, name: "Masa 03", status: "closed", orders: [], total: 0 },
+    { id: 4, name: "Masa 04", status: "closed", orders: [], total: 0 },
+    { id: 5, name: "Masa 05", status: "closed", orders: [], total: 0 }
+  ];
+  grid.innerHTML = tables.map(t => `
+    <button type="button" class="table-card ${t.status || 'closed'}">
+      <div class="table-number">${escapeHtml(t.name)}</div>
+      ${t.status === "open" ? `<div class="table-total">${formatMoney(t.total)}</div>` : ""}
+    </button>
+  `).join("");
+}
 
+async function loadCashStatus() {
+  const cashStatus = document.getElementById("cashStatus");
+  if (cashStatus) cashStatus.innerHTML = '<div class="cash-status-title">KASA AKTİF</div>';
+}
+
+async function loadProducts() {}
+async function loadPaymentMethods() {}
+async function renderSales() {}
+async function loadIngredientsForDashboard() {}
+async function checkRecipeTable() {}
 // TEMA VE DOM İŞLEMLERİ
 const THEME_STORAGE_KEY = "knpos_primary_color_v1";
 async function loadThemeColor() {
