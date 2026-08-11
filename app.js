@@ -1832,7 +1832,7 @@ function openInternetOrderDetail(order) {
 // Test etmek ve konsolda görmek için:
 console.log("İnternet paneli scriptleri aktif!");
 
-function setInternetFilter(type) {
+window.setInternetFilter = function(type) {
   const startInput = document.getElementById("netStartDate");
   const endInput = document.getElementById("netEndDate");
   const btnToday = document.getElementById("btnNetToday");
@@ -1844,21 +1844,22 @@ function setInternetFilter(type) {
   const mm = String(now.getMonth() + 1).padStart(2, '0');
   const dd = String(now.getDate()).padStart(2, '0');
 
-  // Önce ikisinden de aktif sınıfı kaldır (gri yap)
-  if (btnToday) btnToday.classList.remove('active-date-btn');
-  if (btnMonth) btnMonth.classList.remove('active-date-btn');
+  // Önce tüm butonları nötr (gri) yap
+  if (btnToday) btnToday.style.backgroundColor = "";
+  if (btnMonth) btnMonth.style.backgroundColor = "";
 
   if (type === 'today') {
-    const today = `${yyyy}-${mm}-${dd}`;
-    startInput.value = today;
-    endInput.value = today;
-    if (btnToday) btnToday.classList.add('active-date-btn'); // Aktif tema rengi
+    startInput.value = `${yyyy}-${mm}-${dd}`;
+    endInput.value = `${yyyy}-${mm}-${dd}`;
+    if (btnToday) btnToday.style.backgroundColor = "var(--primary)"; // Aktif renk
   } else if (type === 'thisMonth') {
     startInput.value = `${yyyy}-${mm}-01`;
     endInput.value = `${yyyy}-${mm}-${new Date(yyyy, now.getMonth() + 1, 0).getDate()}`;
-    if (btnMonth) btnMonth.classList.add('active-date-btn'); // Aktif tema rengi
+    if (btnMonth) btnMonth.style.backgroundColor = "var(--primary)"; // Aktif renk
   }
 
+  loadInternetOrders();
+};
   loadInternetOrders();
 }
 
