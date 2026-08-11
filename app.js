@@ -1782,8 +1782,7 @@ console.log("İnternet paneli scriptleri aktif!");
 // ==========================================
 // İNTERNET SİPARİŞLERİ VE FİLTRELEME (KESİN VE SORUNSUZ)
 // ==========================================
-
-window.setInternetFilter = function(type) {
+window.setInternetFilter = function(type, btnElement) {
   const startInput = document.getElementById("netStartDate");
   const endInput = document.getElementById("netEndDate");
   const btnToday = document.getElementById("btnNetToday");
@@ -1795,21 +1794,37 @@ window.setInternetFilter = function(type) {
   const mm = String(now.getMonth() + 1).padStart(2, '0');
   const dd = String(now.getDate()).padStart(2, '0');
 
-  if (btnToday) btnToday.style.backgroundColor = "";
-  if (btnMonth) btnMonth.style.backgroundColor = "";
+  // Her iki butonun rengini ve sınıfını sıfırla (gri yap)
+  if (btnToday) {
+    btnToday.style.backgroundColor = "";
+    btnToday.style.color = "";
+    btnToday.classList.remove('active-date-btn');
+  }
+  if (btnMonth) {
+    btnMonth.style.backgroundColor = "";
+    btnMonth.style.color = "";
+    btnMonth.classList.remove('active-date-btn');
+  }
+
+  // Tıklanan butona tema rengini bas
+  const targetBtn = btnElement || (type === 'today' ? btnToday : btnMonth);
+  if (targetBtn) {
+    targetBtn.style.backgroundColor = "var(--primary)";
+    targetBtn.style.color = "#ffffff";
+    targetBtn.classList.add('active-date-btn');
+  }
 
   if (type === 'today') {
     startInput.value = `${yyyy}-${mm}-${dd}`;
     endInput.value = `${yyyy}-${mm}-${dd}`;
-    if (btnToday) btnToday.style.backgroundColor = "var(--primary)";
   } else if (type === 'thisMonth') {
     startInput.value = `${yyyy}-${mm}-01`;
     endInput.value = `${yyyy}-${mm}-${new Date(yyyy, now.getMonth() + 1, 0).getDate()}`;
-    if (btnMonth) btnMonth.style.backgroundColor = "var(--primary)";
   }
 
   loadInternetOrders();
 };
+
 
 async function loadInternetOrders() {
   const tbody = document.getElementById("internetOrdersTbody");
