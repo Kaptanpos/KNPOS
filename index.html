@@ -393,17 +393,17 @@
           <input type="date" id="netEndDate">
 
           <!-- Ödeme Kanalı Seçim Kutusu -->
-          <select id="netPaymentChannelFilter" style="padding: 9px 12px; border: 1px alt; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; background: white;">
-            <option value="">Tüm Ödeme Kanalları</option>
-            <option value="kaptannilicom">kaptannilicom</option>
-            <option value="Kapıda Ödeme">Kapıda Ödeme</option>
-            <option value="Kredi Kartı">Kredi Kartı</option>
-          </select>
+         <!-- Ödeme Kanalı Seçim Kutusu -->
+<select id="netPaymentChannelFilter" style="padding: 9px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; background: white;">
+  <option value="">Tüm Ödeme Kanalları</option>
+  <option value="kaptannilicom">kaptannilicom</option>
+  <option value="Kapıda Ödeme">Kapıda Ödeme</option>
+  <option value="Kredi Kartı">Kredi Kartı</option>
+</select>
 
-          <button type="button" id="btnNetToday" class="btn-date-filter" onclick="setInternetFilter('today')">Bugün</button>
-          <button type="button" id="btnNetMonth" class="btn-date-filter" onclick="setInternetFilter('thisMonth')">Bu Ay</button>
-          
-          <button type="button" class="btn-primary" onclick="loadInternetOrders()" style="margin-left:auto;">📊 FİLTRELE</button>
+<button type="button" id="btnNetToday" class="btn-date-filter" onclick="setInternetFilter('today')">Bugün</button>
+<button type="button" id="btnNetMonth" class="btn-date-filter" onclick="setInternetFilter('thisMonth')">Bu Ay</button>
+<button type="button" class="btn-primary" onclick="loadInternetOrders()" style="margin-left:auto;">📊 FİLTRELE</button>
         </div>
 
               <div style="max-height: 220px; overflow-y: auto;">
