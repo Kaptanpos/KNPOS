@@ -1968,7 +1968,25 @@ async function loadInternetOrders() {
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Hata: ${err.message}</td></tr>`;
   }
 }
+// Sayfa yüklendiğinde butonlara otomatik olay dinleyicisi bağlayalım
+document.addEventListener("DOMContentLoaded", () => {
+  const btnToday = document.getElementById("btnNetToday");
+  const btnMonth = document.getElementById("btnNetMonth");
 
+  if (btnToday) {
+    btnToday.addEventListener("click", () => {
+      console.log("Bugün butonuna tıklandı");
+      setInternetFilter('today');
+    });
+  }
+
+  if (btnMonth) {
+    btnMonth.addEventListener("click", () => {
+      console.log("Bu Ay butonuna tıklandı");
+      setInternetFilter('thisMonth');
+    });
+  }
+});
 function processInternetOrder(orderId) {
   alert(`Sipariş #${orderId} işleme alındı!`);
 }
