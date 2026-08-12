@@ -765,7 +765,9 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
     }
 
     container.innerHTML = items.map(item => {
-      const prodName = item.product_name || item.name || productMap[item.product_id] || "Ürün";
+      const savedName = String(item.product_name || item.name || item.title || item.urun_adi || item.description || "").trim();
+      const mappedName = (productMap[item.product_id] || "").trim();
+      const prodName = (savedName && savedName !== "Ürün") ? savedName : (mappedName || savedName || "Ürün");
       const lineTotal = Number(item.line_total || (item.quantity * item.unit_price) || 0);
       return `
         <div class="receipt-detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-color);">
@@ -1650,9 +1652,35 @@ function normalizeProductName(value) {
 }
 
 function getInternetProductName(p) {
-  if (!p) return "";
-  const raw = p.name || p.product_name || p.productName || p.title || p.urun || p["ürün"] || p.item_name || "";
-  return String(raw).trim();
+  if (p == null) return "";
+  if (typeof p === "string") return p.trim();
+
+  // 1) Doğrudan bilinen alanlar
+  const directKeys = [
+    "name", "product_name", "productName", "urun_adi", "urunAdi", "urun",
+    "ürün", "ürün_adı", "title", "item_name", "itemName", "label",
+    "description", "aciklama", "menu_name", "menuName"
+  ];
+  for (const k of directKeys) {
+    const v = p[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+
+  // 2) İç içe nesneler (product / item / urun / menu)
+  const nestedKeys = ["product", "item", "urun", "menu", "data", "details"];
+  for (const k of nestedKeys) {
+    if (p[k] && typeof p[k] === "object") {
+      const nested = getInternetProductName(p[k]);
+      if (nested) return nested;
+    }
+  }
+
+  // 3) Son çare: içinde ad/isim/name/title geçen ilk metin alanı
+  for (const [k, v] of Object.entries(p)) {
+    if (typeof v !== "string" || !v.trim()) continue;
+    if (/(name|title|ad|isim|urun|ürün)/i.test(k)) return v.trim();
+  }
+  return "";
 }
 
 function getInternetProductQty(p) {
@@ -1687,7 +1715,7 @@ async function buildSaleItemsFromInternetOrder(prods, saleId, fallbackTotal) {
     return {
       sale_id: saleId,
       product_id: match ? Number(match.id) : null,
-      product_name: name || "Ürün",
+      product_name: name || (match ? match.name : "") || "Ürün",
       quantity: qty,
       unit_price: Number(price.toFixed ? price.toFixed(2) : price),
       line_total: Number((qty * price).toFixed(2))
@@ -1695,17 +1723,37 @@ async function buildSaleItemsFromInternetOrder(prods, saleId, fallbackTotal) {
   });
 }
 
-// product_name kolonu yoksa insert'i kolonsuz tekrar dener
+// sale_items'a ürün adını kaydeder; kolon adı farklıysa sırayla dener
 async function insertSaleItemsSafe(saleItems) {
   if (!saleItems || saleItems.length === 0) return;
-  const { error } = await client.from("sale_items").insert(saleItems);
-  if (!error) return;
-  const fallback = saleItems.map(({ product_name, ...rest }) => ({
+
+  const nameColumns = ["product_name", "name", "title", "urun_adi", "description"];
+  for (const col of nameColumns) {
+    const rows = saleItems.map(({ product_name, ...rest }) => {
+      const row = { ...rest };
+      if (row.product_id == null) delete row.product_id;
+      row[col] = product_name;
+      return row;
+    });
+    const { error } = await client.from("sale_items").insert(rows);
+    if (!error) return;
+    // kolon yoksa sıradakini dene, başka hata ise dur
+    if (!/column|schema cache|does not exist/i.test(error.message || "")) {
+      // product_id zorunlu olabilir: eşleşen id yoksa 1'e düşür
+      const retry = rows.map(r => ({ ...r, product_id: r.product_id == null ? 1 : r.product_id }));
+      const { error: e2 } = await client.from("sale_items").insert(retry);
+      if (!e2) return;
+      throw e2;
+    }
+  }
+
+  // Hiçbir ad kolonu yoksa: en azından product_id ile kaydet
+  const bare = saleItems.map(({ product_name, ...rest }) => ({
     ...rest,
     product_id: rest.product_id == null ? 1 : rest.product_id
   }));
-  const { error: err2 } = await client.from("sale_items").insert(fallback);
-  if (err2) throw err2;
+  const { error: err3 } = await client.from("sale_items").insert(bare);
+  if (err3) throw err3;
 }
 
 // TEK VE KUSURSUZ İNTERNET SİPARİŞ DETAY FONKSİYONU
@@ -1933,11 +1981,10 @@ async function loadInternetOrders() {
 
       let productsSummary = "Ürün bilgisi yok";
       try {
-        let products = order.products;
-        if (typeof products === "string") products = JSON.parse(products);
+        let products = parseInternetProducts(order);
         if (Array.isArray(products) && products.length > 0) {
           productsSummary = products
-            .map(product => `${escapeHtml(product.name || "Ürün")} (${product.qty || product.quantity || 1} Adet)`)
+            .map(product => `${escapeHtml(getInternetProductName(product) || "Ürün")} (${getInternetProductQty(product)} Adet)`)
             .join(", ");
         }
       } catch (_) {
