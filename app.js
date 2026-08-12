@@ -765,7 +765,7 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
     }
 
     container.innerHTML = items.map(item => {
-      const prodName = productMap[item.product_id] || "Ürün";
+      const prodName = item.product_name || item.name || productMap[item.product_id] || "Ürün";
       const lineTotal = Number(item.line_total || (item.quantity * item.unit_price) || 0);
       return `
         <div class="receipt-detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-color);">
@@ -1640,6 +1640,74 @@ async function quickCancelInternetOrder(orderId, orderNo, createdAt) {
   }
 }
 
+// İNTERNET SİPARİŞ ÜRÜNLERİ: AD ÇÖZÜMLEME VE EŞLEŞTİRME
+function normalizeProductName(value) {
+  return String(value || "")
+    .trim()
+    .toLocaleLowerCase("tr-TR")
+    .replace(/ı/g, "i")
+    .replace(/\s+/g, " ");
+}
+
+function getInternetProductName(p) {
+  if (!p) return "";
+  const raw = p.name || p.product_name || p.productName || p.title || p.urun || p["ürün"] || p.item_name || "";
+  return String(raw).trim();
+}
+
+function getInternetProductQty(p) {
+  const q = Number(p?.qty ?? p?.quantity ?? p?.adet ?? 1);
+  return Number.isFinite(q) && q > 0 ? q : 1;
+}
+
+function getInternetProductPrice(p) {
+  const val = Number(p?.price ?? p?.unit_price ?? p?.fiyat ?? 0);
+  return Number.isFinite(val) ? val : 0;
+}
+
+function parseInternetProducts(order) {
+  let prods = order?.products ?? order?.items ?? order?.order_items;
+  if (typeof prods === "string") {
+    try { prods = JSON.parse(prods); } catch (e) { prods = []; }
+  }
+  return Array.isArray(prods) ? prods : [];
+}
+
+// Sipariş ürün adlarını ürün kartlarıyla eşleştirip doğru product_id bulur
+async function buildSaleItemsFromInternetOrder(prods, saleId, fallbackTotal) {
+  const { data: productsData } = await client.from("products").select("id, name, price");
+  const byName = {};
+  (productsData || []).forEach(p => { byName[normalizeProductName(p.name)] = p; });
+
+  return prods.map(p => {
+    const name = getInternetProductName(p);
+    const match = byName[normalizeProductName(name)] || null;
+    const qty = getInternetProductQty(p);
+    const price = getInternetProductPrice(p) || Number(match?.price || 0) || Number(fallbackTotal || 0) / Math.max(prods.length, 1) / qty;
+    return {
+      sale_id: saleId,
+      product_id: match ? Number(match.id) : null,
+      product_name: name || "Ürün",
+      quantity: qty,
+      unit_price: Number(price.toFixed ? price.toFixed(2) : price),
+      line_total: Number((qty * price).toFixed(2))
+    };
+  });
+}
+
+// product_name kolonu yoksa insert'i kolonsuz tekrar dener
+async function insertSaleItemsSafe(saleItems) {
+  if (!saleItems || saleItems.length === 0) return;
+  const { error } = await client.from("sale_items").insert(saleItems);
+  if (!error) return;
+  const fallback = saleItems.map(({ product_name, ...rest }) => ({
+    ...rest,
+    product_id: rest.product_id == null ? 1 : rest.product_id
+  }));
+  const { error: err2 } = await client.from("sale_items").insert(fallback);
+  if (err2) throw err2;
+}
+
 // TEK VE KUSURSUZ İNTERNET SİPARİŞ DETAY FONKSİYONU
 function openInternetOrderDetail(order) {
   let modal = document.getElementById("internetOrderDetailModal");
@@ -1679,18 +1747,10 @@ function openInternetOrderDetail(order) {
   document.getElementById("detCustomerName").textContent = custName;
   document.getElementById("detOrderId").textContent = "#" + orderIdText;
 
-  let productsHtml = "";
-  try {
-    let prods = order.products;
-    if (typeof prods === 'string') prods = JSON.parse(prods);
-    if (Array.isArray(prods)) {
-      productsHtml = prods.map(p => `• ${escapeHtml(p.name)} (${p.qty || p.quantity || 1} Adet)`).join("<br>");
-    } else {
-      productsHtml = "• TEST ÜRÜNÜ (1 Adet)";
-    }
-  } catch(e) {
-    productsHtml = "• TEST ÜRÜNÜ (1 Adet)";
-  }
+  const orderProducts = parseInternetProducts(order);
+  let productsHtml = orderProducts.length
+    ? orderProducts.map(p => `• ${escapeHtml(getInternetProductName(p) || "Ürün")} (${getInternetProductQty(p)} Adet)`).join("<br>")
+    : "• Ürün bilgisi yok";
 
   const contentBody = document.getElementById("detContentBody");
   contentBody.innerHTML = `
@@ -1720,20 +1780,10 @@ function openInternetOrderDetail(order) {
 
         if (saleErr) throw saleErr;
 
-        let prods = order.products;
-        if (typeof prods === 'string') {
-          try { prods = JSON.parse(prods); } catch(e) { prods = []; }
-        }
-
-        if (Array.isArray(prods) && prods.length > 0) {
-          const saleItems = prods.map(p => ({
-            sale_id: sale.id,
-            product_id: Number(p.id || 1),
-            quantity: Number(p.qty || p.quantity || 1),
-            unit_price: Number(p.price || totalVal),
-            line_total: Number(p.qty || p.quantity || 1) * Number(p.price || totalVal)
-          }));
-          await client.from("sale_items").insert(saleItems);
+        const prods = parseInternetProducts(order);
+        if (prods.length > 0) {
+          const saleItems = await buildSaleItemsFromInternetOrder(prods, sale.id, totalVal);
+          await insertSaleItemsSafe(saleItems);
         }
 
         await client.from("orders").update({ status: "completed" }).eq("id", order.id);
