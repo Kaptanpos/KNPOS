@@ -764,10 +764,14 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
       productsData.forEach(p => { productMap[p.id] = p.name; });
     }
 
-    container.innerHTML = items.map(item => {
+    const cachedNames = getInternetSaleProductNames(saleId);
+    container.innerHTML = items.map((item, itemIndex) => {
       const savedName = String(item.product_name || item.name || item.title || item.urun_adi || item.description || "").trim();
+      const cachedName = String(cachedNames[itemIndex] || "").trim();
       const mappedName = (productMap[item.product_id] || "").trim();
-      const prodName = (savedName && savedName !== "Ürün") ? savedName : (mappedName || savedName || "Ürün");
+      // İnternet siparişindeki gerçek ad önceliklidir. product_id=1 gibi yedek
+      // kimliklerin "Ürün" adını ezmesine izin verme.
+      const prodName = cachedName || ((savedName && normalizeProductName(savedName) !== "urun") ? savedName : "") || mappedName || "Ürün";
       const lineTotal = Number(item.line_total || (item.quantity * item.unit_price) || 0);
       return `
         <div class="receipt-detail-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-color);">
@@ -1651,36 +1655,64 @@ function normalizeProductName(value) {
     .replace(/\s+/g, " ");
 }
 
-function getInternetProductName(p) {
+function getInternetProductName(p, seen = new Set()) {
   if (p == null) return "";
   if (typeof p === "string") return p.trim();
+  if (typeof p !== "object" || seen.has(p)) return "";
+  seen.add(p);
 
-  // 1) Doğrudan bilinen alanlar
+  const isRealName = value => {
+    const text = String(value || "").trim();
+    return text && !["ürün", "urun", "product", "item"].includes(normalizeProductName(text));
+  };
   const directKeys = [
-    "name", "product_name", "productName", "urun_adi", "urunAdi", "urun",
-    "ürün", "ürün_adı", "title", "item_name", "itemName", "label",
-    "description", "aciklama", "menu_name", "menuName"
+    "product_name", "productName", "urun_adi", "urunAdi", "ürün_adı",
+    "item_name", "itemName", "menu_name", "menuName", "name", "title",
+    "label", "description", "aciklama", "urun", "ürün"
   ];
   for (const k of directKeys) {
-    const v = p[k];
-    if (typeof v === "string" && v.trim()) return v.trim();
+    if (typeof p[k] === "string" && isRealName(p[k])) return p[k].trim();
   }
 
-  // 2) İç içe nesneler (product / item / urun / menu)
-  const nestedKeys = ["product", "item", "urun", "menu", "data", "details"];
-  for (const k of nestedKeys) {
-    if (p[k] && typeof p[k] === "object") {
-      const nested = getInternetProductName(p[k]);
-      if (nested) return nested;
+  // Site verisi hangi seviyede gelirse gelsin tüm iç içe nesne/dizileri tara.
+  for (const value of Object.values(p)) {
+    if (value && typeof value === "object") {
+      if (Array.isArray(value)) {
+        for (const entry of value) {
+          const nested = getInternetProductName(entry, seen);
+          if (nested) return nested;
+        }
+      } else {
+        const nested = getInternetProductName(value, seen);
+        if (nested) return nested;
+      }
     }
   }
-
-  // 3) Son çare: içinde ad/isim/name/title geçen ilk metin alanı
   for (const [k, v] of Object.entries(p)) {
-    if (typeof v !== "string" || !v.trim()) continue;
-    if (/(name|title|ad|isim|urun|ürün)/i.test(k)) return v.trim();
+    if (typeof v === "string" && isRealName(v) && /(name|title|ad|isim|urun|ürün|product|item)/i.test(k)) return v.trim();
   }
   return "";
+}
+
+const INTERNET_SALE_NAMES_KEY = "knpos_internet_sale_product_names_v1";
+
+function getInternetSaleProductNames(saleId) {
+  try {
+    const all = JSON.parse(localStorage.getItem(INTERNET_SALE_NAMES_KEY) || "{}");
+    return Array.isArray(all[String(saleId)]) ? all[String(saleId)] : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveInternetSaleProductNames(saleId, saleItems) {
+  try {
+    const all = JSON.parse(localStorage.getItem(INTERNET_SALE_NAMES_KEY) || "{}");
+    all[String(saleId)] = saleItems.map(item => String(item.product_name || "Ürün").trim());
+    localStorage.setItem(INTERNET_SALE_NAMES_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.warn("İnternet siparişi ürün adları yerel olarak saklanamadı.");
+  }
 }
 
 function getInternetProductQty(p) {
@@ -1832,6 +1864,8 @@ function openInternetOrderDetail(order) {
         if (prods.length > 0) {
           const saleItems = await buildSaleItemsFromInternetOrder(prods, sale.id, totalVal);
           await insertSaleItemsSafe(saleItems);
+          // Veritabanında ürün adı kolonu olmasa dahi adisyonda gerçek adı göster.
+          saveInternetSaleProductNames(sale.id, saleItems);
         }
 
         await client.from("orders").update({ status: "completed" }).eq("id", order.id);
