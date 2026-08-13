@@ -2059,3 +2059,137 @@ async function loadInternetOrders() {
 function processInternetOrder(orderId) {
   alert(`Sipariş #${orderId} işleme alındı!`);
 }
+
+/* ============================================================
+   v7 EK: MALZEME KAYDET / DÜZENLE / ARAMA (eksik olan bölüm)
+   ============================================================ */
+
+function resetIngForm() {
+  const idEl = document.getElementById("editIngId");
+  const nameEl = document.getElementById("ingNameInput");
+  const unitEl = document.getElementById("ingUnitSelect");
+  const stockEl = document.getElementById("ingStockInput");
+  const titleEl = document.getElementById("ingFormTitle");
+  const cancelBtn = document.getElementById("resetIngFormBtn");
+
+  if (idEl) idEl.value = "";
+  if (nameEl) nameEl.value = "";
+  if (unitEl) unitEl.value = "gr";
+  if (stockEl) stockEl.value = "";
+  if (titleEl) titleEl.textContent = "Yeni Malzeme / Yarı Mamul Ekle";
+  if (cancelBtn) cancelBtn.style.display = "none";
+}
+
+async function saveIngredient() {
+  const btn = document.getElementById("saveIngBtn");
+  const id = (document.getElementById("editIngId")?.value || "").trim();
+  const name = (document.getElementById("ingNameInput")?.value || "").trim();
+  const unit = document.getElementById("ingUnitSelect")?.value || "gr";
+  const stockRaw = (document.getElementById("ingStockInput")?.value || "").trim();
+  const stock = stockRaw === "" ? 0 : Number(stockRaw);
+
+  if (!name) {
+    alert("Malzeme adı boş olamaz.");
+    document.getElementById("ingNameInput")?.focus();
+    return;
+  }
+  if (isNaN(stock)) {
+    alert("Stok miktarı sayı olmalı.");
+    return;
+  }
+  if (!client) {
+    alert("Veritabanı bağlantısı yok.");
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = "KAYDEDİLİYOR..."; }
+
+  try {
+    if (id) {
+      const { error } = await client
+        .from("ingredients")
+        .update({ name: name, unit: unit, stock_quantity: stock })
+        .eq("id", Number(id));
+      if (error) throw error;
+    } else {
+      // Aynı isimde malzeme varsa uyar
+      const dup = (allIngredients || []).find(
+        i => (i.name || "").trim().toLocaleLowerCase("tr") === name.toLocaleLowerCase("tr")
+      );
+      if (dup && !confirm(`"${dup.name}" zaten var. Yine de yeni kayıt eklensin mi?`)) {
+        if (btn) { btn.disabled = false; btn.textContent = "KAYDET"; }
+        return;
+      }
+      const { error } = await client
+        .from("ingredients")
+        .insert([{ name: name, unit: unit, stock_quantity: stock }]);
+      if (error) throw error;
+    }
+
+    resetIngForm();
+    await loadIngredients();
+    const s = document.getElementById("searchIngInput");
+    if (s && s.value.trim()) filterIngredientsList();
+  } catch (err) {
+    alert("Malzeme kaydedilemedi: " + (err?.message || err));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "KAYDET"; }
+  }
+}
+
+function ingSearchNormalize(v) {
+  return (v || "")
+    .toString()
+    .toLocaleLowerCase("tr")
+    .replace(/ı/g, "i").replace(/İ/g, "i")
+    .replace(/ş/g, "s").replace(/ğ/g, "g")
+    .replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function filterIngredientsList() {
+  const q = ingSearchNormalize(document.getElementById("searchIngInput")?.value);
+  const list = allIngredients || [];
+  if (!q) {
+    renderIngredientsTable(list);
+    return;
+  }
+  const filtered = list.filter(i =>
+    ingSearchNormalize(i.name).includes(q) ||
+    ingSearchNormalize(i.unit).includes(q)
+  );
+  renderIngredientsTable(filtered);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("saveIngBtn")?.addEventListener("click", saveIngredient);
+  document.getElementById("resetIngFormBtn")?.addEventListener("click", resetIngForm);
+
+  const searchEl = document.getElementById("searchIngInput");
+  if (searchEl) {
+    searchEl.addEventListener("input", filterIngredientsList);
+    searchEl.addEventListener("search", filterIngredientsList);
+  }
+
+  document.getElementById("ingNameInput")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") saveIngredient();
+  });
+  document.getElementById("ingStockInput")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") saveIngredient();
+  });
+});
+
+// Liste her yüklendiğinde arama kutusundaki filtre korunsun
+const __origLoadIngredients = typeof loadIngredients === "function" ? loadIngredients : null;
+if (__origLoadIngredients) {
+  window.loadIngredients = async function () {
+    await __origLoadIngredients.apply(this, arguments);
+    const s = document.getElementById("searchIngInput");
+    if (s && s.value.trim()) filterIngredientsList();
+  };
+}
+
+window.saveIngredient = saveIngredient;
+window.resetIngForm = resetIngForm;
+window.filterIngredientsList = filterIngredientsList;
