@@ -2193,3 +2193,120 @@ if (__origLoadIngredients) {
 window.saveIngredient = saveIngredient;
 window.resetIngForm = resetIngForm;
 window.filterIngredientsList = filterIngredientsList;
+
+/* ================= REÇETE DÜZELTME EKİ (v3.8) ================= */
+/* Sorun: #addRecipeItemBtn (EKLE) hiçbir yere bağlı değildi ve
+   reçete fonksiyonları window'a atanmadığı için inline onclick'ler
+   ReferenceError veriyordu. Ayrıca exportRecipeExcel/importRecipeExcel yoktu. */
+
+// 1) Reçete satırı ekleme: kolon adı farklıysa (quantity_required / quantity / amount) otomatik dene
+async function addRecipeItemSafe() {
+  if (!selectedRecipeProductId) {
+    alert("Önce bir ürün seçin.");
+    return;
+  }
+  const select = document.getElementById("recipeIngSelect");
+  const qtyInput = document.getElementById("recipeQtyInput");
+  const ingId = select ? select.value : "";
+  const qty = qtyInput ? parseFloat(String(qtyInput.value).replace(",", ".")) : NaN;
+
+  if (!ingId) { alert("Lütfen bir malzeme seçin."); return; }
+  if (isNaN(qty) || qty <= 0) { alert("Lütfen geçerli bir miktar girin."); return; }
+
+  const base = { product_id: Number(selectedRecipeProductId), ingredient_id: Number(ingId) };
+  const qtyColumns = ["quantity_required", "quantity", "amount", "miktar"];
+  let lastErr = null;
+
+  for (const col of qtyColumns) {
+    const { error } = await client.from("recipes").insert({ ...base, [col]: qty });
+    if (!error) {
+      if (qtyInput) qtyInput.value = "";
+      await loadRecipeItemsForProduct(selectedRecipeProductId);
+      return;
+    }
+    lastErr = error;
+    // kolon yoksa sıradakini dene, başka hata ise dur
+    if (!/column|schema cache|does not exist/i.test(error.message || "")) break;
+  }
+  alert("Reçeteye eklenemedi: " + (lastErr?.message || "bilinmeyen hata"));
+}
+
+// 2) Butonu bağla (delege + doğrudan) — modal sonradan açılsa da çalışır
+document.addEventListener("click", function (e) {
+  const btn = e.target.closest && e.target.closest("#addRecipeItemBtn");
+  if (btn) {
+    e.preventDefault();
+    addRecipeItemSafe();
+  }
+});
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Enter" && e.target && e.target.id === "recipeQtyInput") {
+    e.preventDefault();
+    addRecipeItemSafe();
+  }
+});
+
+// 3) Reçete Excel indir / yükle
+function exportRecipeExcel() {
+  if (typeof XLSX === "undefined") { alert("Excel kütüphanesi yüklenemedi."); return; }
+  if (!selectedRecipeProductId) { alert("Önce ürün reçetesini açın."); return; }
+  client.from("recipes").select("*").eq("product_id", selectedRecipeProductId).then(({ data }) => {
+    const rows = (data || []).map(r => {
+      const ing = (allIngredients || []).find(i => i.id === r.ingredient_id);
+      return {
+        malzeme_id: r.ingredient_id,
+        malzeme_adi: ing ? ing.name : "",
+        miktar: r.quantity_required ?? r.quantity ?? 0,
+        birim: ing ? (ing.unit || "gr") : "gr"
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ malzeme_id: "", malzeme_adi: "", miktar: "", birim: "" }]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Recete");
+    XLSX.writeFile(wb, "recete_" + selectedRecipeProductId + ".xlsx");
+  });
+}
+
+async function importRecipeExcel(event) {
+  if (typeof XLSX === "undefined") { alert("Excel kütüphanesi yüklenemedi."); return; }
+  const file = event?.target?.files?.[0];
+  if (!file || !selectedRecipeProductId) return;
+
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type: "array" });
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+
+  const normName = (s) => String(s || "").toLocaleLowerCase("tr").replace(/\s+/g, "");
+  let ok = 0, fail = 0;
+
+  for (const row of rows) {
+    const qty = parseFloat(String(row.miktar ?? row.quantity ?? "").replace(",", "."));
+    let ingId = Number(row.malzeme_id || row.ingredient_id || 0);
+    if (!ingId && row.malzeme_adi) {
+      const found = (allIngredients || []).find(i => normName(i.name) === normName(row.malzeme_adi));
+      if (found) ingId = found.id;
+    }
+    if (!ingId || isNaN(qty) || qty <= 0) { fail++; continue; }
+
+    const { error } = await client.from("recipes").insert({
+      product_id: Number(selectedRecipeProductId),
+      ingredient_id: ingId,
+      quantity_required: qty
+    });
+    error ? fail++ : ok++;
+  }
+
+  event.target.value = "";
+  await loadRecipeItemsForProduct(selectedRecipeProductId);
+  alert(`Excel yüklendi. Eklenen: ${ok}, atlanan: ${fail}`);
+}
+
+// 4) Inline onclick'ler için global erişim
+window.openRecipeModal = openRecipeModal;
+window.loadRecipeItemsForProduct = loadRecipeItemsForProduct;
+window.addRecipeItem = addRecipeItemSafe;
+window.addRecipeItemSafe = addRecipeItemSafe;
+window.deleteRecipeItem = deleteRecipeItem;
+window.exportRecipeExcel = exportRecipeExcel;
+window.importRecipeExcel = importRecipeExcel;
+window.editIngredient = editIngredient;
