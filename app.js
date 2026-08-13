@@ -1165,6 +1165,7 @@ function renderIngredientsTable(ingredients) {
       <td style="text-align: right;">
         <button type="button" class="btn-edit" onclick="editIngredient(${ing.id})">Düzenle</button>
         <button type="button" class="btn-toggle" onclick="adjustIngredientStock(${ing.id})">Stok Ekle/Düş</button>
+        <button type="button" class="btn-ing-delete" onclick="deleteIngredient(${ing.id})" style="background:#dc2626;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;margin-left:4px;">Sil</button>
       </td>
     `;
     tbody.appendChild(tr);
@@ -2310,3 +2311,31 @@ window.deleteRecipeItem = deleteRecipeItem;
 window.exportRecipeExcel = exportRecipeExcel;
 window.importRecipeExcel = importRecipeExcel;
 window.editIngredient = editIngredient;
+
+async function deleteIngredient(id) {
+  const ing = (allIngredients || []).find(i => i.id === id);
+  const name = ing ? ing.name : "Bu malzeme";
+  if (!confirm(`'${name}' silinsin mi?\n\nBu malzeme reçetelerde kullanılıyorsa reçete satırları da silinecek. Bu işlem geri alınamaz.`)) return;
+
+  try {
+    // Önce reçetelerdeki bağlı satırları temizle (foreign key hatasını önler)
+    try { await client.from("recipe_items").delete().eq("ingredient_id", id); } catch (e) { /* tablo yoksa geç */ }
+
+    const { error } = await client.from("ingredients").delete().eq("id", id);
+    if (error) throw error;
+
+    // Düzenleme formunda bu malzeme açıksa formu sıfırla
+    const editEl = document.getElementById("editIngId");
+    if (editEl && String(editEl.value) === String(id) && typeof resetIngForm === "function") resetIngForm();
+
+    alert(`✅ '${name}' silindi.`);
+    await loadIngredients();
+    if (typeof loadIngredientsForDashboard === "function") loadIngredientsForDashboard();
+    if (selectedRecipeProductId && typeof loadRecipeItemsForProduct === "function") {
+      loadRecipeItemsForProduct(selectedRecipeProductId);
+    }
+  } catch (err) {
+    alert("Malzeme silinemedi: " + (err.message || err));
+  }
+}
+window.deleteIngredient = deleteIngredient;
