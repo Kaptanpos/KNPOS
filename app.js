@@ -833,15 +833,29 @@ async function loadManagementProducts() {
   try {
     const { data, error } = await client.from("products").select("*").order("name", { ascending: true });
     if (error) throw error;
-    
+
     window.kaptanManagementList = data || [];
-    renderManagementProductsTable(window.kaptanManagementList);
+
+    // Hangi ürünlerin reçetesi var tek sorguda al
+    let recipeProductIds = new Set();
+    try {
+      const { data: recipeRows } = await client.from("recipes").select("product_id");
+      if (recipeRows) {
+        recipeRows.forEach(r => {
+          if (r.product_id) recipeProductIds.add(String(r.product_id));
+        });
+      }
+    } catch (e) {
+      console.log("Reçete sayısı alınamadı, varsayılan mor renk kullanılacak.", e);
+    }
+
+    renderManagementProductsTable(window.kaptanManagementList, recipeProductIds);
   } catch (err) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Ürünler yüklenemedi.</td></tr>';
   }
 }
 
-function renderManagementProductsTable(products) {
+function renderManagementProductsTable(products, recipeProductIds) {
   const tbody = document.getElementById("managementProductsTbody");
   if (!tbody) return;
 
@@ -854,7 +868,11 @@ function renderManagementProductsTable(products) {
   products.forEach(p => {
     const tr = document.createElement("tr");
     const imageHtml = p.image_url ? `<img src="${escapeHtml(p.image_url)}" style="width:30px;height:30px;object-fit:contain;">` : "🍰";
-    
+    const hasRecipe = recipeProductIds && recipeProductIds.has(String(p.id));
+    const recipeBtnStyle = hasRecipe
+      ? "background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;margin-left:4px;"
+      : "background:#7c3aed;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;margin-left:4px;";
+
     tr.innerHTML = `
       <td>${imageHtml}</td>
       <td><strong>${escapeHtml(p.name)}</strong></td>
@@ -863,7 +881,7 @@ function renderManagementProductsTable(products) {
       <td>${p.active !== false ? '<span class="badge-active">Aktif</span>' : '<span class="badge-passive">Pasif</span>'}</td>
       <td style="text-align: right;">
         <button type="button" class="btn-edit" onclick="editManagementProduct(${p.id})">Düzenle</button>
-        <button type="button" class="btn-recipe" onclick="openRecipeModal(${p.id}, '${escapeHtml(p.name).replace(/'/g, "\\'")}')">Reçete</button>
+        <button type="button" class="btn-recipe" onclick="openRecipeModal(${p.id}, '${escapeHtml(p.name).replace(/'/g, "\\'")}')" style="${recipeBtnStyle}">Reçete</button>
         <button type="button" class="btn-toggle" onclick="toggleProductStatus(${p.id}, ${p.active !== false})">${p.active !== false ? 'Pasif Yap' : 'Aktif Yap'}</button>
         <button type="button" class="btn-prod-delete" onclick="deleteProduct(${p.id})" style="background:#dc2626;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;margin-left:4px;">Sil</button>
       </td>
