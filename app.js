@@ -865,6 +865,7 @@ function renderManagementProductsTable(products) {
         <button type="button" class="btn-edit" onclick="editManagementProduct(${p.id})">Düzenle</button>
         <button type="button" class="btn-recipe" onclick="openRecipeModal(${p.id}, '${escapeHtml(p.name).replace(/'/g, "\\'")}')">Reçete</button>
         <button type="button" class="btn-toggle" onclick="toggleProductStatus(${p.id}, ${p.active !== false})">${p.active !== false ? 'Pasif Yap' : 'Aktif Yap'}</button>
+        <button type="button" class="btn-prod-delete" onclick="deleteProduct(${p.id})" style="background:#dc2626;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;margin-left:4px;">Sil</button>
       </td>
     `;
     tbody.appendChild(tr);
@@ -2339,3 +2340,41 @@ async function deleteIngredient(id) {
   }
 }
 window.deleteIngredient = deleteIngredient;
+
+async function deleteProduct(id) {
+  const list = (window.kaptanManagementList || saleProducts || []);
+  const p = list.find(x => x.id === id);
+  const name = p ? p.name : "Bu ürün";
+  if (!confirm(`'${name}' silinsin mi?\n\nÜrünün reçetesi de silinecek. Bu işlem geri alınamaz.`)) return;
+
+  try {
+    try { await client.from("recipe_items").delete().eq("product_id", id); } catch (e) { /* tablo yoksa geç */ }
+
+    const { error } = await client.from("products").delete().eq("id", id);
+    if (error) {
+      // Geçmiş satışlara bağlıysa silinemez -> pasife al
+      if (String(error.message || "").toLowerCase().includes("foreign key") || error.code === "23503") {
+        const passivate = confirm(`'${name}' geçmiş satışlarda kullanıldığı için silinemiyor.\n\nBunun yerine PASİF yapılsın mı? (Satış ekranında görünmez)`);
+        if (passivate) {
+          const { error: upErr } = await client.from("products").update({ active: false }).eq("id", id);
+          if (upErr) throw upErr;
+          alert(`'${name}' pasif yapıldı.`);
+          await loadProducts();
+          if (typeof loadManagementProducts === "function") await loadManagementProducts();
+        }
+        return;
+      }
+      throw error;
+    }
+
+    const editEl = document.getElementById("editProductId");
+    if (editEl && String(editEl.value) === String(id) && typeof resetProductForm === "function") resetProductForm();
+
+    alert(`✅ '${name}' silindi.`);
+    await loadProducts();
+    if (typeof loadManagementProducts === "function") await loadManagementProducts();
+  } catch (err) {
+    alert("Ürün silinemedi: " + (err.message || err));
+  }
+}
+window.deleteProduct = deleteProduct;
