@@ -288,8 +288,18 @@
       <p class="brand-subtitle">BOUTIQUE DESSERT PRODUCTION & POS</p>
       
       <div class="login-form">
-        <input type="password" id="loginPassword" placeholder="Şifreniz" autocomplete="current-password">
+        <div style="position:relative;">
+          <input type="password" id="loginPassword" placeholder="Şifreniz" autocomplete="current-password" style="padding-right:52px;">
+          <button type="button" id="togglePwdBtn" title="Şifreyi göster/gizle"
+            style="position:absolute; right:8px; top:8px; width:38px; height:38px; padding:0; background:transparent; color:#6b7280; font-size:18px; border:none; cursor:pointer;">👁</button>
+        </div>
         <button type="button" id="loginButton">GİRİŞ YAP</button>
+        <div id="loginStatus" style="margin-top:12px; font-size:13px; font-weight:600; min-height:18px; color:#b91c1c;"></div>
+        <button type="button" id="forgotPwdBtn"
+          style="margin-top:10px; background:transparent; color:#374151; font-size:13px; font-weight:600; text-decoration:underline; padding:6px;">Şifremi unuttum / Şifre değiştir</button>
+        <div style="margin-top:14px; font-size:11px; color:#9ca3af; line-height:1.5;">
+          🔒 3 hatalı denemede giriş 5 dakika bloke edilir.<br>Şifre değişikliği e-posta doğrulama kodu ister.
+        </div>
       </div>
     </div>
   </div>
@@ -706,6 +716,20 @@
             <div id="paymentMethodsList" style="max-height:220px; overflow-y:auto; border:1px solid var(--border-color); padding:10px; border-radius:10px;"></div>
           </div>
 
+          <div class="admin-form-card" style="max-width: 100%;">
+            <h3>🔐 Güvenlik / Şifre Değiştir</h3>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">
+              Şifre değişikliği için kayıtlı e-posta adreslerinden birine <b>tek kullanımlık doğrulama kodu</b> gönderilir.
+              Kod girilmeden şifre değiştirilemez.
+            </p>
+            <button type="button" class="btn-primary" onclick="openPasswordModal()" style="padding:12px 20px;">ŞİFRE DEĞİŞTİR</button>
+            <div style="margin-top:14px; font-size:12px; color:var(--text-muted); line-height:1.7;">
+              • Hatalı giriş 3 defa denenirse sistem <b>5 dakika</b> kilitlenir.<br>
+              • Doğrulama kodu sadece <b>denizmazlumoglu@gmail.com</b> veya <b>nilaymazlumoglu@gmail.com</b> adresine gider.<br>
+              • Kod 10 dakika geçerlidir, tek kullanımlıktır.
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -878,7 +902,56 @@
     </div>
   </div>
 
+
+  <!-- ŞİFRE DEĞİŞTİRME / KURTARMA MODALI -->
+  <div id="pwdModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center; padding:16px;">
+    <div style="background:#fff; border-radius:20px; padding:28px; width:100%; max-width:440px; max-height:92vh; overflow-y:auto; box-shadow:0 25px 50px rgba(0,0,0,0.3);">
+      <h3 style="margin:0 0 6px; font-size:19px; color:#111827;">🔐 Güvenli Şifre Değiştirme</h3>
+      <p style="font-size:12.5px; color:#6b7280; margin:0 0 18px; line-height:1.6;">
+        Doğrulama kodu seçtiğin e-posta adresine gönderilir. Kod girilmeden şifre değişmez.
+      </p>
+
+      <div class="form-group" style="margin-bottom:14px;">
+        <label style="font-size:13px; font-weight:700; color:#374151;">1) Kod gönderilecek e-posta</label>
+        <select id="pwdEmailSelect" style="width:100%; padding:12px; margin-top:6px; border:2px solid #e5e7eb; border-radius:10px; font-size:15px;">
+          <option value="denizmazlumoglu@gmail.com">denizmazlumoglu@gmail.com</option>
+          <option value="nilaymazlumoglu@gmail.com">nilaymazlumoglu@gmail.com</option>
+        </select>
+      </div>
+
+      <button type="button" id="pwdSendCodeBtn" class="btn-primary" style="width:100%; padding:12px; margin-bottom:16px;">DOĞRULAMA KODU GÖNDER</button>
+
+      <div class="form-group" style="margin-bottom:14px;">
+        <label style="font-size:13px; font-weight:700; color:#374151;">2) E-postana gelen 6 haneli kod</label>
+        <input type="text" id="pwdOtpInput" inputmode="numeric" maxlength="6" placeholder="______"
+          style="width:100%; padding:12px; margin-top:6px; border:2px solid #e5e7eb; border-radius:10px; font-size:22px; letter-spacing:8px; text-align:center;">
+      </div>
+
+      <div id="pwdCurrentWrap" class="form-group" style="margin-bottom:14px; display:none;">
+        <label style="font-size:13px; font-weight:700; color:#374151;">Mevcut şifre (onaylayan e-posta farklı olduğu için gerekli)</label>
+        <input type="password" id="pwdCurrentInput" placeholder="Mevcut şifre" autocomplete="current-password"
+          style="width:100%; padding:12px; margin-top:6px; border:2px solid #e5e7eb; border-radius:10px; font-size:15px;">
+      </div>
+
+      <div class="form-group" style="margin-bottom:10px;">
+        <label style="font-size:13px; font-weight:700; color:#374151;">3) Yeni şifre</label>
+        <input type="password" id="pwdNewInput" placeholder="En az 8 karakter, harf + rakam" autocomplete="new-password"
+          style="width:100%; padding:12px; margin-top:6px; border:2px solid #e5e7eb; border-radius:10px; font-size:15px;">
+        <input type="password" id="pwdNewInput2" placeholder="Yeni şifre (tekrar)" autocomplete="new-password"
+          style="width:100%; padding:12px; margin-top:10px; border:2px solid #e5e7eb; border-radius:10px; font-size:15px;">
+        <div id="pwdStrength" style="font-size:12px; font-weight:700; margin-top:8px; color:#9ca3af;">Şifre gücü: —</div>
+      </div>
+
+      <div id="pwdModalStatus" style="font-size:13px; font-weight:600; min-height:20px; margin-bottom:12px; color:#b91c1c;"></div>
+
+      <div style="display:flex; gap:10px;">
+        <button type="button" id="pwdSubmitBtn" class="btn-primary" style="flex:1; padding:12px;">ŞİFREYİ DEĞİŞTİR</button>
+        <button type="button" class="btn-secondary" style="flex:0 0 110px; padding:12px;" onclick="closePasswordModal()">KAPAT</button>
+      </div>
+    </div>
+  </div>
+
   <!-- JS Dosyası -->
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>
