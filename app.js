@@ -103,119 +103,27 @@ function applyThemeColor(primaryHex, darkHex) {
   document.documentElement.style.setProperty('--primary-dark', resolvedDark);
 }
 
-// ==========================================================
-// 1. GÜVENLİ GİRİŞ İŞLEMİ (3 hatalı deneme -> 5 dk bloke)
-// ==========================================================
-const PRIMARY_EMAIL = "denizmazlumoglu@gmail.com";
-const RECOVERY_EMAILS = ["denizmazlumoglu@gmail.com", "nilaymazlumoglu@gmail.com"];
-
-const LOCK_KEY = "knpos_login_lock_v1";
-const MAX_FAILS = 3;
-const LOCK_MS = 5 * 60 * 1000;
-let lockTimerId = null;
-
-function getLockState() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(LOCK_KEY) || "{}");
-    return { fails: Number(raw.fails) || 0, until: Number(raw.until) || 0 };
-  } catch (e) {
-    return { fails: 0, until: 0 };
-  }
-}
-
-function setLockState(state) {
-  try { localStorage.setItem(LOCK_KEY, JSON.stringify(state)); } catch (e) {}
-}
-
-function clearLockState() {
-  try { localStorage.removeItem(LOCK_KEY); } catch (e) {}
-}
-
-function lockRemainingMs() {
-  const s = getLockState();
-  return Math.max(0, s.until - Date.now());
-}
-
-function setLoginStatus(msg, color) {
-  const el = document.getElementById("loginStatus");
-  if (!el) return;
-  el.textContent = msg || "";
-  el.style.color = color || "#b91c1c";
-}
-
-function refreshLoginLockUI() {
-  const remaining = lockRemainingMs();
-  const btn = document.getElementById("loginButton");
-  const input = document.getElementById("loginPassword");
-
-  if (remaining > 0) {
-    const total = Math.ceil(remaining / 1000);
-    const mm = String(Math.floor(total / 60)).padStart(2, "0");
-    const ss = String(total % 60).padStart(2, "0");
-    setLoginStatus("🔒 Çok fazla hatalı deneme. Kalan süre: " + mm + ":" + ss, "#b91c1c");
-    if (btn) { btn.disabled = true; btn.style.opacity = "0.5"; btn.style.cursor = "not-allowed"; }
-    if (input) input.disabled = true;
-  } else {
-    if (btn) { btn.disabled = false; btn.style.opacity = "1"; btn.style.cursor = "pointer"; }
-    if (input) input.disabled = false;
-    const s = getLockState();
-    if (s.until && s.until <= Date.now()) clearLockState();
-    if (!document.getElementById("loginStatus") || !getLockState().fails) {
-      // temiz durum
-    }
-  }
-}
-
-function startLockWatcher() {
-  if (lockTimerId) clearInterval(lockTimerId);
-  refreshLoginLockUI();
-  lockTimerId = setInterval(refreshLoginLockUI, 1000);
-}
+// 1. GİRİŞ İŞLEMİ
+const AUTH_EMAIL = "denizmazlumoglu@gmail.com";
 
 async function login() {
-  const input = document.getElementById("loginPassword");
-  const password = input ? input.value : "";
-
-  if (lockRemainingMs() > 0) {
-    refreshLoginLockUI();
-    return;
-  }
+  const password = loginPassword ? loginPassword.value : "";
 
   if (!password) {
-    setLoginStatus("Lütfen şifrenizi giriniz.", "#b91c1c");
+    alert("Lütfen şifrenizi giriniz.");
     return;
   }
-
-  const btn = document.getElementById("loginButton");
-  if (btn) { btn.disabled = true; btn.textContent = "KONTROL EDİLİYOR..."; }
-  setLoginStatus("");
 
   try {
     const { error } = await client.auth.signInWithPassword({
-      email: PRIMARY_EMAIL,
+      email: AUTH_EMAIL,
       password: password
     });
 
-    if (btn) { btn.disabled = false; btn.textContent = "GİRİŞ YAP"; }
-
     if (error) {
-      const s = getLockState();
-      const fails = s.fails + 1;
-      if (fails >= MAX_FAILS) {
-        setLockState({ fails: 0, until: Date.now() + LOCK_MS });
-        startLockWatcher();
-      } else {
-        setLockState({ fails: fails, until: 0 });
-        setLoginStatus("Şifre hatalı. Kalan deneme hakkı: " + (MAX_FAILS - fails), "#b91c1c");
-      }
-      if (input) input.value = "";
+      alert("Giriş Başarısız: Şifre hatalı veya kullanıcı bulunamadı.");
       return;
     }
-
-    clearLockState();
-    if (lockTimerId) { clearInterval(lockTimerId); lockTimerId = null; }
-    setLoginStatus("");
-    if (input) input.value = "";
 
     if (loginScreen) loginScreen.style.display = "none";
     if (appShell) appShell.style.display = "block";
@@ -231,257 +139,9 @@ async function login() {
     await checkRecipeTable();
 
   } catch (err) {
-    if (btn) { btn.disabled = false; btn.textContent = "GİRİŞ YAP"; }
-    setLoginStatus("Bağlantı hatası: " + err.message, "#b91c1c");
+    alert("Bağlantı hatası: " + err.message);
   }
 }
-
-// ==========================================================
-// 1B. E-POSTA KODU İLE ŞİFRE DEĞİŞTİRME
-// ==========================================================
-let pwdOtpSentTo = null;
-let pwdOtpSentAt = 0;
-
-function openPasswordModal() {
-  const modal = document.getElementById("pwdModal");
-  if (!modal) return;
-  pwdOtpSentTo = null;
-  pwdOtpSentAt = 0;
-  ["pwdOtpInput", "pwdNewInput", "pwdNewInput2", "pwdCurrentInput"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = "";
-  });
-  setPwdStatus("");
-  updatePwdCurrentVisibility();
-  modal.style.display = "flex";
-}
-
-function closePasswordModal() {
-  const modal = document.getElementById("pwdModal");
-  if (modal) modal.style.display = "none";
-}
-
-function setPwdStatus(msg, color) {
-  const el = document.getElementById("pwdModalStatus");
-  if (!el) return;
-  el.textContent = msg || "";
-  el.style.color = color || "#b91c1c";
-}
-
-function selectedRecoveryEmail() {
-  const sel = document.getElementById("pwdEmailSelect");
-  const val = sel ? sel.value : PRIMARY_EMAIL;
-  return RECOVERY_EMAILS.indexOf(val) >= 0 ? val : PRIMARY_EMAIL;
-}
-
-function updatePwdCurrentVisibility() {
-  const wrap = document.getElementById("pwdCurrentWrap");
-  if (!wrap) return;
-  wrap.style.display = selectedRecoveryEmail() === PRIMARY_EMAIL ? "none" : "block";
-}
-
-function passwordStrength(pwd) {
-  let score = 0;
-  if (pwd.length >= 8) score++;
-  if (pwd.length >= 12) score++;
-  if (/[a-zçğıöşü]/.test(pwd) && /[A-ZÇĞİÖŞÜ]/.test(pwd)) score++;
-  if (/[0-9]/.test(pwd)) score++;
-  if (/[^A-Za-z0-9]/.test(pwd)) score++;
-  return score;
-}
-
-function renderPwdStrength() {
-  const el = document.getElementById("pwdStrength");
-  const inp = document.getElementById("pwdNewInput");
-  if (!el || !inp) return;
-  const v = inp.value || "";
-  if (!v) { el.textContent = "Şifre gücü: —"; el.style.color = "#9ca3af"; return; }
-  const s = passwordStrength(v);
-  if (s <= 2) { el.textContent = "Şifre gücü: ZAYIF"; el.style.color = "#dc2626"; }
-  else if (s === 3) { el.textContent = "Şifre gücü: ORTA"; el.style.color = "#d97706"; }
-  else { el.textContent = "Şifre gücü: GÜÇLÜ"; el.style.color = "#16a34a"; }
-}
-
-function validateNewPassword(pwd, pwd2) {
-  if (!pwd || pwd.length < 8) return "Yeni şifre en az 8 karakter olmalı.";
-  if (!/[A-Za-zÇĞİÖŞÜçğıöşü]/.test(pwd) || !/[0-9]/.test(pwd)) return "Yeni şifre en az bir harf ve bir rakam içermeli.";
-  if (pwd !== pwd2) return "Yeni şifreler birbiriyle aynı değil.";
-  return null;
-}
-
-async function sendPasswordOtp() {
-  const email = selectedRecoveryEmail();
-  const btn = document.getElementById("pwdSendCodeBtn");
-
-  if (pwdOtpSentAt && Date.now() - pwdOtpSentAt < 60000) {
-    const wait = Math.ceil((60000 - (Date.now() - pwdOtpSentAt)) / 1000);
-    setPwdStatus("Yeni kod istemek için " + wait + " saniye bekle.", "#d97706");
-    return;
-  }
-
-  if (btn) { btn.disabled = true; btn.textContent = "GÖNDERİLİYOR..."; }
-
-  try {
-    const { error } = await client.auth.signInWithOtp({
-      email: email,
-      options: { shouldCreateUser: false }
-    });
-
-    if (error) {
-      setPwdStatus("Kod gönderilemedi: " + error.message, "#b91c1c");
-    } else {
-      pwdOtpSentTo = email;
-      pwdOtpSentAt = Date.now();
-      setPwdStatus("✅ 6 haneli doğrulama kodu " + email + " adresine gönderildi.", "#16a34a");
-    }
-  } catch (err) {
-    setPwdStatus("Bağlantı hatası: " + err.message, "#b91c1c");
-  }
-
-  if (btn) { btn.disabled = false; btn.textContent = "DOĞRULAMA KODU GÖNDER"; }
-}
-
-async function submitPasswordChange() {
-  const email = selectedRecoveryEmail();
-  const otp = (document.getElementById("pwdOtpInput") || {}).value || "";
-  const newPwd = (document.getElementById("pwdNewInput") || {}).value || "";
-  const newPwd2 = (document.getElementById("pwdNewInput2") || {}).value || "";
-  const currentPwd = (document.getElementById("pwdCurrentInput") || {}).value || "";
-
-  if (!pwdOtpSentTo) { setPwdStatus("Önce doğrulama kodu gönder.", "#b91c1c"); return; }
-  if (pwdOtpSentTo !== email) { setPwdStatus("E-posta değişti, kodu tekrar gönder.", "#b91c1c"); return; }
-  if (!/^[0-9]{6}$/.test(otp.trim())) { setPwdStatus("6 haneli kodu doğru gir.", "#b91c1c"); return; }
-
-  const vErr = validateNewPassword(newPwd, newPwd2);
-  if (vErr) { setPwdStatus(vErr, "#b91c1c"); return; }
-
-  if (email !== PRIMARY_EMAIL && !currentPwd) {
-    setPwdStatus("Onaylayan e-posta farklı olduğu için mevcut şifreyi girmelisin.", "#b91c1c");
-    return;
-  }
-
-  const btn = document.getElementById("pwdSubmitBtn");
-  if (btn) { btn.disabled = true; btn.textContent = "DOĞRULANIYOR..."; }
-
-  try {
-    const { error: otpErr } = await client.auth.verifyOtp({
-      email: email,
-      token: otp.trim(),
-      type: "email"
-    });
-
-    if (otpErr) {
-      setPwdStatus("Kod hatalı veya süresi dolmuş.", "#b91c1c");
-      if (btn) { btn.disabled = false; btn.textContent = "ŞİFREYİ DEĞİŞTİR"; }
-      return;
-    }
-
-    // Kod nilay adresine gittiyse oturum o hesaba ait olur;
-    // ana hesabın şifresini değiştirmek için mevcut şifreyle tekrar giriş yapılır.
-    if (email !== PRIMARY_EMAIL) {
-      const { error: reErr } = await client.auth.signInWithPassword({
-        email: PRIMARY_EMAIL,
-        password: currentPwd
-      });
-      if (reErr) {
-        setPwdStatus("Mevcut şifre hatalı, işlem iptal edildi.", "#b91c1c");
-        if (btn) { btn.disabled = false; btn.textContent = "ŞİFREYİ DEĞİŞTİR"; }
-        return;
-      }
-    }
-
-    const { error: updErr } = await client.auth.updateUser({ password: newPwd });
-    if (updErr) {
-      setPwdStatus("Şifre güncellenemedi: " + updErr.message, "#b91c1c");
-      if (btn) { btn.disabled = false; btn.textContent = "ŞİFREYİ DEĞİŞTİR"; }
-      return;
-    }
-
-    setPwdStatus("✅ Şifre başarıyla değiştirildi. Yeniden giriş yapmalısın.", "#16a34a");
-    clearLockState();
-    pwdOtpSentTo = null;
-
-    setTimeout(async () => {
-      try { await client.auth.signOut(); } catch (e) {}
-      closePasswordModal();
-      if (appShell) appShell.style.display = "none";
-      if (loginScreen) loginScreen.style.display = "flex";
-      const lp = document.getElementById("loginPassword");
-      if (lp) lp.value = "";
-      setLoginStatus("Şifren değişti, yeni şifrenle giriş yap.", "#16a34a");
-    }, 1600);
-
-  } catch (err) {
-    setPwdStatus("Bağlantı hatası: " + err.message, "#b91c1c");
-  }
-
-  if (btn) { btn.disabled = false; btn.textContent = "ŞİFREYİ DEĞİŞTİR"; }
-}
-
-// Güvenlik ekranı olay bağlamaları
-function bindSecurityEvents() {
-  const toggle = document.getElementById("togglePwdBtn");
-  const lp = document.getElementById("loginPassword");
-  if (toggle && lp && !toggle.dataset.bound) {
-    toggle.dataset.bound = "1";
-    toggle.addEventListener("click", () => {
-      lp.type = lp.type === "password" ? "text" : "password";
-      toggle.textContent = lp.type === "password" ? "👁" : "🙈";
-    });
-  }
-
-  const forgot = document.getElementById("forgotPwdBtn");
-  if (forgot && !forgot.dataset.bound) {
-    forgot.dataset.bound = "1";
-    forgot.addEventListener("click", () => openPasswordModal());
-  }
-
-  const sendBtn = document.getElementById("pwdSendCodeBtn");
-  if (sendBtn && !sendBtn.dataset.bound) {
-    sendBtn.dataset.bound = "1";
-    sendBtn.addEventListener("click", sendPasswordOtp);
-  }
-
-  const submitBtn = document.getElementById("pwdSubmitBtn");
-  if (submitBtn && !submitBtn.dataset.bound) {
-    submitBtn.dataset.bound = "1";
-    submitBtn.addEventListener("click", submitPasswordChange);
-  }
-
-  const sel = document.getElementById("pwdEmailSelect");
-  if (sel && !sel.dataset.bound) {
-    sel.dataset.bound = "1";
-    sel.addEventListener("change", () => {
-      updatePwdCurrentVisibility();
-      pwdOtpSentTo = null;
-      setPwdStatus("");
-    });
-  }
-
-  const newInp = document.getElementById("pwdNewInput");
-  if (newInp && !newInp.dataset.bound) {
-    newInp.dataset.bound = "1";
-    newInp.addEventListener("input", renderPwdStrength);
-  }
-
-  const modal = document.getElementById("pwdModal");
-  if (modal && !modal.dataset.bound) {
-    modal.dataset.bound = "1";
-    modal.addEventListener("click", (e) => { if (e.target === modal) closePasswordModal(); });
-  }
-}
-
-window.openPasswordModal = openPasswordModal;
-window.closePasswordModal = closePasswordModal;
-window.sendPasswordOtp = sendPasswordOtp;
-window.submitPasswordChange = submitPasswordChange;
-
-document.addEventListener("DOMContentLoaded", () => {
-  bindSecurityEvents();
-  startLockWatcher();
-});
-bindSecurityEvents();
-startLockWatcher();
 
 function logout() {
   if (confirm("Oturumu kapatmak istediğinize emin misiniz?")) {
@@ -538,6 +198,7 @@ function showPage(pageName) {
     fetchAndRenderReports();
   } else if (pageName === "settings") {
     loadPaymentMethods();
+    mountPasswordSettings();
   } else if (pageName === "internet") {
     loadInternetOrders();
     initRealtimeOrders();
@@ -1175,29 +836,38 @@ async function loadManagementProducts() {
   try {
     const { data, error } = await client.from("products").select("*").order("name", { ascending: true });
     if (error) throw error;
-
+    
     window.kaptanManagementList = data || [];
-
-    // Hangi ürünlerin reçetesi var tek sorguda al
-    let recipeProductIds = new Set();
-    try {
-      const { data: recipeRows } = await client.from("recipes").select("product_id");
-      if (recipeRows) {
-        recipeRows.forEach(r => {
-          if (r.product_id) recipeProductIds.add(String(r.product_id));
-        });
-      }
-    } catch (e) {
-      console.log("Reçete sayısı alınamadı, varsayılan mor renk kullanılacak.", e);
-    }
-
-    renderManagementProductsTable(window.kaptanManagementList, recipeProductIds);
+    await loadRecipeProductIds();
+    renderManagementProductsTable(window.kaptanManagementList);
   } catch (err) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Ürünler yüklenemedi.</td></tr>';
   }
 }
 
-function renderManagementProductsTable(products, recipeProductIds) {
+// Reçetesi olan ürün id'lerini tut (yeşil / mor buton rengi için)
+window.kaptanRecipeProductIds = window.kaptanRecipeProductIds || new Set();
+
+async function loadRecipeProductIds() {
+  try {
+    const { data, error } = await client.from("recipes").select("product_id");
+    if (error) throw error;
+    window.kaptanRecipeProductIds = new Set((data || []).map(r => Number(r.product_id)));
+  } catch (err) {
+    console.log("Reçete durumu okunamadı:", err.message);
+  }
+}
+
+function hasRecipe(productId) {
+  return window.kaptanRecipeProductIds && window.kaptanRecipeProductIds.has(Number(productId));
+}
+
+async function refreshRecipeBadges() {
+  await loadRecipeProductIds();
+  if (window.kaptanManagementList) renderManagementProductsTable(window.kaptanManagementList);
+}
+
+function renderManagementProductsTable(products) {
   const tbody = document.getElementById("managementProductsTbody");
   if (!tbody) return;
 
@@ -1210,11 +880,7 @@ function renderManagementProductsTable(products, recipeProductIds) {
   products.forEach(p => {
     const tr = document.createElement("tr");
     const imageHtml = p.image_url ? `<img src="${escapeHtml(p.image_url)}" style="width:30px;height:30px;object-fit:contain;">` : "🍰";
-    const hasRecipe = recipeProductIds && recipeProductIds.has(String(p.id));
-    const recipeBtnStyle = hasRecipe
-      ? "background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;margin-left:4px;"
-      : "background:#7c3aed;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;margin-left:4px;";
-
+    
     tr.innerHTML = `
       <td>${imageHtml}</td>
       <td><strong>${escapeHtml(p.name)}</strong></td>
@@ -1223,7 +889,7 @@ function renderManagementProductsTable(products, recipeProductIds) {
       <td>${p.active !== false ? '<span class="badge-active">Aktif</span>' : '<span class="badge-passive">Pasif</span>'}</td>
       <td style="text-align: right;">
         <button type="button" class="btn-edit" onclick="editManagementProduct(${p.id})">Düzenle</button>
-        <button type="button" class="btn-recipe" onclick="openRecipeModal(${p.id}, '${escapeHtml(p.name).replace(/'/g, "\\'")}')" style="${recipeBtnStyle}">Reçete</button>
+        <button type="button" class="btn-recipe" title="${hasRecipe(p.id) ? 'Reçete girilmiş' : 'Reçete girilmemiş'}" style="background:${hasRecipe(p.id) ? '#16a34a' : '#7c3aed'};color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;" onclick="openRecipeModal(${p.id}, '${escapeHtml(p.name).replace(/'/g, "\\'")}')">Reçete</button>
         <button type="button" class="btn-toggle" onclick="toggleProductStatus(${p.id}, ${p.active !== false})">${p.active !== false ? 'Pasif Yap' : 'Aktif Yap'}</button>
         <button type="button" class="btn-prod-delete" onclick="deleteProduct(${p.id})" style="background:#dc2626;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;margin-left:4px;">Sil</button>
       </td>
@@ -1662,6 +1328,7 @@ async function addRecipeItem() {
 
     if (qtyInput) qtyInput.value = "";
     await loadRecipeItemsForProduct(selectedRecipeProductId);
+    await refreshRecipeBadges();
     alert("✅ Reçeteye malzeme eklendi!");
 
   } catch (err) {
@@ -1676,6 +1343,7 @@ async function deleteRecipeItem(recipeId, productId) {
     const { error } = await client.from("recipes").delete().eq("id", recipeId);
     if (error) throw error;
     await loadRecipeItemsForProduct(productId);
+    await refreshRecipeBadges();
   } catch (err) {
     alert("Kaldırılamadı: " + err.message);
   }
@@ -2584,6 +2252,7 @@ async function addRecipeItemSafe() {
     if (!error) {
       if (qtyInput) qtyInput.value = "";
       await loadRecipeItemsForProduct(selectedRecipeProductId);
+      await refreshRecipeBadges();
       return;
     }
     lastErr = error;
@@ -2738,3 +2407,118 @@ async function deleteProduct(id) {
   }
 }
 window.deleteProduct = deleteProduct;
+
+
+// Reçete renk durumu global erişim
+window.loadRecipeProductIds = loadRecipeProductIds;
+window.hasRecipe = hasRecipe;
+window.refreshRecipeBadges = refreshRecipeBadges;
+
+/* =========================================================
+   ŞİFRE DEĞİŞTİRME (GENEL AYARLAR) - e-posta kodu YOK
+   Mevcut şifre + yeni şifre ile doğrudan değiştirir.
+   ========================================================= */
+function mountPasswordSettings() {
+  const page = document.getElementById("pageSettings");
+  if (!page || document.getElementById("passwordSettingsCard")) return;
+
+  const card = document.createElement("div");
+  card.id = "passwordSettingsCard";
+  card.style.cssText =
+    "background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;margin-top:20px;max-width:520px;box-shadow:0 1px 3px rgba(0,0,0,.08)";
+  card.innerHTML = `
+    <h3 style="margin:0 0 4px;font-size:18px;font-weight:700;color:#111827">Şifre Değiştir</h3>
+    <p style="margin:0 0 16px;font-size:13px;color:#6b7280">Mevcut şifrenizi girerek yeni şifrenizi belirleyin.</p>
+
+    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Mevcut Şifre</label>
+    <input id="pwCurrent" type="password" autocomplete="current-password"
+      style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:12px">
+
+    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Yeni Şifre</label>
+    <input id="pwNew" type="password" autocomplete="new-password"
+      style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:4px">
+    <div id="pwStrength" style="font-size:12px;color:#6b7280;margin-bottom:12px">En az 8 karakter, harf ve rakam içermeli.</div>
+
+    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Yeni Şifre (Tekrar)</label>
+    <input id="pwRepeat" type="password" autocomplete="new-password"
+      style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:12px">
+
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#374151;margin-bottom:16px">
+      <input id="pwShow" type="checkbox"> Şifreleri göster
+    </label>
+
+    <button id="pwSaveBtn"
+      style="width:100%;padding:12px;border:0;border-radius:8px;background:#111827;color:#fff;font-weight:700;cursor:pointer">
+      ŞİFREYİ GÜNCELLE
+    </button>
+    <div id="pwMsg" style="margin-top:12px;font-size:13px"></div>
+  `;
+  page.appendChild(card);
+
+  const $ = (id) => document.getElementById(id);
+  const msg = (text, ok) => {
+    const el = $("pwMsg");
+    el.textContent = text;
+    el.style.color = ok ? "#16a34a" : "#dc2626";
+  };
+
+  $("pwShow").addEventListener("change", (e) => {
+    const t = e.target.checked ? "text" : "password";
+    ["pwCurrent", "pwNew", "pwRepeat"].forEach((id) => ($(id).type = t));
+  });
+
+  $("pwNew").addEventListener("input", (e) => {
+    const v = e.target.value;
+    const el = $("pwStrength");
+    if (!v) { el.textContent = "En az 8 karakter, harf ve rakam içermeli."; el.style.color = "#6b7280"; return; }
+    const strong = v.length >= 12 && /[A-Za-zÇĞİÖŞÜçğıöşü]/.test(v) && /\d/.test(v) && /[^A-Za-z0-9]/.test(v);
+    const ok = v.length >= 8 && /[A-Za-zÇĞİÖŞÜçğıöşü]/.test(v) && /\d/.test(v);
+    el.textContent = strong ? "Şifre gücü: Güçlü" : ok ? "Şifre gücü: Orta" : "Şifre gücü: Zayıf (en az 8 karakter, harf + rakam)";
+    el.style.color = strong ? "#16a34a" : ok ? "#d97706" : "#dc2626";
+  });
+
+  $("pwSaveBtn").addEventListener("click", changeAppPassword);
+}
+
+async function changeAppPassword() {
+  const btn = document.getElementById("pwSaveBtn");
+  const cur = document.getElementById("pwCurrent").value.trim();
+  const nw = document.getElementById("pwNew").value.trim();
+  const rp = document.getElementById("pwRepeat").value.trim();
+  const msgEl = document.getElementById("pwMsg");
+  const say = (t, ok) => { msgEl.textContent = t; msgEl.style.color = ok ? "#16a34a" : "#dc2626"; };
+
+  if (!cur || !nw || !rp) return say("Tüm alanları doldurun.", false);
+  if (nw !== rp) return say("Yeni şifreler eşleşmiyor.", false);
+  if (nw.length < 8 || !/[A-Za-zÇĞİÖŞÜçğıöşü]/.test(nw) || !/\d/.test(nw))
+    return say("Yeni şifre en az 8 karakter olmalı ve harf + rakam içermeli.", false);
+  if (nw === cur) return say("Yeni şifre eskisiyle aynı olamaz.", false);
+
+  btn.disabled = true;
+  btn.textContent = "GÜNCELLENİYOR...";
+  try {
+    // 1) Mevcut şifreyi doğrula
+    const { error: signErr } = await client.auth.signInWithPassword({
+      email: typeof AUTH_EMAIL !== "undefined" ? AUTH_EMAIL : "denizmazlumoglu@gmail.com",
+      password: cur
+    });
+    if (signErr) { say("Mevcut şifre hatalı.", false); return; }
+
+    // 2) Yeni şifreyi kaydet
+    const { error: updErr } = await client.auth.updateUser({ password: nw });
+    if (updErr) { say("Şifre güncellenemedi: " + updErr.message, false); return; }
+
+    document.getElementById("pwCurrent").value = "";
+    document.getElementById("pwNew").value = "";
+    document.getElementById("pwRepeat").value = "";
+    say("Şifreniz başarıyla güncellendi. Bir sonraki girişte yeni şifrenizi kullanın.", true);
+  } catch (e) {
+    say("Hata: " + (e && e.message ? e.message : e), false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "ŞİFREYİ GÜNCELLE";
+  }
+}
+
+window.mountPasswordSettings = mountPasswordSettings;
+window.changeAppPassword = changeAppPassword;
