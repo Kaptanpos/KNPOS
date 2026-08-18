@@ -2624,28 +2624,28 @@ function buildCourierMessage(order) {
   let lines = [];
   try {
     const prods = parseInternetProducts(order) || [];
-    lines = prods.map(p => `• ${getInternetProductName(p) || "Ürün"} (${getInternetProductQty(p)} Adet)`);
+    lines = prods.map(p => `- ${getInternetProductName(p) || "Ürün"} (${getInternetProductQty(p)} Adet)`);
   } catch (_) { lines = []; }
-  if (!lines.length) lines = ["• Ürün bilgisi yok"];
+  if (!lines.length) lines = ["- Ürün bilgisi yok"];
 
   const parts = [];
-  parts.push(`🚨 ${cfg.header} ${code}`);
+  parts.push(`*** ${cfg.header} ${code} ***`);
   parts.push("");
-  parts.push("📍 Konum için tıklayınız:");
+  parts.push("Konum için tıklayınız:");
   parts.push(courierMapLink(order));
   parts.push("");
-  parts.push(`🧾 Sipariş No: #${orderNo}`);
-  parts.push(`🕒 Saat: ${timeStr}`);
-  parts.push(`👤 Müşteri: ${custName}`);
-  parts.push(`📞 Telefon: ${phoneVal}`);
-  parts.push(`📍 Adres: ${addressVal}`);
+  parts.push(`Sipariş No: #${orderNo}`);
+  parts.push(`Saat: ${timeStr}`);
+  parts.push(`Müşteri: ${custName}`);
+  parts.push(`Telefon: ${phoneVal}`);
+  parts.push(`Adres: ${addressVal}`);
   parts.push("");
-  parts.push("🛒 Ürünler:");
+  parts.push("URUNLER:");
   parts.push(lines.join("\n"));
   parts.push("");
-  if (noteVal) { parts.push(`📝 Not: ${noteVal}`); }
-  parts.push(`💳 Ödeme: ${paymentVal}`);
-  parts.push(`💰 Toplam: ${typeof formatMoney === "function" ? formatMoney(totalVal) : totalVal + " TL"}`);
+  if (noteVal) { parts.push(`Not: ${noteVal}`); }
+  parts.push(`Ödeme: ${paymentVal}`);
+  parts.push(`Toplam: ${typeof formatMoney === "function" ? formatMoney(totalVal) : totalVal + " TL"}`);
   return parts.join("\n");
 }
 
