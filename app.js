@@ -1911,6 +1911,22 @@ function openInternetOrderDetail(order) {
     }
   };
 
+  // Kuryeye gönder butonu (detay modalı)
+  const cancelWrap = document.getElementById("cancelInternetOrderBtn")?.parentElement;
+  if (cancelWrap && !document.getElementById("courierSendBtn")) {
+    const cb = document.createElement("button");
+    cb.type = "button";
+    cb.id = "courierSendBtn";
+    cb.style.cssText = "background:#25D366;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer";
+    cb.textContent = "🛵 KURYEYE GÖNDER";
+    cancelWrap.insertBefore(cb, cancelWrap.firstChild);
+  }
+  const courierBtnEl = document.getElementById("courierSendBtn");
+  if (courierBtnEl) {
+    courierBtnEl.style.display = (order.status === "cancelled") ? "none" : "";
+    courierBtnEl.onclick = function () { sendOrderToCourier(order); };
+  }
+
   const cancelBtnEl = document.getElementById("cancelInternetOrderBtn");
   const cancellable = canCancelInternetOrder(order);
   cancelBtnEl.style.display = cancellable ? "" : "none";
@@ -2057,6 +2073,11 @@ async function loadInternetOrders() {
 
       const encodedOrder = encodeURIComponent(JSON.stringify(order));
       let actionButtons = `<button type="button" class="btn-primary" style="padding:6px 12px; font-size:12px;" onclick="openInternetOrderDetail(JSON.parse(decodeURIComponent('${encodedOrder}')))">🔍 Detay</button>`;
+
+      if (orderStatus !== "cancelled") {
+        const sentBefore = typeof isCourierSent === "function" && isCourierSent(order.id || order.order_id);
+        actionButtons += ` <button type="button" style="padding:6px 10px; font-size:12px; margin-left:6px; border:0; border-radius:6px; cursor:pointer; color:#fff; background:${sentBefore ? "#16a34a" : "#25D366"};" onclick="sendOrderToCourier('${encodedOrder}')">${sentBefore ? "✅ Kuryeye Gönderildi" : "🛵 Kuryeye Gönder"}</button>`;
+      }
 
       if (orderStatus === "pending" || !order.status) {
         if (canCancelInternetOrder(order)) {
@@ -2522,3 +2543,234 @@ async function changeAppPassword() {
 
 window.mountPasswordSettings = mountPasswordSettings;
 window.changeAppPassword = changeAppPassword;
+
+/* =========================================================
+   KURYEYE GÖNDER (WhatsApp) - v8
+   İnternet siparişini AHK'daki mesaj formatıyla WhatsApp'a yollar.
+   Test modunda Nilay'ın numarasına, canlı modda KURYEMİX grubuna.
+   ========================================================= */
+
+const COURIER_CFG_KEY = "knpos_courier_cfg";
+const COURIER_SENT_KEY = "knpos_courier_sent";
+const COURIER_DEFAULT_MAP =
+  "https://yandex.com.tr/navi?whatshere%5Bzoom%5D=18&whatshere%5Bpoint%5D=29.075271,40.969051";
+
+function getCourierCfg() {
+  let cfg = {};
+  try { cfg = JSON.parse(localStorage.getItem(COURIER_CFG_KEY) || "{}") || {}; } catch (_) { cfg = {}; }
+  return {
+    mode: cfg.mode === "group" ? "group" : "test",
+    testPhone: cfg.testPhone || "",
+    groupLink: cfg.groupLink || "",
+    mapLink: cfg.mapLink || COURIER_DEFAULT_MAP,
+    header: cfg.header || "KAPTAN NİLİ YENİ SİPARİŞ"
+  };
+}
+
+function saveCourierCfg(cfg) {
+  localStorage.setItem(COURIER_CFG_KEY, JSON.stringify(cfg));
+}
+
+function normalizePhoneForWa(raw) {
+  let d = String(raw || "").replace(/\D/g, "");
+  if (!d) return "";
+  if (d.startsWith("00")) d = d.slice(2);
+  if (d.startsWith("0")) d = "90" + d.slice(1);
+  if (d.length === 10) d = "90" + d;
+  return d;
+}
+
+function getCourierSentMap() {
+  try { return JSON.parse(localStorage.getItem(COURIER_SENT_KEY) || "{}") || {}; } catch (_) { return {}; }
+}
+function markCourierSent(orderId) {
+  const m = getCourierSentMap();
+  m[String(orderId)] = new Date().toISOString();
+  localStorage.setItem(COURIER_SENT_KEY, JSON.stringify(m));
+}
+function isCourierSent(orderId) {
+  return Boolean(getCourierSentMap()[String(orderId)]);
+}
+
+function courierOrderCode(order) {
+  const d = order && order.created_at ? new Date(order.created_at) : new Date();
+  const t = Number.isNaN(d.getTime()) ? new Date() : d;
+  const p = n => String(n).padStart(2, "0");
+  return "KN-" + p(t.getHours()) + p(t.getMinutes()) + p(t.getSeconds());
+}
+
+function courierMapLink(order) {
+  const cfg = getCourierCfg();
+  const addr = String((order && (order.address || order.adres)) || "").trim();
+  const urlInAddr = addr.match(/https?:\/\/\S+/);
+  if (urlInAddr) return urlInAddr[0];
+  if (addr) return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addr);
+  return cfg.mapLink || COURIER_DEFAULT_MAP;
+}
+
+// AHK'daki mesajın birebir mantığı: başlık + konum + sipariş bilgisi
+function buildCourierMessage(order) {
+  const cfg = getCourierCfg();
+  const code = courierOrderCode(order);
+  const custName = order.customer_name || order.name || "İsimsiz Müşteri";
+  const phoneVal = order.phone || order.telefon || "-";
+  const addressVal = String(order.address || order.adres || "-").replace(/https?:\/\/\S+/g, "").trim() || "-";
+  const noteVal = order.order_notes || order.notes || "";
+  const paymentVal = order.payment_channel || order.platform || order.payment_method || order.payment_type || "-";
+  const totalVal = order.total_price || order.total_amount || 0;
+  const orderNo = order.order_id || order.id || "-";
+  const timeStr = order.created_at ? new Date(order.created_at).toLocaleString("tr-TR") : new Date().toLocaleString("tr-TR");
+
+  let lines = [];
+  try {
+    const prods = parseInternetProducts(order) || [];
+    lines = prods.map(p => `• ${getInternetProductName(p) || "Ürün"} (${getInternetProductQty(p)} Adet)`);
+  } catch (_) { lines = []; }
+  if (!lines.length) lines = ["• Ürün bilgisi yok"];
+
+  const parts = [];
+  parts.push(`🚨 ${cfg.header} ${code}`);
+  parts.push("");
+  parts.push("📍 Konum için tıklayınız:");
+  parts.push(courierMapLink(order));
+  parts.push("");
+  parts.push(`🧾 Sipariş No: #${orderNo}`);
+  parts.push(`🕒 Saat: ${timeStr}`);
+  parts.push(`👤 Müşteri: ${custName}`);
+  parts.push(`📞 Telefon: ${phoneVal}`);
+  parts.push(`📍 Adres: ${addressVal}`);
+  parts.push("");
+  parts.push("🛒 Ürünler:");
+  parts.push(lines.join("\n"));
+  parts.push("");
+  if (noteVal) { parts.push(`📝 Not: ${noteVal}`); }
+  parts.push(`💳 Ödeme: ${paymentVal}`);
+  parts.push(`💰 Toplam: ${typeof formatMoney === "function" ? formatMoney(totalVal) : totalVal + " TL"}`);
+  return parts.join("\n");
+}
+
+async function copyCourierMessage(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (_) {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      return true;
+    } catch (e) { return false; }
+  }
+}
+
+async function sendOrderToCourier(order) {
+  if (typeof order === "string") {
+    try { order = JSON.parse(decodeURIComponent(order)); } catch (_) { order = null; }
+  }
+  if (!order) { alert("Sipariş bilgisi okunamadı."); return; }
+
+  const cfg = getCourierCfg();
+  const message = buildCourierMessage(order);
+  await copyCourierMessage(message);
+
+  if (cfg.mode === "group") {
+    if (!cfg.groupLink) {
+      alert("Kurye grubu linki tanımlı değil.\nGenel Ayarlar → Kuryeye Gönder bölümünden grup sohbet linkini girin.\n\nMesaj panoya kopyalandı, WhatsApp'ta gruba yapıştırabilirsiniz.");
+      return;
+    }
+    window.open(cfg.groupLink, "_blank");
+    alert("Kurye grubu açıldı. Mesaj panoya kopyalandı; sohbet kutusuna yapıştırıp (Ctrl+V) gönderin.");
+  } else {
+    const phone = normalizePhoneForWa(cfg.testPhone);
+    if (!phone) {
+      alert("Test numarası (Nilay) tanımlı değil.\nGenel Ayarlar → Kuryeye Gönder bölümünden numarayı girin.\n\nMesaj panoya kopyalandı.");
+      return;
+    }
+    window.open("https://wa.me/" + phone + "?text=" + encodeURIComponent(message), "_blank");
+  }
+
+  markCourierSent(order.id || order.order_id);
+  if (typeof loadInternetOrders === "function") loadInternetOrders();
+}
+window.sendOrderToCourier = sendOrderToCourier;
+window.buildCourierMessage = buildCourierMessage;
+
+function previewCourierMessage(order) {
+  if (typeof order === "string") {
+    try { order = JSON.parse(decodeURIComponent(order)); } catch (_) { order = null; }
+  }
+  if (!order) return;
+  alert(buildCourierMessage(order));
+}
+window.previewCourierMessage = previewCourierMessage;
+
+/* ---- Genel Ayarlar: Kuryeye Gönder kartı ---- */
+function mountCourierSettings() {
+  const page = document.getElementById("pageSettings");
+  if (!page || document.getElementById("courierSettingsCard")) return;
+  const cfg = getCourierCfg();
+
+  const card = document.createElement("div");
+  card.id = "courierSettingsCard";
+  card.style.cssText =
+    "background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;margin-top:20px;max-width:520px;box-shadow:0 1px 3px rgba(0,0,0,.08)";
+  card.innerHTML = `
+    <h3 style="margin:0 0 4px;font-size:18px;font-weight:700;color:#111827">Kuryeye Gönder (WhatsApp)</h3>
+    <p style="margin:0 0 16px;font-size:13px;color:#6b7280">İnternet siparişleri WhatsApp'a bu ayarlarla gönderilir.</p>
+
+    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Gönderim Hedefi</label>
+    <select id="courierMode" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:12px">
+      <option value="test">TEST — Nilay'a gönder</option>
+      <option value="group">CANLI — KURYEMİX grubuna gönder</option>
+    </select>
+
+    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Test Numarası (Nilay)</label>
+    <input id="courierTestPhone" type="tel" placeholder="05xx xxx xx xx"
+      style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:12px">
+
+    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Kurye Grubu Sohbet Linki</label>
+    <input id="courierGroupLink" type="url" placeholder="https://web.whatsapp.com/ ... (grup sohbeti)"
+      style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:4px">
+    <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Gruba doğrudan otomatik yazılamaz; grup açılır, mesaj panoya kopyalanır, Ctrl+V ile gönderirsiniz.</div>
+
+    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Varsayılan Konum Linki</label>
+    <input id="courierMapLink" type="url"
+      style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:16px">
+
+    <button id="courierSaveBtn"
+      style="width:100%;padding:12px;border:0;border-radius:8px;background:#111827;color:#fff;font-weight:700;cursor:pointer">
+      AYARLARI KAYDET
+    </button>
+    <div id="courierMsg" style="margin-top:12px;font-size:13px"></div>
+  `;
+  page.appendChild(card);
+
+  document.getElementById("courierMode").value = cfg.mode;
+  document.getElementById("courierTestPhone").value = cfg.testPhone;
+  document.getElementById("courierGroupLink").value = cfg.groupLink;
+  document.getElementById("courierMapLink").value = cfg.mapLink;
+
+  document.getElementById("courierSaveBtn").onclick = function () {
+    saveCourierCfg({
+      mode: document.getElementById("courierMode").value,
+      testPhone: document.getElementById("courierTestPhone").value.trim(),
+      groupLink: document.getElementById("courierGroupLink").value.trim(),
+      mapLink: document.getElementById("courierMapLink").value.trim() || COURIER_DEFAULT_MAP,
+      header: cfg.header
+    });
+    const el = document.getElementById("courierMsg");
+    el.style.color = "#16a34a";
+    el.textContent = "Kaydedildi.";
+    setTimeout(() => { el.textContent = ""; }, 2500);
+  };
+}
+window.mountCourierSettings = mountCourierSettings;
+
+document.addEventListener("DOMContentLoaded", function () {
+  setTimeout(mountCourierSettings, 300);
+});
