@@ -2629,29 +2629,10 @@ function cleanAddressForMap(raw) {
   return out;
 }
 
-function courierMapLink(order) {
+function courierMapLink() {
   const cfg = getCourierCfg();
-  const o = order || {};
-  const addrRaw = String(o.address || o.adres || "").trim();
-
-  // 1) Adres icinde hazir harita linki varsa onu kullan
-  const urlInAddr = addrRaw.match(/https?:\/\/\S+/);
-  if (urlInAddr) return urlInAddr[0].replace(/[),.]+$/, "");
-
-  // 2) Koordinat varsa en dogrusu odur
-  const lat = parseFloat(o.lat ?? o.latitude ?? o.enlem);
-  const lng = parseFloat(o.lng ?? o.lon ?? o.longitude ?? o.boylam);
-  if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) {
-    return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-  }
-
-  // 3) Adres metninden temiz arama linki
-  const clean = cleanAddressForMap(addrRaw);
-  if (clean && clean.replace(/,\s*Türkiye$/i, "").length >= 5) {
-    return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(clean);
-  }
-
-  // 4) Hicbiri yoksa varsayilan
+  // Kurye önce işletmeye geleceği için müşteri adresini değil,
+  // Genel Ayarlar'da kayıtlı sabit işletme konumunu gönder.
   return cfg.mapLink || COURIER_DEFAULT_MAP;
 }
 
@@ -2679,7 +2660,7 @@ function buildCourierMessage(order) {
   parts.push(`*** ${cfg.header} ${code} ***`);
   parts.push("");
   parts.push("Konum için tıklayınız:");
-  parts.push(courierMapLink(order));
+  parts.push(courierMapLink());
   parts.push("");
   parts.push(`Sipariş No: #${orderNo}`);
   parts.push(`Saat: ${timeStr}`);
@@ -2785,9 +2766,10 @@ function mountCourierSettings() {
       style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:4px">
     <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Gruba doğrudan otomatik yazılamaz; grup açılır, mesaj panoya kopyalanır, Ctrl+V ile gönderirsiniz.</div>
 
-    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Varsayılan Konum Linki</label>
+    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">İşletme Konum Linki</label>
     <input id="courierMapLink" type="url"
       style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:16px">
+    <div style="font-size:12px;color:#6b7280;margin:-10px 0 16px">Kuryeye her siparişte bu sabit işletme konumu gönderilir.</div>
 
     <button id="courierSaveBtn"
       style="width:100%;padding:12px;border:0;border-radius:8px;background:#111827;color:#fff;font-weight:700;cursor:pointer">
