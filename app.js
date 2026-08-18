@@ -2599,12 +2599,59 @@ function courierOrderCode(order) {
   return "KN-" + p(t.getHours()) + p(t.getMinutes()) + p(t.getSeconds());
 }
 
+// Adresi harita aramasi icin temizler: tekrar eden il/ilce, gereksiz etiketler,
+// telefon/posta kodu, noktalama yiginlari temizlenir.
+function cleanAddressForMap(raw) {
+  let a = String(raw || "")
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/[\r\n\t]+/g, ", ")
+    .replace(/\b(tel|telefon|gsm|cep|not|kapi ?kodu|kapı ?kodu|zil|kat|daire|blok|apt|apartman|site)\s*[:.]?\s*/gi, " ")
+    .replace(/\+?\d[\d\s()-]{8,}\d/g, " ")   // telefon numaralari
+    .replace(/\b\d{5}\b/g, " ")              // posta kodu
+    .replace(/[|;]+/g, ",")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // virgullu parcalara ayir, bosluklari ve tekrarlari at
+  const seen = new Set();
+  const parts = [];
+  a.split(",").forEach(p => {
+    const t = p.replace(/[^\wçğıöşüÇĞİÖŞÜ0-9\/. -]/g, " ").replace(/\s+/g, " ").trim();
+    if (!t || t.length < 2) return;
+    const key = t.toLocaleLowerCase("tr-TR");
+    if (seen.has(key)) return;
+    seen.add(key);
+    parts.push(t);
+  });
+
+  let out = parts.join(", ");
+  if (out && !/t[üu]rkiye/i.test(out)) out += ", Türkiye";
+  return out;
+}
+
 function courierMapLink(order) {
   const cfg = getCourierCfg();
-  const addr = String((order && (order.address || order.adres)) || "").trim();
-  const urlInAddr = addr.match(/https?:\/\/\S+/);
-  if (urlInAddr) return urlInAddr[0];
-  if (addr) return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addr);
+  const o = order || {};
+  const addrRaw = String(o.address || o.adres || "").trim();
+
+  // 1) Adres icinde hazir harita linki varsa onu kullan
+  const urlInAddr = addrRaw.match(/https?:\/\/\S+/);
+  if (urlInAddr) return urlInAddr[0].replace(/[),.]+$/, "");
+
+  // 2) Koordinat varsa en dogrusu odur
+  const lat = parseFloat(o.lat ?? o.latitude ?? o.enlem);
+  const lng = parseFloat(o.lng ?? o.lon ?? o.longitude ?? o.boylam);
+  if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) {
+    return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  }
+
+  // 3) Adres metninden temiz arama linki
+  const clean = cleanAddressForMap(addrRaw);
+  if (clean && clean.replace(/,\s*Türkiye$/i, "").length >= 5) {
+    return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(clean);
+  }
+
+  // 4) Hicbiri yoksa varsayilan
   return cfg.mapLink || COURIER_DEFAULT_MAP;
 }
 
