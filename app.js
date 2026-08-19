@@ -2559,7 +2559,7 @@ function getCourierCfg() {
   let cfg = {};
   try { cfg = JSON.parse(localStorage.getItem(COURIER_CFG_KEY) || "{}") || {}; } catch (_) { cfg = {}; }
   return {
-    mode: cfg.mode === "group" ? "group" : "test",
+    mode: (cfg.mode === "group" || cfg.mode === "test" || cfg.mode === "ahk") ? cfg.mode : "ahk",
     testPhone: cfg.testPhone || "",
     groupLink: cfg.groupLink || "",
     mapLink: cfg.mapLink || COURIER_DEFAULT_MAP,
@@ -2714,6 +2714,17 @@ function dropCourierFileForAhk(chatName, message, orderId) {
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
+function showCourierToast(text) {
+  try {
+    var t = document.createElement("div");
+    t.textContent = text;
+    t.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:99999;background:#111827;color:#fff;padding:12px 16px;border-radius:10px;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.25)";
+    document.body.appendChild(t);
+    setTimeout(function(){ t.remove(); }, 3500);
+  } catch (_) {}
+}
+window.showCourierToast = showCourierToast;
+
 async function sendOrderToCourier(order) {
   if (typeof order === "string") {
     try { order = JSON.parse(decodeURIComponent(order)); } catch (_) { order = null; }
@@ -2733,17 +2744,7 @@ async function sendOrderToCourier(order) {
     dropCourierFileForAhk(cfg.chatName, message, orderId);
     markCourierSent(orderId);
     if (typeof loadInternetOrders === "function") loadInternetOrders();
-    setTimeout(function () {
-      alert(
-        "Komut dosyası indirildi (knpos_kurye_*.txt).\n\n" +
-        "Bot açıksa 1-2 saniye içinde WhatsApp'ta \"" + cfg.chatName + "\" sohbetini açıp mesajı gönderecek.\n\n" +
-        "Bir şey olmuyorsa:\n" +
-        "1) KNPOS-Kurye-Bot_v2.ahk çalışıyor mu? (Ctrl+Alt+D ile kontrol et)\n" +
-        "2) Tarayıcı dosyayı 'İndirilenler' klasörüne kaydediyor mu? (Soruyorsa 'Sakla' de)\n" +
-        "3) WhatsApp Desktop açık ve girişli olmalı.\n\n" +
-        "Mesaj ayrıca panoya kopyalandı; gerekirse Ctrl+V ile elle gönderebilirsin."
-      );
-    }, 300);
+    if (typeof showCourierToast === "function") showCourierToast("Kuryeye gönderiliyor: " + cfg.chatName);
     return;
   }
 
