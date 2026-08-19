@@ -2563,6 +2563,7 @@ function getCourierCfg() {
     testPhone: cfg.testPhone || "",
     groupLink: cfg.groupLink || "",
     mapLink: cfg.mapLink || COURIER_DEFAULT_MAP,
+    chatName: cfg.chatName || "",
     header: cfg.header || "KAPTAN NİLİ YENİ SİPARİŞ"
   };
 }
@@ -2696,6 +2697,23 @@ async function copyCourierMessage(text) {
   }
 }
 
+/* ---- AHK BOT KOPRUSU ----
+   Mesaji Downloads klasorune knpos_kurye_*.txt olarak indirir.
+   KNPOS-Kurye-Bot.ahk bu klasoru izler, dosyayi okur, WhatsApp Desktop'ta
+   ilgili sohbeti acar, yapistirir ve Enter'a basar. Tam otomatik. */
+function dropCourierFileForAhk(chatName, message, orderId) {
+  const payload = "CHAT=" + (chatName || "") + "\n---\n" + message;
+  const blob = new Blob(["\ufeff" + payload], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "knpos_kurye_" + (orderId || Date.now()) + "_" + Date.now() + ".txt";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
 async function sendOrderToCourier(order) {
   if (typeof order === "string") {
     try { order = JSON.parse(decodeURIComponent(order)); } catch (_) { order = null; }
@@ -2704,6 +2722,19 @@ async function sendOrderToCourier(order) {
 
   const cfg = getCourierCfg();
   const message = buildCourierMessage(order);
+  const orderId = order.id || order.order_id || Date.now();
+
+  if (cfg.mode === "ahk") {
+    if (!cfg.chatName) {
+      alert("Otomatik gönderim için hedef sohbet adı gerekli.\nGenel Ayarlar → Kuryeye Gönder → \"WhatsApp Sohbet Adı\" alanını doldurun (örn: Nilay veya KURYEMİX).");
+      return;
+    }
+    dropCourierFileForAhk(cfg.chatName, message, orderId);
+    markCourierSent(orderId);
+    if (typeof loadInternetOrders === "function") loadInternetOrders();
+    return;
+  }
+
   await copyCourierMessage(message);
 
   if (cfg.mode === "group") {
@@ -2722,7 +2753,7 @@ async function sendOrderToCourier(order) {
     window.open("https://wa.me/" + phone + "?text=" + encodeURIComponent(message), "_blank");
   }
 
-  markCourierSent(order.id || order.order_id);
+  markCourierSent(orderId);
   if (typeof loadInternetOrders === "function") loadInternetOrders();
 }
 window.sendOrderToCourier = sendOrderToCourier;
@@ -2753,6 +2784,7 @@ function mountCourierSettings() {
 
     <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Gönderim Hedefi</label>
     <select id="courierMode" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:12px">
+      <option value="ahk">Otomatik Gönder (Masaüstü Bot - AHK)</option>
       <option value="test">TEST — Nilay'a gönder</option>
       <option value="group">CANLI — KURYEMİX grubuna gönder</option>
     </select>
@@ -2760,6 +2792,11 @@ function mountCourierSettings() {
     <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Test Numarası (Nilay)</label>
     <input id="courierTestPhone" type="tel" placeholder="05xx xxx xx xx"
       style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:12px">
+
+    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">WhatsApp Sohbet Adı (Otomatik Bot için)</label>
+    <input id="courierChatName" type="text" placeholder="Nilay  /  KURYEMİX"
+      style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:4px">
+    <div style="font-size:12px;color:#6b7280;margin:0 0 12px">WhatsApp Desktop'taki sohbet adıyla birebir aynı yazın. KNPOS-Kurye-Bot.ahk açık olmalı.</div>
 
     <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Kurye Grubu Sohbet Linki</label>
     <input id="courierGroupLink" type="url" placeholder="https://web.whatsapp.com/ ... (grup sohbeti)"
@@ -2783,6 +2820,7 @@ function mountCourierSettings() {
   document.getElementById("courierTestPhone").value = cfg.testPhone;
   document.getElementById("courierGroupLink").value = cfg.groupLink;
   document.getElementById("courierMapLink").value = cfg.mapLink;
+  document.getElementById("courierChatName").value = cfg.chatName || "";
 
   document.getElementById("courierSaveBtn").onclick = function () {
     saveCourierCfg({
@@ -2790,6 +2828,7 @@ function mountCourierSettings() {
       testPhone: document.getElementById("courierTestPhone").value.trim(),
       groupLink: document.getElementById("courierGroupLink").value.trim(),
       mapLink: document.getElementById("courierMapLink").value.trim() || COURIER_DEFAULT_MAP,
+      chatName: document.getElementById("courierChatName").value.trim(),
       header: cfg.header
     });
     const el = document.getElementById("courierMsg");
