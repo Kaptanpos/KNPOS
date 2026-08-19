@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - FULL TEMİZ VE SORUNSUZ SÜRÜM v3.7 */
+/* KAPTAN NİLİ BULUT POS - AHK ZORUNLU KURYE SÜRÜMÜ v14 */
 
 // GÜÇLÜ ZİL SESİ FONKSİYONU
 function playOrderAlert() {
@@ -2559,7 +2559,7 @@ function getCourierCfg() {
   let cfg = {};
   try { cfg = JSON.parse(localStorage.getItem(COURIER_CFG_KEY) || "{}") || {}; } catch (_) { cfg = {}; }
   return {
-    mode: (cfg.mode === "group" || cfg.mode === "test" || cfg.mode === "ahk") ? cfg.mode : "ahk",
+    mode: "ahk",
     testPhone: cfg.testPhone || "",
     groupLink: cfg.groupLink || "",
     mapLink: cfg.mapLink || COURIER_DEFAULT_MAP,
@@ -2748,26 +2748,17 @@ async function sendOrderToCourier(order) {
     return;
   }
 
-  await copyCourierMessage(message);
-
-  if (cfg.mode === "group") {
-    if (!cfg.groupLink) {
-      alert("Kurye grubu linki tanımlı değil.\nGenel Ayarlar → Kuryeye Gönder bölümünden grup sohbet linkini girin.\n\nMesaj panoya kopyalandı, WhatsApp'ta gruba yapıştırabilirsiniz.");
-      return;
-    }
-    window.open(cfg.groupLink, "_blank");
-    alert("Kurye grubu açıldı. Mesaj panoya kopyalandı; sohbet kutusuna yapıştırıp (Ctrl+V) gönderin.");
-  } else {
-    const phone = normalizePhoneForWa(cfg.testPhone);
-    if (!phone) {
-      alert("Test numarası (Nilay) tanımlı değil.\nGenel Ayarlar → Kuryeye Gönder bölümünden numarayı girin.\n\nMesaj panoya kopyalandı.");
-      return;
-    }
-    window.open("https://wa.me/" + phone + "?text=" + encodeURIComponent(message), "_blank");
+  // Güvenlik: Bu sürümde wa.me / WhatsApp Web yönlendirmesi kesinlikle yoktur.
+  // Eski localStorage ayarı "test" veya "group" olsa bile yalnızca AHK köprüsü kullanılır.
+  if (!cfg.chatName) {
+    alert("Otomatik gönderim için WhatsApp sohbet adı gerekli.\nGenel Ayarlar → Kuryeye Gönder alanından Nilay veya KURYEMİX yazıp kaydedin.");
+    return;
   }
-
+  try { await copyCourierMessage(message); } catch (_) {}
+  dropCourierFileForAhk(cfg.chatName, message, orderId);
   markCourierSent(orderId);
   if (typeof loadInternetOrders === "function") loadInternetOrders();
+  showCourierToast("Kuryeye gönderiliyor: " + cfg.chatName);
 }
 window.sendOrderToCourier = sendOrderToCourier;
 window.buildCourierMessage = buildCourierMessage;
@@ -2796,25 +2787,14 @@ function mountCourierSettings() {
     <p style="margin:0 0 16px;font-size:13px;color:#6b7280">İnternet siparişleri WhatsApp'a bu ayarlarla gönderilir.</p>
 
     <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Gönderim Hedefi</label>
-    <select id="courierMode" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:12px">
+    <select id="courierMode" disabled style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:12px;background:#f3f4f6">
       <option value="ahk">Otomatik Gönder (Masaüstü Bot - AHK)</option>
-      <option value="test">TEST — Nilay'a gönder</option>
-      <option value="group">CANLI — KURYEMİX grubuna gönder</option>
     </select>
-
-    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Test Numarası (Nilay)</label>
-    <input id="courierTestPhone" type="tel" placeholder="05xx xxx xx xx"
-      style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:12px">
 
     <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">WhatsApp Sohbet Adı (Otomatik Bot için)</label>
     <input id="courierChatName" type="text" placeholder="Nilay  /  KURYEMİX"
       style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:4px">
     <div style="font-size:12px;color:#6b7280;margin:0 0 12px">WhatsApp Desktop'taki sohbet adıyla birebir aynı yazın. KNPOS-Kurye-Bot.ahk açık olmalı.</div>
-
-    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Kurye Grubu Sohbet Linki</label>
-    <input id="courierGroupLink" type="url" placeholder="https://web.whatsapp.com/ ... (grup sohbeti)"
-      style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:4px">
-    <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Gruba doğrudan otomatik yazılamaz; grup açılır, mesaj panoya kopyalanır, Ctrl+V ile gönderirsiniz.</div>
 
     <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">İşletme Konum Linki</label>
     <input id="courierMapLink" type="url"
@@ -2830,16 +2810,14 @@ function mountCourierSettings() {
   page.appendChild(card);
 
   document.getElementById("courierMode").value = cfg.mode;
-  document.getElementById("courierTestPhone").value = cfg.testPhone;
-  document.getElementById("courierGroupLink").value = cfg.groupLink;
   document.getElementById("courierMapLink").value = cfg.mapLink;
   document.getElementById("courierChatName").value = cfg.chatName || "";
 
   document.getElementById("courierSaveBtn").onclick = function () {
     saveCourierCfg({
-      mode: document.getElementById("courierMode").value,
-      testPhone: document.getElementById("courierTestPhone").value.trim(),
-      groupLink: document.getElementById("courierGroupLink").value.trim(),
+      mode: "ahk",
+      testPhone: "",
+      groupLink: "",
       mapLink: document.getElementById("courierMapLink").value.trim() || COURIER_DEFAULT_MAP,
       chatName: document.getElementById("courierChatName").value.trim(),
       header: cfg.header
