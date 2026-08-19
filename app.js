@@ -3,31 +3,76 @@
 // GÜÇLÜ ZİL SESİ FONKSİYONU (TAMAM'a basılana kadar çalar)
 let orderAlertLoopTimer = null;
 
+let orderAlertCtx = null;
+let orderSirenTimer = null;
+let audioUnlocked = false;
+
+function unlockAudioOnce() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) { orderAlertCtx = orderAlertCtx || new AC(); orderAlertCtx.resume().catch(() => {}); }
+  } catch (_) {}
+  try {
+    const a = document.getElementById('orderAlertSound');
+    if (a) { a.play().then(() => { a.pause(); a.currentTime = 0; }).catch(() => {}); }
+  } catch (_) {}
+}
+["click", "keydown", "touchstart"].forEach(function (ev) {
+  document.addEventListener(ev, unlockAudioOnce, { once: false, passive: true });
+});
+
+function beepOnce() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    orderAlertCtx = orderAlertCtx || new AC();
+    if (orderAlertCtx.state === "suspended") orderAlertCtx.resume().catch(() => {});
+    const t0 = orderAlertCtx.currentTime;
+    const osc = orderAlertCtx.createOscillator();
+    const gain = orderAlertCtx.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(880, t0);
+    osc.frequency.setValueAtTime(1320, t0 + 0.25);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.35, t0 + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
+    osc.connect(gain).connect(orderAlertCtx.destination);
+    osc.start(t0);
+    osc.stop(t0 + 0.55);
+  } catch (_) {}
+}
+
 function playOrderAlert(loop) {
+  // 1) mp3 dosyasi varsa calistir
   const audio = document.getElementById('orderAlertSound');
-  if (!audio) return;
-  audio.loop = !!loop;
-  audio.currentTime = 0;
-  audio.volume = 1.0;
-  audio.play().catch(err => {
-    console.log("Tarayıcı otomatik ses engeline takıldı, kullanıcı etkileşimi bekleniyor.", err);
-  });
+  if (audio) {
+    try {
+      audio.loop = !!loop;
+      audio.currentTime = 0;
+      audio.volume = 1.0;
+      audio.play().catch(err => console.log("mp3 zil calmadi, siren devrede", err));
+    } catch (_) {}
+  }
+  // 2) HER DURUMDA dahili siren (internet/mp3 gerekmez)
+  beepOnce();
   if (loop) {
-    // Bazı tarayıcılarda loop takılırsa yedek tetikleyici
-    if (orderAlertLoopTimer) clearInterval(orderAlertLoopTimer);
-    orderAlertLoopTimer = setInterval(function () {
-      if (audio.paused) audio.play().catch(() => {});
-    }, 1500);
+    if (orderSirenTimer) clearInterval(orderSirenTimer);
+    orderSirenTimer = setInterval(function () {
+      beepOnce();
+      if (audio && audio.paused) { try { audio.play().catch(() => {}); } catch (_) {} }
+    }, 900);
   }
 }
 
 function stopOrderAlert() {
+  if (orderSirenTimer) { clearInterval(orderSirenTimer); orderSirenTimer = null; }
   const audio = document.getElementById('orderAlertSound');
-  if (orderAlertLoopTimer) { clearInterval(orderAlertLoopTimer); orderAlertLoopTimer = null; }
-  if (audio) { audio.loop = false; audio.pause(); audio.currentTime = 0; }
+  if (audio) { audio.loop = false; try { audio.pause(); audio.currentTime = 0; } catch (_) {} }
 }
 
-// Zil çalarken ekranda duran özel uyarı penceresi
+// Zil calarken ekranda duran ozel uyari penceresi
 function showNewOrderAlert(message) {
   playOrderAlert(true);
 
@@ -39,8 +84,8 @@ function showNewOrderAlert(message) {
   box.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:20px;';
   box.innerHTML =
     '<div style="background:#fff;border-radius:16px;max-width:420px;width:100%;padding:28px 24px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.35)">' +
-      '<div style="font-size:44px;line-height:1;margin-bottom:12px;">🚨</div>' +
-      '<div style="font-size:20px;font-weight:800;color:#111827;margin-bottom:8px;">YENİ İNTERNET SİPARİŞİ GELDİ!</div>' +
+      '<div style="font-size:44px;line-height:1;margin-bottom:12px;">&#128680;</div>' +
+      '<div style="font-size:20px;font-weight:800;color:#111827;margin-bottom:8px;">YEN&#304; &#304;NTERNET S&#304;PAR&#304;&#350;&#304; GELD&#304;!</div>' +
       '<div style="font-size:14px;color:#6b7280;margin-bottom:20px;">' + (message || '') + '</div>' +
       '<button type="button" id="newOrderAlertOkBtn" style="background:#16a34a;color:#fff;border:none;border-radius:10px;padding:14px 32px;font-size:16px;font-weight:700;cursor:pointer;">TAMAM</button>' +
     '</div>';
@@ -54,9 +99,13 @@ function showNewOrderAlert(message) {
   setTimeout(function () { try { btn.focus(); } catch (_) {} }, 50);
 }
 
+// Zil testi (Genel Ayarlar / konsol)
+function testOrderAlert() { showNewOrderAlert("Bu bir ZiL TESTiDiR."); }
+
 window.playOrderAlert = playOrderAlert;
 window.stopOrderAlert = stopOrderAlert;
 window.showNewOrderAlert = showNewOrderAlert;
+window.testOrderAlert = testOrderAlert;
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -1674,18 +1723,57 @@ async function deletePaymentMethod(id) {
 // İNTERNET SİPARİŞLERİ VE CANLI ZİL SİSTEMİ
 // ==========================================
 
-function initRealtimeOrders() {
-  if (realtimeOrdersChannel) return;
+let lastSeenOrderKey = null;
+let ordersPollTimer = null;
 
-  realtimeOrdersChannel = client
-    .channel("public:orders")
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, payload => {
-      console.log("Yeni internet siparişi geldi!", payload.new);
-      loadInternetOrders();
-      showNewOrderAlert("Sipariş listesi güncellendi. Zil, TAMAM tuşuna basana kadar çalacak.");
-    })
-    .subscribe();
+async function getLatestOrderKey() {
+  try {
+    const { data, error } = await client
+      .from("orders")
+      .select("id, created_at")
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (error || !data || !data.length) return null;
+    return String(data[0].id) + "|" + String(data[0].created_at || "");
+  } catch (_) { return null; }
 }
+
+async function pollNewOrdersOnce() {
+  const key = await getLatestOrderKey();
+  if (!key) return;
+  if (lastSeenOrderKey === null) { lastSeenOrderKey = key; return; }
+  if (key !== lastSeenOrderKey) {
+    lastSeenOrderKey = key;
+    try { await loadInternetOrders(); } catch (_) {}
+    showNewOrderAlert("Yeni sipariş listeye eklendi. Zil, TAMAM tuşuna basana kadar çalacak.");
+  }
+}
+
+function initRealtimeOrders() {
+  // 1) Realtime (acikca calisirsa aninda haber verir)
+  if (!realtimeOrdersChannel) {
+    try {
+      realtimeOrdersChannel = client
+        .channel("public:orders")
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, payload => {
+          console.log("Yeni internet siparisi geldi (realtime)!", payload.new);
+          const n = payload.new || {};
+          lastSeenOrderKey = String(n.id) + "|" + String(n.created_at || "");
+          loadInternetOrders();
+          showNewOrderAlert("Sipariş listesi güncellendi. Zil, TAMAM tuşuna basana kadar çalacak.");
+        })
+        .subscribe(st => console.log("Realtime durum:", st));
+    } catch (e) { console.log("Realtime baslatilamadi, yedek kontrol devrede", e); }
+  }
+
+  // 2) YEDEK: realtime kapali/izinsiz olsa bile 15 sn'de bir kontrol
+  if (!ordersPollTimer) {
+    getLatestOrderKey().then(k => { lastSeenOrderKey = k; });
+    ordersPollTimer = setInterval(pollNewOrdersOnce, 15000);
+  }
+}
+window.initRealtimeOrders = initRealtimeOrders;
+try { setTimeout(function(){ try { initRealtimeOrders(); } catch(_){} }, 4000); } catch(_) {}
 
 // Sadece AYNI GÜN içindeki siparişler iptal edilebilir
 function isSameLocalDay(a, b) {
@@ -2779,6 +2867,39 @@ async function returnToInternetOrders() {
 }
 window.showCourierToast = showCourierToast;
 
+function showCourierStatusModal(chatName, message, orderId) {
+  let box = document.getElementById("courierStatusModal");
+  if (box) box.remove();
+  box = document.createElement("div");
+  box.id = "courierStatusModal";
+  box.style.cssText = "position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;";
+  box.innerHTML =
+    '<div style="background:#fff;border-radius:14px;max-width:520px;width:100%;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.35)">' +
+      '<div style="font-size:18px;font-weight:800;color:#111827;margin-bottom:6px;">Kuryeye G&#246;nderiliyor &rarr; ' + chatName + '</div>' +
+      '<div id="courierStatusText" style="font-size:13px;color:#6b7280;margin-bottom:12px;">Dosya indirildi. Masa&#252;st&#252; bot (KNPOS-Kurye-Bot.ahk) &#231;al&#305;&#351;&#305;yorsa mesaj birka&#231; saniye i&#231;inde WhatsApp\'ta g&#246;nderilir.</div>' +
+      '<textarea id="courierMsgArea" readonly style="width:100%;height:170px;font-size:12px;padding:10px;border:1px solid #e5e7eb;border-radius:8px;">' + message.replace(/</g, "&lt;") + '</textarea>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">' +
+        '<button type="button" id="courierCopyBtn" style="flex:1;min-width:130px;background:#111827;color:#fff;border:0;border-radius:8px;padding:12px;font-weight:700;cursor:pointer;">Mesaj&#305; Kopyala</button>' +
+        '<button type="button" id="courierRetryBtn" style="flex:1;min-width:130px;background:#2563eb;color:#fff;border:0;border-radius:8px;padding:12px;font-weight:700;cursor:pointer;">Dosyay&#305; Tekrar &#304;ndir</button>' +
+        '<button type="button" id="courierCloseBtn" style="flex:1;min-width:130px;background:#16a34a;color:#fff;border:0;border-radius:8px;padding:12px;font-weight:700;cursor:pointer;">Tamam</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(box);
+  box.querySelector("#courierCopyBtn").addEventListener("click", async function () {
+    const ok = await copyCourierMessage(message);
+    document.getElementById("courierStatusText").textContent = ok ? "Mesaj panoya kopyalandi. WhatsApp'ta yapistirabilirsin." : "Kopyalanamadi, metni elle secip kopyala.";
+  });
+  box.querySelector("#courierRetryBtn").addEventListener("click", function () {
+    dropCourierFileForAhk(chatName, message, orderId);
+    document.getElementById("courierStatusText").textContent = "Dosya tekrar indirildi. Bot'un acik oldugundan emin ol.";
+  });
+  box.querySelector("#courierCloseBtn").addEventListener("click", async function () {
+    box.remove();
+    await returnToInternetOrders();
+  });
+}
+window.showCourierStatusModal = showCourierStatusModal;
+
 async function sendOrderToCourier(order) {
   if (typeof order === "string") {
     try { order = JSON.parse(decodeURIComponent(order)); } catch (_) { order = null; }
@@ -2786,33 +2907,28 @@ async function sendOrderToCourier(order) {
   if (!order) { alert("Sipariş bilgisi okunamadı."); return; }
 
   const cfg = getCourierCfg();
-  const message = buildCourierMessage(order);
-  const orderId = order.id || order.order_id || Date.now();
-
-  if (cfg.mode === "ahk") {
-    if (!cfg.chatName) {
-      alert("Otomatik gönderim için hedef sohbet adı gerekli.\nGenel Ayarlar → Kuryeye Gönder → \"WhatsApp Sohbet Adı\" alanını doldurun (örn: Nilay veya KURYEMİX).");
-      return;
-    }
-    try { await copyCourierMessage(message); } catch (_) {}
-    dropCourierFileForAhk(cfg.chatName, message, orderId);
-    markCourierSent(orderId);
-    if (typeof showCourierToast === "function") showCourierToast("Kuryeye gönderiliyor: " + cfg.chatName);
-    await returnToInternetOrders();
-    return;
-  }
-
-  // Güvenlik: Bu sürümde wa.me / WhatsApp Web yönlendirmesi kesinlikle yoktur.
-  // Eski localStorage ayarı "test" veya "group" olsa bile yalnızca AHK köprüsü kullanılır.
   if (!cfg.chatName) {
-    alert("Otomatik gönderim için WhatsApp sohbet adı gerekli.\nGenel Ayarlar → Kuryeye Gönder alanından Nilay veya KURYEMİX yazıp kaydedin.");
+    alert("Otomatik gönderim için hedef sohbet adı gerekli.\nGenel Ayarlar → Kuryeye Gönder → \"WhatsApp Sohbet Adı\" alanını doldurun (örn: Nilay veya KURYEMİX).");
     return;
   }
+
+  let message = "";
+  try {
+    message = buildCourierMessage(order);
+  } catch (e) {
+    alert("Mesaj oluşturulamadı: " + (e && e.message ? e.message : e));
+    return;
+  }
+
+  const orderId = order.id || order.order_id || Date.now();
   try { await copyCourierMessage(message); } catch (_) {}
-  dropCourierFileForAhk(cfg.chatName, message, orderId);
+  try {
+    dropCourierFileForAhk(cfg.chatName, message, orderId);
+  } catch (e) {
+    alert("Dosya indirilemedi: " + (e && e.message ? e.message : e));
+  }
   markCourierSent(orderId);
-  if (typeof showCourierToast === "function") showCourierToast("Kuryeye gönderiliyor: " + cfg.chatName);
-  await returnToInternetOrders();
+  showCourierStatusModal(cfg.chatName, message, orderId);
 }
 window.sendOrderToCourier = sendOrderToCourier;
 window.buildCourierMessage = buildCourierMessage;
