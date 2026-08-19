@@ -2723,6 +2723,15 @@ function showCourierToast(text) {
     setTimeout(function(){ t.remove(); }, 3500);
   } catch (_) {}
 }
+function closeInternetOrderDetailModal() {
+  const m = document.getElementById("internetOrderDetailModal");
+  if (m) m.style.display = "none";
+}
+async function returnToInternetOrders() {
+  closeInternetOrderDetailModal();
+  if (typeof showPage === "function") showPage("internet");
+  else if (typeof loadInternetOrders === "function") await loadInternetOrders();
+}
 window.showCourierToast = showCourierToast;
 
 async function sendOrderToCourier(order) {
@@ -2743,8 +2752,8 @@ async function sendOrderToCourier(order) {
     try { await copyCourierMessage(message); } catch (_) {}
     dropCourierFileForAhk(cfg.chatName, message, orderId);
     markCourierSent(orderId);
-    if (typeof loadInternetOrders === "function") loadInternetOrders();
     if (typeof showCourierToast === "function") showCourierToast("Kuryeye gönderiliyor: " + cfg.chatName);
+    await returnToInternetOrders();
     return;
   }
 
@@ -2757,8 +2766,8 @@ async function sendOrderToCourier(order) {
   try { await copyCourierMessage(message); } catch (_) {}
   dropCourierFileForAhk(cfg.chatName, message, orderId);
   markCourierSent(orderId);
-  if (typeof loadInternetOrders === "function") loadInternetOrders();
-  showCourierToast("Kuryeye gönderiliyor: " + cfg.chatName);
+  if (typeof showCourierToast === "function") showCourierToast("Kuryeye gönderiliyor: " + cfg.chatName);
+  await returnToInternetOrders();
 }
 window.sendOrderToCourier = sendOrderToCourier;
 window.buildCourierMessage = buildCourierMessage;
