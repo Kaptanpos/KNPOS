@@ -2729,9 +2729,21 @@ async function sendOrderToCourier(order) {
       alert("Otomatik gönderim için hedef sohbet adı gerekli.\nGenel Ayarlar → Kuryeye Gönder → \"WhatsApp Sohbet Adı\" alanını doldurun (örn: Nilay veya KURYEMİX).");
       return;
     }
+    try { await copyCourierMessage(message); } catch (_) {}
     dropCourierFileForAhk(cfg.chatName, message, orderId);
     markCourierSent(orderId);
     if (typeof loadInternetOrders === "function") loadInternetOrders();
+    setTimeout(function () {
+      alert(
+        "Komut dosyası indirildi (knpos_kurye_*.txt).\n\n" +
+        "Bot açıksa 1-2 saniye içinde WhatsApp'ta \"" + cfg.chatName + "\" sohbetini açıp mesajı gönderecek.\n\n" +
+        "Bir şey olmuyorsa:\n" +
+        "1) KNPOS-Kurye-Bot_v2.ahk çalışıyor mu? (Ctrl+Alt+D ile kontrol et)\n" +
+        "2) Tarayıcı dosyayı 'İndirilenler' klasörüne kaydediyor mu? (Soruyorsa 'Sakla' de)\n" +
+        "3) WhatsApp Desktop açık ve girişli olmalı.\n\n" +
+        "Mesaj ayrıca panoya kopyalandı; gerekirse Ctrl+V ile elle gönderebilirsin."
+      );
+    }, 300);
     return;
   }
 
