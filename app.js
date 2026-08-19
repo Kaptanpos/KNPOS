@@ -1,16 +1,62 @@
 /* KAPTAN NİLİ BULUT POS - AHK ZORUNLU KURYE SÜRÜMÜ v14 */
 
-// GÜÇLÜ ZİL SESİ FONKSİYONU
-function playOrderAlert() {
+// GÜÇLÜ ZİL SESİ FONKSİYONU (TAMAM'a basılana kadar çalar)
+let orderAlertLoopTimer = null;
+
+function playOrderAlert(loop) {
   const audio = document.getElementById('orderAlertSound');
-  if (audio) {
-    audio.currentTime = 0;
-    audio.volume = 1.0;
-    audio.play().catch(err => {
-      console.log("Tarayıcı otomatik ses engeline takıldı, kullanıcı etkileşimi bekleniyor.", err);
-    });
+  if (!audio) return;
+  audio.loop = !!loop;
+  audio.currentTime = 0;
+  audio.volume = 1.0;
+  audio.play().catch(err => {
+    console.log("Tarayıcı otomatik ses engeline takıldı, kullanıcı etkileşimi bekleniyor.", err);
+  });
+  if (loop) {
+    // Bazı tarayıcılarda loop takılırsa yedek tetikleyici
+    if (orderAlertLoopTimer) clearInterval(orderAlertLoopTimer);
+    orderAlertLoopTimer = setInterval(function () {
+      if (audio.paused) audio.play().catch(() => {});
+    }, 1500);
   }
 }
+
+function stopOrderAlert() {
+  const audio = document.getElementById('orderAlertSound');
+  if (orderAlertLoopTimer) { clearInterval(orderAlertLoopTimer); orderAlertLoopTimer = null; }
+  if (audio) { audio.loop = false; audio.pause(); audio.currentTime = 0; }
+}
+
+// Zil çalarken ekranda duran özel uyarı penceresi
+function showNewOrderAlert(message) {
+  playOrderAlert(true);
+
+  let box = document.getElementById('newOrderAlertOverlay');
+  if (box) box.remove();
+
+  box = document.createElement('div');
+  box.id = 'newOrderAlertOverlay';
+  box.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:20px;';
+  box.innerHTML =
+    '<div style="background:#fff;border-radius:16px;max-width:420px;width:100%;padding:28px 24px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.35)">' +
+      '<div style="font-size:44px;line-height:1;margin-bottom:12px;">🚨</div>' +
+      '<div style="font-size:20px;font-weight:800;color:#111827;margin-bottom:8px;">YENİ İNTERNET SİPARİŞİ GELDİ!</div>' +
+      '<div style="font-size:14px;color:#6b7280;margin-bottom:20px;">' + (message || '') + '</div>' +
+      '<button type="button" id="newOrderAlertOkBtn" style="background:#16a34a;color:#fff;border:none;border-radius:10px;padding:14px 32px;font-size:16px;font-weight:700;cursor:pointer;">TAMAM</button>' +
+    '</div>';
+
+  document.body.appendChild(box);
+  const btn = box.querySelector('#newOrderAlertOkBtn');
+  btn.addEventListener('click', function () {
+    stopOrderAlert();
+    box.remove();
+  });
+  setTimeout(function () { try { btn.focus(); } catch (_) {} }, 50);
+}
+
+window.playOrderAlert = playOrderAlert;
+window.stopOrderAlert = stopOrderAlert;
+window.showNewOrderAlert = showNewOrderAlert;
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -1635,9 +1681,8 @@ function initRealtimeOrders() {
     .channel("public:orders")
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, payload => {
       console.log("Yeni internet siparişi geldi!", payload.new);
-      playOrderAlert();
       loadInternetOrders();
-      alert("🚨 YENİ İNTERNET SİPARİŞİ GELDİ!");
+      showNewOrderAlert("Sipariş listesi güncellendi. Zil, TAMAM tuşuna basana kadar çalacak.");
     })
     .subscribe();
 }
