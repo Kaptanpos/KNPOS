@@ -1865,12 +1865,14 @@ async function insertSaleItemsSafe(saleItems) {
 }
 
 // TEK VE KUSURSUZ İNTERNET SİPARİŞ DETAY FONKSİYONU
+// TEK VE KUSURSUZ İNTERNET SİPARİŞ DETAY FONKSİYONU (Siparişi Kaydet Butonu Kaldırıldı)
 function openInternetOrderDetail(order) {
   let modal = document.getElementById("internetOrderDetailModal");
   if (!modal) {
     const modalDiv = document.createElement("div");
     modalDiv.id = "internetOrderDetailModal";
     modalDiv.className = "modal-overlay";
+    modalDiv.style.zIndex = "99999";
     modalDiv.innerHTML = `
       <div class="recipe-modal-card" style="width: 550px; max-width: 95vw; text-align: left;">
         <h3 style="color:var(--primary); margin-bottom:10px; border-bottom:2px solid var(--border-color); padding-bottom:8px;">
@@ -1881,7 +1883,6 @@ function openInternetOrderDetail(order) {
         </div>
         <div style="display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;">
           <button type="button" class="btn-primary" style="background:#16a34a;" onclick="window.print()">🖨️ YAZDIR</button>
-          <button type="button" class="btn-primary" style="background:#2563eb;" id="saveInternetOrderBtn">💾 Siparişi Kaydet (Satışa Ekle)</button>
           <button type="button" class="btn-danger" id="cancelInternetOrderBtn">❌ İptal Et</button>
           <button type="button" class="btn-secondary" onclick="document.getElementById('internetOrderDetailModal').style.display='none'">KAPAT</button>
         </div>
@@ -1920,42 +1921,47 @@ function openInternetOrderDetail(order) {
     <p><strong>💰 Toplam Tutar:</strong> <span style="color:var(--primary); font-weight:bold; font-size:15px;">${formatMoney(totalVal)}</span></p>
   `;
 
-  document.getElementById("saveInternetOrderBtn").onclick = async function() {
-    if (!currentCashSession) {
-      alert("⚠️ Kasa kapalı! İnternet siparişini onaylayıp ciroya eklemek için önce kasayı açmalısınız.");
+  // Kuryeye gönder butonu (detay modalı içinde de olsun istersen)
+  const cancelWrap = document.getElementById("cancelInternetOrderBtn")?.parentElement;
+  if (cancelWrap && !document.getElementById("detCourierSendBtn")) {
+    const cb = document.createElement("button");
+    cb.type = "button";
+    cb.id = "detCourierSendBtn";
+    cb.style.cssText = "background:#25D366;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer";
+    cb.textContent = "🛵 KURYEYE GÖNDER";
+    cancelWrap.insertBefore(cb, cancelWrap.firstChild);
+  }
+  const courierBtnEl = document.getElementById("detCourierSendBtn");
+  if (courierBtnEl) {
+    courierBtnEl.style.display = (order.status === "cancelled") ? "none" : "";
+    courierBtnEl.onclick = function () { 
+      document.getElementById('internetOrderDetailModal').style.display = 'none';
+      sendOrderToCourier(order); 
+    };
+  }
+
+  const cancelBtnEl = document.getElementById("cancelInternetOrderBtn");
+  const cancellable = canCancelInternetOrder(order);
+  cancelBtnEl.style.display = cancellable ? "" : "none";
+  cancelBtnEl.onclick = async function() {
+    if (!canCancelInternetOrder(order)) {
+      alert("Bu sipariş bugüne ait değil. Sadece aynı gün içindeki siparişler iptal edilebilir.");
       return;
     }
-
-    if (confirm(`Sipariş #${orderIdText} onaylanıp günlük satışlara işlensin mi?`)) {
-      try {
-        const { data: sale, error: saleErr } = await client
-          .from("sales")
-          .insert({ total_amount: Number(totalVal), payment_type: paymentVal })
-          .select("id")
-          .single();
-
-        if (saleErr) throw saleErr;
-
-        const prods = parseInternetProducts(order);
-        if (prods.length > 0) {
-          const saleItems = await buildSaleItemsFromInternetOrder(prods, sale.id, totalVal);
-          await insertSaleItemsSafe(saleItems);
-          // Veritabanında ürün adı kolonu olmasa dahi adisyonda gerçek adı göster.
-          saveInternetSaleProductNames(sale.id, saleItems);
-        }
-
-        await client.from("orders").update({ status: "completed" }).eq("id", order.id);
-
-        alert("✅ Sipariş başarıyla günlük satışlara eklendi!");
-        document.getElementById('internetOrderDetailModal').style.display = 'none';
-        await renderSales();
-        await loadInternetOrders();
-
-      } catch (err) {
-        alert("İşlem başarısız: " + err.message);
-      }
+    if (confirm(`Sipariş #${orderIdText} iptal edilsin mi?`)) {
+      await client.from("orders").update({ status: "cancelled" }).eq("id", order.id);
+      alert("❌ Sipariş iptal edildi.");
+      document.getElementById('internetOrderDetailModal').style.display = 'none';
+      await loadInternetOrders();
     }
   };
+
+  modal.style.display = "flex";
+}
+
+
+
+
 
   // Kuryeye gönder butonu (detay modalı)
   const cancelWrap = document.getElementById("cancelInternetOrderBtn")?.parentElement;
