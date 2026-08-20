@@ -1,95 +1,16 @@
 /* KAPTAN NİLİ BULUT POS - AHK ZORUNLU KURYE SÜRÜMÜ v14 */
 
-// ZIL SESI (mp3 + dahili siren yedegi) - TAMAM'a basilana kadar calar
-let orderAlertCtx = null, orderSirenTimer = null, audioUnlocked = false;
-
-function unlockAudioOnce() {
-  if (audioUnlocked) return;
-  audioUnlocked = true;
-  try {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (AC) { orderAlertCtx = orderAlertCtx || new AC(); orderAlertCtx.resume().catch(function(){}); }
-  } catch (_) {}
-  try {
-    const a = document.getElementById('orderAlertSound');
-    if (a) { a.play().then(function(){ a.pause(); a.currentTime = 0; }).catch(function(){}); }
-  } catch (_) {}
-}
-["click","keydown","touchstart"].forEach(function (ev) {
-  document.addEventListener(ev, unlockAudioOnce, { passive: true });
-});
-
-function beepOnce() {
-  try {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    orderAlertCtx = orderAlertCtx || new AC();
-    if (orderAlertCtx.state === "suspended") orderAlertCtx.resume().catch(function(){});
-    const t0 = orderAlertCtx.currentTime;
-    const osc = orderAlertCtx.createOscillator();
-    const g = orderAlertCtx.createGain();
-    osc.type = "square";
-    osc.frequency.setValueAtTime(880, t0);
-    osc.frequency.setValueAtTime(1320, t0 + 0.25);
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(0.35, t0 + 0.05);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
-    osc.connect(g).connect(orderAlertCtx.destination);
-    osc.start(t0); osc.stop(t0 + 0.55);
-  } catch (_) {}
-}
-
-function playOrderAlert(loop) {
+// GÜÇLÜ ZİL SESİ FONKSİYONU
+function playOrderAlert() {
   const audio = document.getElementById('orderAlertSound');
   if (audio) {
-    try {
-      audio.loop = !!loop;
-      audio.currentTime = 0;
-      audio.volume = 1.0;
-      audio.play().catch(function(){});
-    } catch (_) {}
-  }
-  beepOnce();
-  if (loop) {
-    if (orderSirenTimer) clearInterval(orderSirenTimer);
-    orderSirenTimer = setInterval(function () {
-      beepOnce();
-      if (audio && audio.paused) { try { audio.play().catch(function(){}); } catch (_) {} }
-    }, 900);
+    audio.currentTime = 0;
+    audio.volume = 1.0;
+    audio.play().catch(err => {
+      console.log("Tarayıcı otomatik ses engeline takıldı, kullanıcı etkileşimi bekleniyor.", err);
+    });
   }
 }
-
-function stopOrderAlert() {
-  if (orderSirenTimer) { clearInterval(orderSirenTimer); orderSirenTimer = null; }
-  const audio = document.getElementById('orderAlertSound');
-  if (audio) { audio.loop = false; try { audio.pause(); audio.currentTime = 0; } catch (_) {} }
-}
-
-function showNewOrderAlert(message) {
-  playOrderAlert(true);
-  var box = document.getElementById('newOrderAlertOverlay');
-  if (box) box.remove();
-  box = document.createElement('div');
-  box.id = 'newOrderAlertOverlay';
-  box.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:20px;';
-  box.innerHTML =
-    '<div style="background:#fff;border-radius:16px;max-width:420px;width:100%;padding:28px 24px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.35)">' +
-      '<div style="font-size:44px;margin-bottom:12px;">&#128680;</div>' +
-      '<div style="font-size:20px;font-weight:800;color:#111827;margin-bottom:8px;">YEN&#304; &#304;NTERNET S&#304;PAR&#304;&#350;&#304; GELD&#304;!</div>' +
-      '<div style="font-size:14px;color:#6b7280;margin-bottom:20px;">' + (message || '') + '</div>' +
-      '<button type="button" id="newOrderAlertOkBtn" style="background:#16a34a;color:#fff;border:0;border-radius:10px;padding:14px 32px;font-size:16px;font-weight:700;cursor:pointer;">TAMAM</button>' +
-    '</div>';
-  document.body.appendChild(box);
-  box.querySelector('#newOrderAlertOkBtn').addEventListener('click', function () {
-    stopOrderAlert(); box.remove();
-  });
-}
-
-function testOrderAlert() { showNewOrderAlert("Bu bir zil testidir."); }
-window.playOrderAlert = playOrderAlert;
-window.stopOrderAlert = stopOrderAlert;
-window.showNewOrderAlert = showNewOrderAlert;
-window.testOrderAlert = testOrderAlert;
 
 const SUPABASE_URL = "https://stytmmafrrtqaxobihap.supabase.co";
 const SUPABASE_KEY = "sb_publishable_60c-7R-1SshMYxC2xpKL1g_PwApWWqu";
@@ -1714,7 +1635,7 @@ function initRealtimeOrders() {
     .channel("public:orders")
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, payload => {
       console.log("Yeni internet siparişi geldi!", payload.new);
-      showNewOrderAlert("Yeni sipariş listeye eklendi.");
+      playOrderAlert();
       loadInternetOrders();
       alert("🚨 YENİ İNTERNET SİPARİŞİ GELDİ!");
     })
