@@ -2133,15 +2133,22 @@ async function loadInternetOrders() {
         actionButtons += ` <span style="font-size:10px; color:#dc2626; font-weight:bold; margin-left:4px;">✕ İptal</span>`;
       }
 
-      return `
+return `
         <tr>
           <td><strong>${timeStr}</strong></td>
           <td><strong>#${orderNo}</strong></td>
           <td>${productsSummary}</td>
           <td><strong style="color:var(--primary);">${totalFormatted}</strong></td>
           <td>${paymentChannel}</td>
-          <td style="text-align:left; padding-left:15px; white-space:nowrap;">${actionButtons}</td>
+          <td style="text-align:left; padding-left:10px; white-space:nowrap;">
+            <div style="display:inline-flex; align-items:center; gap:4px; max-width:100%;">
+              ${actionButtons}
+            </div>
+          </td>
         </tr>`;
+
+
+      
     }).join("");
   } catch (err) {
     const message = escapeHtml(err?.message || "Bilinmeyen hata");
