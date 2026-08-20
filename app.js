@@ -1625,8 +1625,9 @@ async function deletePaymentMethod(id) {
 }
 
 // ==========================================
-// İNTERNET SİPARİŞLERİ VE CANLI ZİL SİSTEMİ
+// KESİNTİSİZ SÜREKLİ ZİL VE UYARI SİSTEMİ
 // ==========================================
+let activeAlertInterval = null;
 
 function initRealtimeOrders() {
   if (realtimeOrdersChannel) return;
@@ -1635,9 +1636,26 @@ function initRealtimeOrders() {
     .channel("public:orders")
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, payload => {
       console.log("Yeni internet siparişi geldi!", payload.new);
-      playOrderAlert();
       loadInternetOrders();
+
+      // 1. Önce mevcut çalan varsa temizle
+      if (activeAlertInterval) clearInterval(activeAlertInterval);
+
+      // 2. İlk zili hemen çal
+      playOrderAlert();
+
+      // 3. Kullanıcı "Tamam" diyene kadar her 3 saniyede bir zili tekrar çal (kesintisiz döngü)
+      activeAlertInterval = setInterval(() => {
+        playOrderAlert();
+      }, 3000);
+
+      // 4. Uyarı mesajını göster. Kullanıcı "Tamam" bastığı an setInterval iptal olur ve zil susar.
       alert("🚨 YENİ İNTERNET SİPARİŞİ GELDİ!");
+
+      if (activeAlertInterval) {
+        clearInterval(activeAlertInterval);
+        activeAlertInterval = null;
+      }
     })
     .subscribe();
 }
