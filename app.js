@@ -2119,19 +2119,20 @@ async function loadInternetOrders() {
 
       const encodedOrder = encodeURIComponent(JSON.stringify(order));
       
-      // İPTALLER KALDIRILDI, DÜZGÜN VE KOMPAKT HİZALAMA
-      let actionButtons = `<button type="button" class="btn-primary" style="padding:6px 10px; font-size:11px;" onclick="openInternetOrderDetail(JSON.parse(decodeURIComponent('${encodedOrder}')))">🔍 Detay</button>`;
+      // Butonları daha derli toplu ve ödeme kanalına yakın hizalama
+      let actionButtons = `<div style="display: inline-flex; gap: 4px; justify-content: flex-end; align-items: center;"><button type="button" class="btn-primary" style="padding:6px 10px; font-size:11px;" onclick="openInternetOrderDetail(JSON.parse(decodeURIComponent('${encodedOrder}')))">🔍 Detay</button>`;
 
       if (orderStatus !== "cancelled") {
         const sentBefore = typeof isCourierSent === "function" && isCourierSent(order.id || order.order_id);
-        actionButtons += ` <button type="button" style="padding:6px 10px; font-size:11px; margin-left:4px; border:0; border-radius:6px; cursor:pointer; color:#fff; background:${sentBefore ? "#16a34a" : "#25D366"};" onclick="sendOrderToCourier('${encodedOrder}')">${sentBefore ? "✅ Gönderildi" : "🛵 Kurye"}</button>`;
+        actionButtons += `<button type="button" style="padding:6px 10px; font-size:11px; border:0; border-radius:6px; cursor:pointer; color:#fff; background:${sentBefore ? "#16a34a" : "#25D366"};" onclick="sendOrderToCourier('${encodedOrder}')">${sentBefore ? "✅ Gönderildi" : "🛵 Kurye"}</button>`;
       }
 
       if (orderStatus === "completed") {
-        actionButtons += ` <span style="font-size:10px; color:#16a34a; font-weight:bold; margin-left:4px;">✓ Kaydedildi</span>`;
+        actionButtons += `<span style="font-size:10px; color:#16a34a; font-weight:bold; margin-left:4px;">✓ Kaydedildi</span>`;
       } else if (orderStatus === "cancelled") {
-        actionButtons += ` <span style="font-size:10px; color:#dc2626; font-weight:bold; margin-left:4px;">✕ İptal</span>`;
+        actionButtons += `<span style="font-size:10px; color:#dc2626; font-weight:bold; margin-left:4px;">✕ İptal</span>`;
       }
+      actionButtons += `</div>`;
 
       return `
         <tr>
