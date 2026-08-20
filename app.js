@@ -2118,23 +2118,19 @@ async function loadInternetOrders() {
       }
 
       const encodedOrder = encodeURIComponent(JSON.stringify(order));
-      let actionButtons = `<button type="button" class="btn-primary" style="padding:6px 12px; font-size:12px;" onclick="openInternetOrderDetail(JSON.parse(decodeURIComponent('${encodedOrder}')))">🔍 Detay</button>`;
+      
+      // İPTALLER KALDIRILDI, DÜZGÜN VE KOMPAKT HİZALAMA
+      let actionButtons = `<button type="button" class="btn-primary" style="padding:6px 10px; font-size:11px;" onclick="openInternetOrderDetail(JSON.parse(decodeURIComponent('${encodedOrder}')))">🔍 Detay</button>`;
 
       if (orderStatus !== "cancelled") {
         const sentBefore = typeof isCourierSent === "function" && isCourierSent(order.id || order.order_id);
-        actionButtons += ` <button type="button" style="padding:6px 10px; font-size:12px; margin-left:6px; border:0; border-radius:6px; cursor:pointer; color:#fff; background:${sentBefore ? "#16a34a" : "#25D366"};" onclick="sendOrderToCourier('${encodedOrder}')">${sentBefore ? "✅ Kuryeye Gönderildi" : "🛵 Kuryeye Gönder"}</button>`;
+        actionButtons += ` <button type="button" style="padding:6px 10px; font-size:11px; margin-left:4px; border:0; border-radius:6px; cursor:pointer; color:#fff; background:${sentBefore ? "#16a34a" : "#25D366"};" onclick="sendOrderToCourier('${encodedOrder}')">${sentBefore ? "✅ Gönderildi" : "🛵 Kurye"}</button>`;
       }
 
-      if (orderStatus === "pending" || !order.status) {
-        if (canCancelInternetOrder(order)) {
-          actionButtons += ` <button type="button" class="btn-danger" style="padding:6px 10px; font-size:12px; margin-left:6px;" onclick="quickCancelInternetOrder('${escapeHtml(order.id)}', '${orderNo}', '${escapeHtml(order.created_at || "")}')">❌ İptal</button>`;
-        } else {
-          actionButtons += ' <span style="font-size:11px; color:#64748b; margin-left:6px;">İptal süresi doldu</span>';
-        }
-      } else if (orderStatus === "completed") {
-        actionButtons += ' <span style="font-size:11px; color:#16a34a; font-weight:bold; margin-left:6px;">✓ Kaydedildi</span>';
+      if (orderStatus === "completed") {
+        actionButtons += ` <span style="font-size:10px; color:#16a34a; font-weight:bold; margin-left:4px;">✓ Kaydedildi</span>`;
       } else if (orderStatus === "cancelled") {
-        actionButtons += ' <span style="font-size:11px; color:#dc2626; font-weight:bold; margin-left:6px;">✕ İptal Edildi</span>';
+        actionButtons += ` <span style="font-size:10px; color:#dc2626; font-weight:bold; margin-left:4px;">✕ İptal</span>`;
       }
 
       return `
@@ -2152,6 +2148,8 @@ async function loadInternetOrders() {
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Siparişler yüklenemedi: ${message}</td></tr>`;
   }
 }
+
+
 
 function processInternetOrder(orderId) {
   alert(`Sipariş #${orderId} işleme alındı!`);
