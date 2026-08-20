@@ -1866,6 +1866,8 @@ async function insertSaleItemsSafe(saleItems) {
 
 // TEK VE KUSURSUZ İNTERNET SİPARİŞ DETAY FONKSİYONU
 // TEK VE KUSURSUZ İNTERNET SİPARİŞ DETAY FONKSİYONU (Siparişi Kaydet Butonu Kaldırıldı)
+
+
 function openInternetOrderDetail(order) {
   let modal = document.getElementById("internetOrderDetailModal");
   if (!modal) {
@@ -1878,12 +1880,9 @@ function openInternetOrderDetail(order) {
         <h3 style="color:var(--primary); margin-bottom:10px; border-bottom:2px solid var(--border-color); padding-bottom:8px;">
           👤 <span id="detCustomerName">İsimsiz Müşteri</span> <span style="float:right; font-size:14px; color:var(--text-muted);" id="detOrderId">#103</span>
         </h3>
-        <div id="detContentBody" style="font-size:13px; line-height:1.6; max-height:350px; overflow-y:auto; margin-bottom:15px;">
-          <!-- Detaylar buraya dolacak -->
-        </div>
+        <div id="detContentBody" style="font-size:13px; line-height:1.6; max-height:350px; overflow-y:auto; margin-bottom:15px;"></div>
         <div style="display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;">
           <button type="button" class="btn-primary" style="background:#16a34a;" onclick="window.print()">🖨️ YAZDIR</button>
-          <button type="button" class="btn-danger" id="cancelInternetOrderBtn">❌ İptal Et</button>
           <button type="button" class="btn-secondary" onclick="document.getElementById('internetOrderDetailModal').style.display='none'">KAPAT</button>
         </div>
       </div>
@@ -1921,44 +1920,9 @@ function openInternetOrderDetail(order) {
     <p><strong>💰 Toplam Tutar:</strong> <span style="color:var(--primary); font-weight:bold; font-size:15px;">${formatMoney(totalVal)}</span></p>
   `;
 
-  // Kuryeye gönder butonu (detay modalı içinde de olsun istersen)
-  const cancelWrap = document.getElementById("cancelInternetOrderBtn")?.parentElement;
-  if (cancelWrap && !document.getElementById("detCourierSendBtn")) {
-    const cb = document.createElement("button");
-    cb.type = "button";
-    cb.id = "detCourierSendBtn";
-    cb.style.cssText = "background:#25D366;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer";
-    cb.textContent = "🛵 KURYEYE GÖNDER";
-    cancelWrap.insertBefore(cb, cancelWrap.firstChild);
-  }
-  const courierBtnEl = document.getElementById("detCourierSendBtn");
-  if (courierBtnEl) {
-    courierBtnEl.style.display = (order.status === "cancelled") ? "none" : "";
-    courierBtnEl.onclick = function () { 
-      document.getElementById('internetOrderDetailModal').style.display = 'none';
-      sendOrderToCourier(order); 
-    };
-  }
-
-  const cancelBtnEl = document.getElementById("cancelInternetOrderBtn");
-  const cancellable = canCancelInternetOrder(order);
-  cancelBtnEl.style.display = cancellable ? "" : "none";
-  cancelBtnEl.onclick = async function() {
-    if (!canCancelInternetOrder(order)) {
-      alert("Bu sipariş bugüne ait değil. Sadece aynı gün içindeki siparişler iptal edilebilir.");
-      return;
-    }
-    if (confirm(`Sipariş #${orderIdText} iptal edilsin mi?`)) {
-      await client.from("orders").update({ status: "cancelled" }).eq("id", order.id);
-      alert("❌ Sipariş iptal edildi.");
-      document.getElementById('internetOrderDetailModal').style.display = 'none';
-      await loadInternetOrders();
-    }
-  };
-
   modal.style.display = "flex";
 }
-
+window.openInternetOrderDetail = openInternetOrderDetail;
 
 
 
