@@ -1630,8 +1630,10 @@ async function deletePaymentMethod(id) {
 let activeAlertInterval = null;
 
 // ==========================================
-// İNTERNET SİPARİŞLERİ VE KURYEYE GÖNDER OTOMASYONU
+// KESİNTİSİZ SÜREKLİ ZİL VE İNTERNET SİPARİŞLERİ
 // ==========================================
+
+let activeAlertInterval = null;
 
 function initRealtimeOrders() {
   if (realtimeOrdersChannel) return;
@@ -1653,6 +1655,242 @@ function initRealtimeOrders() {
     .subscribe();
 }
 
+function showOrderAlertModal() {
+  let modal = document.getElementById("customOrderAlertModal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "customOrderAlertModal";
+    modal.className = "modal-overlay";
+    modal.style.zIndex = "999999";
+    modal.innerHTML = `
+      <div class="recipe-modal-card" style="width: 400px; text-align: center; padding: 30px;">
+        <div style="font-size: 48px; margin-bottom: 10px;">🚨</div>
+        <h3 style="color: var(--primary); margin-bottom: 15px; font-size: 20px;">YENİ İNTERNET SİPARİŞİ GELDİ!</h3>
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">Sipariş panelinize düştü. Susturmak için aşağıdaki butona basın.</p>
+        <button type="button" class="btn-primary" id="stopAlertBtn" style="width: 100%; padding: 14px; font-size: 16px; background: #dc2626;">TAMAM / SESİ SUSTUR</button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  modal.style.display = "flex";
+
+  document.getElementById("stopAlertBtn").onclick = function() {
+    if (activeAlertInterval) {
+      clearInterval(activeAlertInterval);
+      activeAlertInterval = null;
+    }
+    const audio = document.getElementById('orderAlertSound');
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+    modal.style.display = "none";
+  };
+}
+
+async function loadInternetOrders() {
+  const tbody = document.getElementById("internetOrdersTbody");
+  if (!tbody) return;
+
+  const startValue = document.getElementById("netStartDate")?.value || "";
+  const endValue = document.getElementById("netEndDate")?.value || "";
+  const selectedChannel = document.getElementById("netPaymentChannelFilter")?.value || "";
+
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">Siparişler yükleniyor...</td></tr>';
+
+  try {
+    let query = client.from("orders").select("*").order("created_at", { ascending: false });
+
+    const startIso = localDateBoundaryToIso(startValue);
+    const endExclusiveIso = localDateBoundaryToIso(endValue, true);
+    if (startIso) query = query.gte("created_at", startIso);
+    if (endExclusiveIso) query = query.lt("created_at", endExclusiveIso);
+
+    const { data: orders, error } = await query;
+    if (error) throw error;
+
+    const filteredOrders = (orders || []).filter(order => {
+      return !selectedChannel || getPaymentChannelKey(order) === selectedChannel;
+    });
+
+    if (filteredOrders.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#64748b; padding:20px;">Seçilen kriterlere uygun internet siparişi bulunamadı.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filteredOrders.map(order => {
+      const timeStr = order.created_at
+        ? new Date(order.created_at).toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+        : "Şimdi";
+      const orderNo = escapeHtml(order.order_id || order.id);
+      const totalFormatted = formatMoney(order.total_price || order.total_amount || 0);
+      const rawChannel = order.payment_channel || order.platform || order.payment_method || order.payment_type || "Belirtilmemiş";
+      const paymentChannel = escapeHtml(rawChannel);
+      const orderStatus = order.status || "pending";
+
+      let productsSummary = "Ürün bilgisi yok";
+      try {
+        let products = parseInternetProducts(order);
+        if (Array.isArray(products) && products.length > 0) {
+          productsSummary = products
+            .map(product => `${escapeHtml(getInternetProductName(product) || "Ürün")} (${getInternetProductQty(product)} Adet)`)
+            .join(", ");
+        }
+      } catch (_) {
+        productsSummary = "Ürün detayları yüklenemedi";
+      }
+
+      const encodedOrder = encodeURIComponent(JSON.stringify(order));
+      
+      let actionButtons = `<button type="button" class="btn-primary" style="padding:6px 10px; font-size:11px;" onclick="openInternetOrderDetail(JSON.parse(decodeURIComponent('${encodedOrder}')))">🔍 Detay</button>`;
+
+      if (orderStatus !== "cancelled") {
+        const sentBefore = typeof isCourierSent === "function" && isCourierSent(order.id || order.order_id);
+        actionButtons += ` <button type="button" style="padding:6px 10px; font-size:11px; margin-left:4px; border:0; border-radius:6px; cursor:pointer; color:#fff; background:${sentBefore ? "#16a34a" : "#25D366"};" onclick="sendOrderToCourier('${encodedOrder}')">${sentBefore ? "✅ Gönderildi" : "🛵 Kurye"}</button>`;
+      }
+
+      if (orderStatus === "completed") {
+        actionButtons += ` <span style="font-size:10px; color:#16a34a; font-weight:bold; margin-left:4px;">✓ Kaydedildi</span>`;
+      } else if (orderStatus === "cancelled") {
+        actionButtons += ` <span style="font-size:10px; color:#dc2626; font-weight:bold; margin-left:4px;">✕ İptal</span>`;
+      }
+
+      return `
+        <tr>
+          <td><strong>${timeStr}</strong></td>
+          <td><strong>#${orderNo}</strong></td>
+          <td>${productsSummary}</td>
+          <td><strong style="color:var(--primary);">${totalFormatted}</strong></td>
+          <td>${paymentChannel}</td>
+          <td style="text-align:left; padding-left:10px; white-space:nowrap;">
+            <div style="display:inline-flex; align-items:center; gap:4px; max-width:100%;">
+              ${actionButtons}
+            </div>
+          </td>
+        </tr>`;
+    }).join("");
+  } catch (err) {
+    const message = escapeHtml(err?.message || "Bilinmeyen hata");
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Siparişler yüklenemedi: ${message}</td></tr>`;
+  }
+}
+
+async function sendOrderToCourier(order) {
+  if (typeof order === "string") {
+    try { order = JSON.parse(decodeURIComponent(order)); } catch (_) { order = null; }
+  }
+  if (!order) { alert("Sipariş bilgisi okunamadı."); return; }
+
+  if (order.status !== "completed") {
+    if (!currentCashSession) {
+      alert("⚠️ Kasa kapalı! Kuryeye gönderilen siparişin ciroya işlenebilmesi için önce kasayı açmalısınız.");
+      return;
+    }
+
+    try {
+      const totalVal = order.total_price || order.total_amount || 0;
+      const paymentVal = order.payment_channel || order.platform || order.payment_method || "kaptannilicom";
+
+      const { data: sale, error: saleErr } = await client
+        .from("sales")
+        .insert({ total_amount: Number(totalVal), payment_type: paymentVal })
+        .select("id")
+        .single();
+
+      if (saleErr) throw saleErr;
+
+      const prods = parseInternetProducts(order);
+      if (prods.length > 0) {
+        const saleItems = await buildSaleItemsFromInternetOrder(prods, sale.id, totalVal);
+        await insertSaleItemsSafe(saleItems);
+        saveInternetSaleProductNames(sale.id, saleItems);
+      }
+
+      await client.from("orders").update({ status: "completed" }).eq("id", order.id);
+      order.status = "completed";
+
+    } catch (err) {
+      alert("Sipariş ciroya işlenirken hata oluştu: " + err.message);
+      return;
+    }
+  }
+
+  const cfg = getCourierCfg();
+  const message = buildCourierMessage(order);
+  const orderId = order.id || order.order_id || Date.now();
+
+  if (!cfg.chatName) {
+    alert("Otomatik gönderim için WhatsApp sohbet adı gerekli.\nGenel Ayarlar → Kuryeye Gönder alanından sohbet adını kaydedin.");
+    return;
+  }
+
+  try { await copyCourierMessage(message); } catch (_) {}
+  dropCourierFileForAhk(cfg.chatName, message, orderId);
+  markCourierSent(orderId);
+  
+  if (typeof showCourierToast === "function") showCourierToast("Kuryeye gönderildi ve ciroya işlendi: " + cfg.chatName);
+  
+  await loadInternetOrders();
+  await renderSales();
+}
+window.sendOrderToCourier = sendOrderToCourier;
+
+function openInternetOrderDetail(order) {
+  let modal = document.getElementById("internetOrderDetailModal");
+  if (!modal) {
+    const modalDiv = document.createElement("div");
+    modalDiv.id = "internetOrderDetailModal";
+    modalDiv.className = "modal-overlay";
+    modalDiv.style.zIndex = "99999";
+    modalDiv.innerHTML = `
+      <div class="recipe-modal-card" style="width: 550px; max-width: 95vw; text-align: left;">
+        <h3 style="color:var(--primary); margin-bottom:10px; border-bottom:2px solid var(--border-color); padding-bottom:8px;">
+          👤 <span id="detCustomerName">İsimsiz Müşteri</span> <span style="float:right; font-size:14px; color:var(--text-muted);" id="detOrderId">#103</span>
+        </h3>
+        <div id="detContentBody" style="font-size:13px; line-height:1.6; max-height:350px; overflow-y:auto; margin-bottom:15px;"></div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;">
+          <button type="button" class="btn-primary" style="background:#16a34a;" onclick="window.print()">🖨️ YAZDIR</button>
+          <button type="button" class="btn-secondary" onclick="document.getElementById('internetOrderDetailModal').style.display='none'">KAPAT</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modalDiv);
+    modal = modalDiv;
+  }
+
+  const custName = order.customer_name || order.name || "İsimsiz Müşteri";
+  const orderIdText = order.order_id || order.id || "103";
+  const phoneVal = order.phone || order.telefon || "-";
+  const emailVal = order.email || "-";
+  const addressVal = order.address || "-";
+  const noteVal = order.order_notes || order.notes || "Not yok";
+  const paymentVal = order.payment_channel || order.platform || "kaptannilicom";
+  const totalVal = order.total_price || order.total_amount || 0;
+
+  document.getElementById("detCustomerName").textContent = custName;
+  document.getElementById("detOrderId").textContent = "#" + orderIdText;
+
+  const orderProducts = parseInternetProducts(order);
+  let productsHtml = orderProducts.length
+    ? orderProducts.map(p => `• ${escapeHtml(getInternetProductName(p) || "Ürün")} (${getInternetProductQty(p)} Adet)`).join("<br>")
+    : "• Ürün bilgisi yok";
+
+  const contentBody = document.getElementById("detContentBody");
+  contentBody.innerHTML = `
+    <p><strong>🕒 Sipariş Zamanı:</strong> ${order.created_at ? new Date(order.created_at).toLocaleString('tr-TR') : '-'}</p>
+    <p><strong>📞 Telefon:</strong> ${escapeHtml(phoneVal)}</p>
+    <p><strong>📧 E-posta:</strong> ${escapeHtml(emailVal)}</p>
+    <p><strong>📍 Adres:</strong> ${escapeHtml(addressVal)}</p>
+    <p><strong>🛒 Ürünler:</strong><br><span style="color:var(--primary); font-weight:bold;">${productsHtml}</span></p>
+    <p><strong>📝 Müşteri Notu:</strong> ${escapeHtml(noteVal)}</p>
+    <p><strong>💳 Ödeme Yöntemi:</strong> ${escapeHtml(paymentVal)}</p>
+    <p><strong>💰 Toplam Tutar:</strong> <span style="color:var(--primary); font-weight:bold; font-size:15px;">${formatMoney(totalVal)}</span></p>
+  `;
+
+  modal.style.display = "flex";
+}
+window.openInternetOrderDetail = openInternetOrderDetail;
 function showOrderAlertModal() {
   let modal = document.getElementById("customOrderAlertModal");
   if (!modal) {
