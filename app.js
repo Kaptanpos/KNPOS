@@ -2135,14 +2135,17 @@ async function loadInternetOrders() {
       actionButtons += `</div>`;
 
       return `
+      return `
         <tr>
           <td><strong>${timeStr}</strong></td>
           <td><strong>#${orderNo}</strong></td>
           <td>${productsSummary}</td>
           <td><strong style="color:var(--primary);">${totalFormatted}</strong></td>
           <td>${paymentChannel}</td>
-          <td style="text-align:right; white-space:nowrap;">${actionButtons}</td>
+          <td style="text-align:left; padding-left:15px; white-space:nowrap;">${actionButtons}</td>
         </tr>`;
+
+        
     }).join("");
   } catch (err) {
     const message = escapeHtml(err?.message || "Bilinmeyen hata");
