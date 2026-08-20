@@ -1625,7 +1625,7 @@ async function deletePaymentMethod(id) {
 }
 
 // ==========================================
-// KESİNTİSİZ SÜREKLİ ZİL VE UYARI SİSTEMİ
+// KESİNTİSİZ SÜREKLİ ZİL VE ÖZEL UYARI MODALI
 // ==========================================
 let activeAlertInterval = null;
 
@@ -1638,27 +1638,55 @@ function initRealtimeOrders() {
       console.log("Yeni internet siparişi geldi!", payload.new);
       loadInternetOrders();
 
-      // 1. Önce mevcut çalan varsa temizle
+      // 1. Zili çalmaya başla
       if (activeAlertInterval) clearInterval(activeAlertInterval);
-
-      // 2. İlk zili hemen çal
       playOrderAlert();
-
-      // 3. Kullanıcı "Tamam" diyene kadar her 3 saniyede bir zili tekrar çal (kesintisiz döngü)
       activeAlertInterval = setInterval(() => {
         playOrderAlert();
-      }, 3000);
+      }, 3000); // Her 3 saniyede bir sen "Tamam" diyene kadar tekrar çalar
 
-      // 4. Uyarı mesajını göster. Kullanıcı "Tamam" bastığı an setInterval iptal olur ve zil susar.
-      alert("🚨 YENİ İNTERNET SİPARİŞİ GELDİ!");
-
-      if (activeAlertInterval) {
-        clearInterval(activeAlertInterval);
-        activeAlertInterval = null;
-      }
+      // 2. Tarayıcının bloklayıcı alert'i yerine kendi özel modalımızı açalım ki ses susmasın
+      showOrderAlertModal();
     })
     .subscribe();
 }
+
+function showOrderAlertModal() {
+  let modal = document.getElementById("customOrderAlertModal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "customOrderAlertModal";
+    modal.className = "modal-overlay";
+    modal.style.zIndex = "999999";
+    modal.innerHTML = `
+      <div class="recipe-modal-card" style="width: 400px; text-align: center; padding: 30px;">
+        <div style="font-size: 48px; margin-bottom: 10px;">🚨</div>
+        <h3 style="color: var(--primary); margin-bottom: 15px; font-size: 20px;">YENİ İNTERNET SİPARİŞİ GELDİ!</h3>
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">Sipariş panelinize düştü. Susturmak için aşağıdaki butona basın.</p>
+        <button type="button" class="btn-primary" id="stopAlertBtn" style="width: 100%; padding: 14px; font-size: 16px; background: #dc2626;">TAMAM / SESİ SUSTUR</button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  modal.style.display = "flex";
+
+  // Kullanıcı Tamam'a basınca zili sustur ve modalı kapat
+  document.getElementById("stopAlertBtn").onclick = function() {
+    if (activeAlertInterval) {
+      clearInterval(activeAlertInterval);
+      activeAlertInterval = null;
+    }
+    // Ses elementini de durdur
+    const audio = document.getElementById('orderAlertSound');
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+    modal.style.display = "none";
+  };
+}
+
 
 // Sadece AYNI GÜN içindeki siparişler iptal edilebilir
 function isSameLocalDay(a, b) {
