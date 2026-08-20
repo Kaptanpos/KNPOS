@@ -2784,43 +2784,72 @@ async function returnToInternetOrders() {
   else if (typeof loadInternetOrders === "function") await loadInternetOrders();
 }
 window.showCourierToast = showCourierToast;
-
 async function sendOrderToCourier(order) {
   if (typeof order === "string") {
     try { order = JSON.parse(decodeURIComponent(order)); } catch (_) { order = null; }
   }
   if (!order) { alert("Sipariş bilgisi okunamadı."); return; }
 
+  // 1. Kuryeye gönderilmeden önce kasa kontrolü ve otomatik satışa ekleme (Eğer daha önce kaydedilmediyse)
+  if (order.status !== "completed") {
+    if (!currentCashSession) {
+      alert("⚠️ Kasa kapalı! Kuryeye gönderilen siparişin ciroya işlenebilmesi için önce kasayı açmalısınız.");
+      return;
+    }
+
+    try {
+      const totalVal = order.total_price || order.total_amount || 0;
+      const paymentVal = order.payment_channel || order.platform || order.payment_method || "kaptannilicom";
+
+      // Satışlar tablosuna ekle
+      const { data: sale, error: saleErr } = await client
+        .from("sales")
+        .insert({ total_amount: Number(totalVal), payment_type: paymentVal })
+        .select("id")
+        .single();
+
+      if (saleErr) throw saleErr;
+
+      // Ürün detaylarını sale_items tablosuna işle
+      const prods = parseInternetProducts(order);
+      if (prods.length > 0) {
+        const saleItems = await buildSaleItemsFromInternetOrder(prods, sale.id, totalVal);
+        await insertSaleItemsSafe(saleItems);
+        saveInternetSaleProductNames(sale.id, saleItems);
+      }
+
+      // Sipariş durumunu completed olarak güncelle
+      await client.from("orders").update({ status: "completed" }).eq("id", order.id);
+      order.status = "completed"; // Anlık arayüz güncellemesi için
+
+    } catch (err) {
+      alert("Sipariş ciroya işlenirken hata oluştu: " + err.message);
+      return;
+    }
+  }
+
+  // 2. Mevcut Kurye WhatsApp / AHK Gönderim İşlemleri
   const cfg = getCourierCfg();
   const message = buildCourierMessage(order);
   const orderId = order.id || order.order_id || Date.now();
 
-  if (cfg.mode === "ahk") {
-    if (!cfg.chatName) {
-      alert("Otomatik gönderim için hedef sohbet adı gerekli.\nGenel Ayarlar → Kuryeye Gönder → \"WhatsApp Sohbet Adı\" alanını doldurun (örn: Nilay veya KURYEMİX).");
-      return;
-    }
-    try { await copyCourierMessage(message); } catch (_) {}
-    dropCourierFileForAhk(cfg.chatName, message, orderId);
-    markCourierSent(orderId);
-    if (typeof showCourierToast === "function") showCourierToast("Kuryeye gönderiliyor: " + cfg.chatName);
-    await returnToInternetOrders();
+  if (!cfg.chatName) {
+    alert("Otomatik gönderim için WhatsApp sohbet adı gerekli.\nGenel Ayarlar → Kuryeye Gönder alanından sohbet adını kaydedin.");
     return;
   }
 
-  // Güvenlik: Bu sürümde wa.me / WhatsApp Web yönlendirmesi kesinlikle yoktur.
-  // Eski localStorage ayarı "test" veya "group" olsa bile yalnızca AHK köprüsü kullanılır.
-  if (!cfg.chatName) {
-    alert("Otomatik gönderim için WhatsApp sohbet adı gerekli.\nGenel Ayarlar → Kuryeye Gönder alanından Nilay veya KURYEMİX yazıp kaydedin.");
-    return;
-  }
   try { await copyCourierMessage(message); } catch (_) {}
   dropCourierFileForAhk(cfg.chatName, message, orderId);
   markCourierSent(orderId);
-  if (typeof showCourierToast === "function") showCourierToast("Kuryeye gönderiliyor: " + cfg.chatName);
-  await returnToInternetOrders();
+  
+  if (typeof showCourierToast === "function") showCourierToast("Kuryeye gönderildi ve ciroya işlendi: " + cfg.chatName);
+  
+  await loadInternetOrders();
+  await renderSales();
 }
 window.sendOrderToCourier = sendOrderToCourier;
+
+
 window.buildCourierMessage = buildCourierMessage;
 
 function previewCourierMessage(order) {
