@@ -1,4 +1,4 @@
-/* KAPTAN NİLİ BULUT POS - AHK ZORUNLU KURYE SÜRÜMÜ v15 */
+/* KAPTAN NİLİ BULUT POS - AHK ZORUNLU KURYE SÜRÜMÜ v14 */
 
 // GÜÇLÜ ZİL SESİ FONKSİYONU
 function playOrderAlert() {
@@ -31,7 +31,6 @@ let saleProducts = [];
 let allIngredients = [];
 let paymentMethods = [];
 let selectedCategory = "Tümü";
-let activeAlertInterval = null;
 
 const TABLE_STORAGE_KEY = "knpos_tables_v1";
 const DEFAULT_TABLES = [
@@ -773,6 +772,8 @@ async function openReceiptDetailModal(saleId, timeStr, paymentType, totalAmount)
       const savedName = String(item.product_name || item.name || item.title || item.urun_adi || item.description || "").trim();
       const cachedName = String(cachedNames[itemIndex] || "").trim();
       const mappedName = (productMap[item.product_id] || "").trim();
+      // İnternet siparişindeki gerçek ad önceliklidir. product_id=1 gibi yedek
+      // kimliklerin "Ürün" adını ezmesine izin verme.
       const prodName = cachedName || ((savedName && normalizeProductName(savedName) !== "urun") ? savedName : "") || mappedName || "Ürün";
       const lineTotal = Number(item.line_total || (item.quantity * item.unit_price) || 0);
       return `
@@ -844,6 +845,7 @@ async function loadManagementProducts() {
   }
 }
 
+// Reçetesi olan ürün id'lerini tut (yeşil / mor buton rengi için)
 window.kaptanRecipeProductIds = window.kaptanRecipeProductIds || new Set();
 
 async function loadRecipeProductIds() {
@@ -1623,7 +1625,7 @@ async function deletePaymentMethod(id) {
 }
 
 // ==========================================
-// KESİNTİSİZ SÜREKLİ ZİL VE İNTERNET SİPARİŞLERİ
+// İNTERNET SİPARİŞLERİ VE CANLI ZİL SİSTEMİ
 // ==========================================
 
 function initRealtimeOrders() {
@@ -1633,215 +1635,208 @@ function initRealtimeOrders() {
     .channel("public:orders")
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, payload => {
       console.log("Yeni internet siparişi geldi!", payload.new);
-      loadInternetOrders();
-
-      if (activeAlertInterval) clearInterval(activeAlertInterval);
       playOrderAlert();
-      activeAlertInterval = setInterval(() => {
-        playOrderAlert();
-      }, 3000);
-
-      showOrderAlertModal();
+      loadInternetOrders();
+      alert("🚨 YENİ İNTERNET SİPARİŞİ GELDİ!");
     })
     .subscribe();
 }
 
-function showOrderAlertModal() {
-  let modal = document.getElementById("customOrderAlertModal");
-  if (!modal) {
-    modal = document.createElement("div");
-    modal.id = "customOrderAlertModal";
-    modal.className = "modal-overlay";
-    modal.style.zIndex = "999999";
-    modal.innerHTML = `
-      <div class="recipe-modal-card" style="width: 400px; text-align: center; padding: 30px;">
-        <div style="font-size: 48px; margin-bottom: 10px;">🚨</div>
-        <h3 style="color: var(--primary); margin-bottom: 15px; font-size: 20px;">YENİ İNTERNET SİPARİŞİ GELDİ!</h3>
-        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">Sipariş panelinize düştü. Susturmak için aşağıdaki butona basın.</p>
-        <button type="button" class="btn-primary" id="stopAlertBtn" style="width: 100%; padding: 14px; font-size: 16px; background: #dc2626;">TAMAM / SESİ SUSTUR</button>
-      </div>
-    `;
-    document.body.appendChild(modal);
-  }
-
-  modal.style.display = "flex";
-
-  document.getElementById("stopAlertBtn").onclick = function() {
-    if (activeAlertInterval) {
-      clearInterval(activeAlertInterval);
-      activeAlertInterval = null;
-    }
-    const audio = document.getElementById('orderAlertSound');
-    if (audio) {
-      audio.pause();
-      audio.currentTime = 0;
-    }
-    modal.style.display = "none";
-  };
+// Sadece AYNI GÜN içindeki siparişler iptal edilebilir
+function isSameLocalDay(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-async function loadInternetOrders() {
-  const tbody = document.getElementById("internetOrdersTbody");
-  if (!tbody) return;
-
-  const startValue = document.getElementById("netStartDate")?.value || "";
-  const endValue = document.getElementById("netEndDate")?.value || "";
-  const selectedChannel = document.getElementById("netPaymentChannelFilter")?.value || "";
-
-  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">Siparişler yükleniyor...</td></tr>';
-
-  try {
-    let query = client.from("orders").select("*").order("created_at", { ascending: false });
-
-    const startIso = localDateBoundaryToIso(startValue);
-    const endExclusiveIso = localDateBoundaryToIso(endValue, true);
-    if (startIso) query = query.gte("created_at", startIso);
-    if (endExclusiveIso) query = query.lt("created_at", endExclusiveIso);
-
-    const { data: orders, error } = await query;
-    if (error) throw error;
-
-    const filteredOrders = (orders || []).filter(order => {
-      return !selectedChannel || getPaymentChannelKey(order) === selectedChannel;
-    });
-
-    if (filteredOrders.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#64748b; padding:20px;">Seçilen kriterlere uygun internet siparişi bulunamadı.</td></tr>';
-      return;
-    }
-
-    tbody.innerHTML = filteredOrders.map(order => {
-      const timeStr = order.created_at
-        ? new Date(order.created_at).toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
-        : "Şimdi";
-      const orderNo = escapeHtml(order.order_id || order.id);
-      const totalFormatted = formatMoney(order.total_price || order.total_amount || 0);
-      const rawChannel = order.payment_channel || order.platform || order.payment_method || order.payment_type || "Belirtilmemiş";
-      const paymentChannel = escapeHtml(rawChannel);
-      const orderStatus = order.status || "pending";
-
-      let productsSummary = "Ürün bilgisi yok";
-      try {
-        let products = parseInternetProducts(order);
-        if (Array.isArray(products) && products.length > 0) {
-          productsSummary = products
-            .map(product => `${escapeHtml(getInternetProductName(product) || "Ürün")} (${getInternetProductQty(product)} Adet)`)
-            .join(", ");
-        }
-      } catch (_) {
-        productsSummary = "Ürün detayları yüklenemedi";
-      }
-
-      const encodedOrder = encodeURIComponent(JSON.stringify(order));
-      
-      let actionButtons = `<button type="button" class="btn-primary" style="padding:6px 10px; font-size:11px;" onclick="openInternetOrderDetail(JSON.parse(decodeURIComponent('${encodedOrder}')))">🔍 Detay</button>`;
-
-      if (orderStatus !== "cancelled") {
-        const sentBefore = typeof isCourierSent === "function" && isCourierSent(order.id || order.order_id);
-        actionButtons += ` <button type="button" style="padding:6px 10px; font-size:11px; margin-left:4px; border:0; border-radius:6px; cursor:pointer; color:#fff; background:${sentBefore ? "#16a34a" : "#25D366"};" onclick="sendOrderToCourier('${encodedOrder}')">${sentBefore ? "✅ Gönderildi" : "🛵 Kurye"}</button>`;
-      }
-
-      if (orderStatus === "completed") {
-        actionButtons += ` <span style="font-size:10px; color:#16a34a; font-weight:bold; margin-left:4px;">✓ Kaydedildi</span>`;
-      } else if (orderStatus === "cancelled") {
-        actionButtons += ` <span style="font-size:10px; color:#dc2626; font-weight:bold; margin-left:4px;">✕ İptal</span>`;
-      }
-
-      return `
-        <tr>
-          <td><strong>${timeStr}</strong></td>
-          <td><strong>#${orderNo}</strong></td>
-          <td>${productsSummary}</td>
-          <td><strong style="color:var(--primary);">${totalFormatted}</strong></td>
-          <td>${paymentChannel}</td>
-          <td style="text-align:left; padding-left:10px; white-space:nowrap;">
-            <div style="display:inline-flex; align-items:center; gap:4px; max-width:100%;">
-              ${actionButtons}
-            </div>
-          </td>
-        </tr>`;
-    }).join("");
-  } catch (err) {
-    const message = escapeHtml(err?.message || "Bilinmeyen hata");
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Siparişler yüklenemedi: ${message}</td></tr>`;
-  }
+function canCancelInternetOrder(order) {
+  if (!order || !order.created_at) return false;
+  const created = new Date(order.created_at);
+  if (Number.isNaN(created.getTime())) return false;
+  return isSameLocalDay(created, new Date());
 }
 
-async function sendOrderToCourier(order) {
-  if (typeof order === "string") {
-    try { order = JSON.parse(decodeURIComponent(order)); } catch (_) { order = null; }
-  }
-  if (!order) { alert("Sipariş bilgisi okunamadı."); return; }
-
-  if (order.status !== "completed") {
-    if (!currentCashSession) {
-      alert("⚠️ Kasa kapalı! Kuryeye gönderilen siparişin ciroya işlenebilmesi için önce kasayı açmalısınız.");
-      return;
-    }
-
-    try {
-      const totalVal = order.total_price || order.total_amount || 0;
-      const paymentVal = order.payment_channel || order.platform || order.payment_method || "kaptannilicom";
-
-      const { data: sale, error: saleErr } = await client
-        .from("sales")
-        .insert({ total_amount: Number(totalVal), payment_type: paymentVal })
-        .select("id")
-        .single();
-
-      if (saleErr) throw saleErr;
-
-      const prods = parseInternetProducts(order);
-      if (prods.length > 0) {
-        const saleItems = await buildSaleItemsFromInternetOrder(prods, sale.id, totalVal);
-        await insertSaleItemsSafe(saleItems);
-        saveInternetSaleProductNames(sale.id, saleItems);
-      }
-
-      await client.from("orders").update({ status: "completed" }).eq("id", order.id);
-      order.status = "completed";
-
-    } catch (err) {
-      alert("Sipariş ciroya işlenirken hata oluştu: " + err.message);
-      return;
-    }
-  }
-
-  const cfg = getCourierCfg();
-  const message = buildCourierMessage(order);
-  const orderId = order.id || order.order_id || Date.now();
-
-  if (!cfg.chatName) {
-    alert("Otomatik gönderim için WhatsApp sohbet adı gerekli.\nGenel Ayarlar → Kuryeye Gönder alanından sohbet adını kaydedin.");
+async function quickCancelInternetOrder(orderId, orderNo, createdAt) {
+  if (!canCancelInternetOrder({ created_at: createdAt })) {
+    alert("Bu sipariş bugüne ait değil. Sadece aynı gün içindeki siparişler iptal edilebilir.");
     return;
   }
+  if (!confirm(`Sipariş #${orderNo} iptal edilsin mi?`)) return;
 
-  try { await copyCourierMessage(message); } catch (_) {}
-  dropCourierFileForAhk(cfg.chatName, message, orderId);
-  markCourierSent(orderId);
-  
-  if (typeof showCourierToast === "function") showCourierToast("Kuryeye gönderildi ve ciroya işlendi: " + cfg.chatName);
-  
-  await loadInternetOrders();
-  await renderSales();
+  try {
+    const { data: existing, error: fetchError } = await client.from("orders").select("created_at").eq("id", orderId).single();
+    if (fetchError) throw fetchError;
+    if (!canCancelInternetOrder(existing)) {
+      alert("Bu sipariş bugüne ait değil. Sadece aynı gün içindeki siparişler iptal edilebilir.");
+      return;
+    }
+    const { error } = await client.from("orders").update({ status: "cancelled" }).eq("id", orderId);
+    if (error) throw error;
+    await loadInternetOrders();
+  } catch (err) {
+    alert("Sipariş iptal edilemedi: " + (err?.message || "Bilinmeyen hata"));
+  }
 }
-window.sendOrderToCourier = sendOrderToCourier;
 
+// İNTERNET SİPARİŞ ÜRÜNLERİ: AD ÇÖZÜMLEME VE EŞLEŞTİRME
+function normalizeProductName(value) {
+  return String(value || "")
+    .trim()
+    .toLocaleLowerCase("tr-TR")
+    .replace(/ı/g, "i")
+    .replace(/\s+/g, " ");
+}
+
+function getInternetProductName(p, seen = new Set()) {
+  if (p == null) return "";
+  if (typeof p === "string") return p.trim();
+  if (typeof p !== "object" || seen.has(p)) return "";
+  seen.add(p);
+
+  const isRealName = value => {
+    const text = String(value || "").trim();
+    return text && !["ürün", "urun", "product", "item"].includes(normalizeProductName(text));
+  };
+  const directKeys = [
+    "product_name", "productName", "urun_adi", "urunAdi", "ürün_adı",
+    "item_name", "itemName", "menu_name", "menuName", "name", "title",
+    "label", "description", "aciklama", "urun", "ürün"
+  ];
+  for (const k of directKeys) {
+    if (typeof p[k] === "string" && isRealName(p[k])) return p[k].trim();
+  }
+
+  // Site verisi hangi seviyede gelirse gelsin tüm iç içe nesne/dizileri tara.
+  for (const value of Object.values(p)) {
+    if (value && typeof value === "object") {
+      if (Array.isArray(value)) {
+        for (const entry of value) {
+          const nested = getInternetProductName(entry, seen);
+          if (nested) return nested;
+        }
+      } else {
+        const nested = getInternetProductName(value, seen);
+        if (nested) return nested;
+      }
+    }
+  }
+  for (const [k, v] of Object.entries(p)) {
+    if (typeof v === "string" && isRealName(v) && /(name|title|ad|isim|urun|ürün|product|item)/i.test(k)) return v.trim();
+  }
+  return "";
+}
+
+const INTERNET_SALE_NAMES_KEY = "knpos_internet_sale_product_names_v1";
+
+function getInternetSaleProductNames(saleId) {
+  try {
+    const all = JSON.parse(localStorage.getItem(INTERNET_SALE_NAMES_KEY) || "{}");
+    return Array.isArray(all[String(saleId)]) ? all[String(saleId)] : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveInternetSaleProductNames(saleId, saleItems) {
+  try {
+    const all = JSON.parse(localStorage.getItem(INTERNET_SALE_NAMES_KEY) || "{}");
+    all[String(saleId)] = saleItems.map(item => String(item.product_name || "Ürün").trim());
+    localStorage.setItem(INTERNET_SALE_NAMES_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.warn("İnternet siparişi ürün adları yerel olarak saklanamadı.");
+  }
+}
+
+function getInternetProductQty(p) {
+  const q = Number(p?.qty ?? p?.quantity ?? p?.adet ?? 1);
+  return Number.isFinite(q) && q > 0 ? q : 1;
+}
+
+function getInternetProductPrice(p) {
+  const val = Number(p?.price ?? p?.unit_price ?? p?.fiyat ?? 0);
+  return Number.isFinite(val) ? val : 0;
+}
+
+function parseInternetProducts(order) {
+  let prods = order?.products ?? order?.items ?? order?.order_items;
+  if (typeof prods === "string") {
+    try { prods = JSON.parse(prods); } catch (e) { prods = []; }
+  }
+  return Array.isArray(prods) ? prods : [];
+}
+
+// Sipariş ürün adlarını ürün kartlarıyla eşleştirip doğru product_id bulur
+async function buildSaleItemsFromInternetOrder(prods, saleId, fallbackTotal) {
+  const { data: productsData } = await client.from("products").select("id, name, price");
+  const byName = {};
+  (productsData || []).forEach(p => { byName[normalizeProductName(p.name)] = p; });
+
+  return prods.map(p => {
+    const name = getInternetProductName(p);
+    const match = byName[normalizeProductName(name)] || null;
+    const qty = getInternetProductQty(p);
+    const price = getInternetProductPrice(p) || Number(match?.price || 0) || Number(fallbackTotal || 0) / Math.max(prods.length, 1) / qty;
+    return {
+      sale_id: saleId,
+      product_id: match ? Number(match.id) : null,
+      product_name: name || (match ? match.name : "") || "Ürün",
+      quantity: qty,
+      unit_price: Number(price.toFixed ? price.toFixed(2) : price),
+      line_total: Number((qty * price).toFixed(2))
+    };
+  });
+}
+
+// sale_items'a ürün adını kaydeder; kolon adı farklıysa sırayla dener
+async function insertSaleItemsSafe(saleItems) {
+  if (!saleItems || saleItems.length === 0) return;
+
+  const nameColumns = ["product_name", "name", "title", "urun_adi", "description"];
+  for (const col of nameColumns) {
+    const rows = saleItems.map(({ product_name, ...rest }) => {
+      const row = { ...rest };
+      if (row.product_id == null) delete row.product_id;
+      row[col] = product_name;
+      return row;
+    });
+    const { error } = await client.from("sale_items").insert(rows);
+    if (!error) return;
+    // kolon yoksa sıradakini dene, başka hata ise dur
+    if (!/column|schema cache|does not exist/i.test(error.message || "")) {
+      // product_id zorunlu olabilir: eşleşen id yoksa 1'e düşür
+      const retry = rows.map(r => ({ ...r, product_id: r.product_id == null ? 1 : r.product_id }));
+      const { error: e2 } = await client.from("sale_items").insert(retry);
+      if (!e2) return;
+      throw e2;
+    }
+  }
+
+  // Hiçbir ad kolonu yoksa: en azından product_id ile kaydet
+  const bare = saleItems.map(({ product_name, ...rest }) => ({
+    ...rest,
+    product_id: rest.product_id == null ? 1 : rest.product_id
+  }));
+  const { error: err3 } = await client.from("sale_items").insert(bare);
+  if (err3) throw err3;
+}
+
+// TEK VE KUSURSUZ İNTERNET SİPARİŞ DETAY FONKSİYONU
 function openInternetOrderDetail(order) {
   let modal = document.getElementById("internetOrderDetailModal");
   if (!modal) {
     const modalDiv = document.createElement("div");
     modalDiv.id = "internetOrderDetailModal";
     modalDiv.className = "modal-overlay";
-    modalDiv.style.zIndex = "99999";
     modalDiv.innerHTML = `
       <div class="recipe-modal-card" style="width: 550px; max-width: 95vw; text-align: left;">
         <h3 style="color:var(--primary); margin-bottom:10px; border-bottom:2px solid var(--border-color); padding-bottom:8px;">
           👤 <span id="detCustomerName">İsimsiz Müşteri</span> <span style="float:right; font-size:14px; color:var(--text-muted);" id="detOrderId">#103</span>
         </h3>
-        <div id="detContentBody" style="font-size:13px; line-height:1.6; max-height:350px; overflow-y:auto; margin-bottom:15px;"></div>
+        <div id="detContentBody" style="font-size:13px; line-height:1.6; max-height:350px; overflow-y:auto; margin-bottom:15px;">
+          <!-- Detaylar buraya dolacak -->
+        </div>
         <div style="display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;">
           <button type="button" class="btn-primary" style="background:#16a34a;" onclick="window.print()">🖨️ YAZDIR</button>
+          <button type="button" class="btn-primary" style="background:#2563eb;" id="saveInternetOrderBtn">💾 Siparişi Kaydet (Satışa Ekle)</button>
+          <button type="button" class="btn-danger" id="cancelInternetOrderBtn">❌ İptal Et</button>
           <button type="button" class="btn-secondary" onclick="document.getElementById('internetOrderDetailModal').style.display='none'">KAPAT</button>
         </div>
       </div>
@@ -1879,10 +1874,77 @@ function openInternetOrderDetail(order) {
     <p><strong>💰 Toplam Tutar:</strong> <span style="color:var(--primary); font-weight:bold; font-size:15px;">${formatMoney(totalVal)}</span></p>
   `;
 
+  document.getElementById("saveInternetOrderBtn").onclick = async function() {
+    if (!currentCashSession) {
+      alert("⚠️ Kasa kapalı! İnternet siparişini onaylayıp ciroya eklemek için önce kasayı açmalısınız.");
+      return;
+    }
+
+    if (confirm(`Sipariş #${orderIdText} onaylanıp günlük satışlara işlensin mi?`)) {
+      try {
+        const { data: sale, error: saleErr } = await client
+          .from("sales")
+          .insert({ total_amount: Number(totalVal), payment_type: paymentVal })
+          .select("id")
+          .single();
+
+        if (saleErr) throw saleErr;
+
+        const prods = parseInternetProducts(order);
+        if (prods.length > 0) {
+          const saleItems = await buildSaleItemsFromInternetOrder(prods, sale.id, totalVal);
+          await insertSaleItemsSafe(saleItems);
+          // Veritabanında ürün adı kolonu olmasa dahi adisyonda gerçek adı göster.
+          saveInternetSaleProductNames(sale.id, saleItems);
+        }
+
+        await client.from("orders").update({ status: "completed" }).eq("id", order.id);
+
+        alert("✅ Sipariş başarıyla günlük satışlara eklendi!");
+        document.getElementById('internetOrderDetailModal').style.display = 'none';
+        await renderSales();
+        await loadInternetOrders();
+
+      } catch (err) {
+        alert("İşlem başarısız: " + err.message);
+      }
+    }
+  };
+
+  // Kuryeye gönder butonu (detay modalı)
+  const cancelWrap = document.getElementById("cancelInternetOrderBtn")?.parentElement;
+  if (cancelWrap && !document.getElementById("courierSendBtn")) {
+    const cb = document.createElement("button");
+    cb.type = "button";
+    cb.id = "courierSendBtn";
+    cb.style.cssText = "background:#25D366;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer";
+    cb.textContent = "🛵 KURYEYE GÖNDER";
+    cancelWrap.insertBefore(cb, cancelWrap.firstChild);
+  }
+  const courierBtnEl = document.getElementById("courierSendBtn");
+  if (courierBtnEl) {
+    courierBtnEl.style.display = (order.status === "cancelled") ? "none" : "";
+    courierBtnEl.onclick = function () { sendOrderToCourier(order); };
+  }
+
+  const cancelBtnEl = document.getElementById("cancelInternetOrderBtn");
+  const cancellable = canCancelInternetOrder(order);
+  cancelBtnEl.style.display = cancellable ? "" : "none";
+  cancelBtnEl.onclick = async function() {
+    if (!canCancelInternetOrder(order)) {
+      alert("Bu sipariş bugüne ait değil. Sadece aynı gün içindeki siparişler iptal edilebilir.");
+      return;
+    }
+    if (confirm(`Sipariş #${orderIdText} iptal edilsin mi?`)) {
+      await client.from("orders").update({ status: "cancelled" }).eq("id", order.id);
+      alert("❌ Sipariş iptal edildi.");
+      document.getElementById('internetOrderDetailModal').style.display = 'none';
+      await loadInternetOrders();
+    }
+  };
+
   modal.style.display = "flex";
 }
-window.openInternetOrderDetail = openInternetOrderDetail;
-
 // İNTERNET PANELİ: TARİH VE ÖDEME KANALI FİLTRELERİ
 function formatLocalDate(date) {
   const yyyy = date.getFullYear();
@@ -1957,9 +2019,101 @@ function clearInternetQuickFilterState() {
   document.getElementById("btnNetMonth")?.classList.remove("active-date-btn");
 }
 
+async function loadInternetOrders() {
+  const tbody = document.getElementById("internetOrdersTbody");
+  if (!tbody) return;
+
+  const startValue = document.getElementById("netStartDate")?.value || "";
+  const endValue = document.getElementById("netEndDate")?.value || "";
+  const selectedChannel = document.getElementById("netPaymentChannelFilter")?.value || "";
+
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">Siparişler yükleniyor...</td></tr>';
+
+  try {
+    let query = client.from("orders").select("*").order("created_at", { ascending: false });
+
+    const startIso = localDateBoundaryToIso(startValue);
+    const endExclusiveIso = localDateBoundaryToIso(endValue, true);
+    if (startIso) query = query.gte("created_at", startIso);
+    if (endExclusiveIso) query = query.lt("created_at", endExclusiveIso);
+
+    const { data: orders, error } = await query;
+    if (error) throw error;
+
+    const filteredOrders = (orders || []).filter(order => {
+      return !selectedChannel || getPaymentChannelKey(order) === selectedChannel;
+    });
+
+    if (filteredOrders.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#64748b; padding:20px;">Seçilen kriterlere uygun internet siparişi bulunamadı.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filteredOrders.map(order => {
+      const timeStr = order.created_at
+        ? new Date(order.created_at).toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+        : "Şimdi";
+      const orderNo = escapeHtml(order.order_id || order.id);
+      const totalFormatted = formatMoney(order.total_price || order.total_amount || 0);
+      const rawChannel = order.payment_channel || order.platform || order.payment_method || order.payment_type || "Belirtilmemiş";
+      const paymentChannel = escapeHtml(rawChannel);
+      const orderStatus = order.status || "pending";
+
+      let productsSummary = "Ürün bilgisi yok";
+      try {
+        let products = parseInternetProducts(order);
+        if (Array.isArray(products) && products.length > 0) {
+          productsSummary = products
+            .map(product => `${escapeHtml(getInternetProductName(product) || "Ürün")} (${getInternetProductQty(product)} Adet)`)
+            .join(", ");
+        }
+      } catch (_) {
+        productsSummary = "Ürün detayları yüklenemedi";
+      }
+
+      const encodedOrder = encodeURIComponent(JSON.stringify(order));
+      let actionButtons = `<button type="button" class="btn-primary" style="padding:6px 12px; font-size:12px;" onclick="openInternetOrderDetail(JSON.parse(decodeURIComponent('${encodedOrder}')))">🔍 Detay</button>`;
+
+      if (orderStatus !== "cancelled") {
+        const sentBefore = typeof isCourierSent === "function" && isCourierSent(order.id || order.order_id);
+        actionButtons += ` <button type="button" style="padding:6px 10px; font-size:12px; margin-left:6px; border:0; border-radius:6px; cursor:pointer; color:#fff; background:${sentBefore ? "#16a34a" : "#25D366"};" onclick="sendOrderToCourier('${encodedOrder}')">${sentBefore ? "✅ Kuryeye Gönderildi" : "🛵 Kuryeye Gönder"}</button>`;
+      }
+
+      if (orderStatus === "pending" || !order.status) {
+        if (canCancelInternetOrder(order)) {
+          actionButtons += ` <button type="button" class="btn-danger" style="padding:6px 10px; font-size:12px; margin-left:6px;" onclick="quickCancelInternetOrder('${escapeHtml(order.id)}', '${orderNo}', '${escapeHtml(order.created_at || "")}')">❌ İptal</button>`;
+        } else {
+          actionButtons += ' <span style="font-size:11px; color:#64748b; margin-left:6px;">İptal süresi doldu</span>';
+        }
+      } else if (orderStatus === "completed") {
+        actionButtons += ' <span style="font-size:11px; color:#16a34a; font-weight:bold; margin-left:6px;">✓ Kaydedildi</span>';
+      } else if (orderStatus === "cancelled") {
+        actionButtons += ' <span style="font-size:11px; color:#dc2626; font-weight:bold; margin-left:6px;">✕ İptal Edildi</span>';
+      }
+
+      return `
+        <tr>
+          <td><strong>${timeStr}</strong></td>
+          <td><strong>#${orderNo}</strong></td>
+          <td>${productsSummary}</td>
+          <td><strong style="color:var(--primary);">${totalFormatted}</strong></td>
+          <td>${paymentChannel}</td>
+          <td style="text-align:right; white-space:nowrap;">${actionButtons}</td>
+        </tr>`;
+    }).join("");
+  } catch (err) {
+    const message = escapeHtml(err?.message || "Bilinmeyen hata");
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:20px;">Siparişler yüklenemedi: ${message}</td></tr>`;
+  }
+}
+
 function processInternetOrder(orderId) {
   alert(`Sipariş #${orderId} işleme alındı!`);
 }
+
+/* ============================================================
+   v7 EK: MALZEME KAYDET / DÜZENLE / ARAMA (eksik olan bölüm)
+   ============================================================ */
 
 function resetIngForm() {
   const idEl = document.getElementById("editIngId");
@@ -2009,6 +2163,7 @@ async function saveIngredient() {
         .eq("id", Number(id));
       if (error) throw error;
     } else {
+      // Aynı isimde malzeme varsa uyar
       const dup = (allIngredients || []).find(
         i => (i.name || "").trim().toLocaleLowerCase("tr") === name.toLocaleLowerCase("tr")
       );
@@ -2076,6 +2231,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+// Liste her yüklendiğinde arama kutusundaki filtre korunsun
 const __origLoadIngredients = typeof loadIngredients === "function" ? loadIngredients : null;
 if (__origLoadIngredients) {
   window.loadIngredients = async function () {
@@ -2089,6 +2245,12 @@ window.saveIngredient = saveIngredient;
 window.resetIngForm = resetIngForm;
 window.filterIngredientsList = filterIngredientsList;
 
+/* ================= REÇETE DÜZELTME EKİ (v3.8) ================= */
+/* Sorun: #addRecipeItemBtn (EKLE) hiçbir yere bağlı değildi ve
+   reçete fonksiyonları window'a atanmadığı için inline onclick'ler
+   ReferenceError veriyordu. Ayrıca exportRecipeExcel/importRecipeExcel yoktu. */
+
+// 1) Reçete satırı ekleme: kolon adı farklıysa (quantity_required / quantity / amount) otomatik dene
 async function addRecipeItemSafe() {
   if (!selectedRecipeProductId) {
     alert("Önce bir ürün seçin.");
@@ -2115,11 +2277,13 @@ async function addRecipeItemSafe() {
       return;
     }
     lastErr = error;
+    // kolon yoksa sıradakini dene, başka hata ise dur
     if (!/column|schema cache|does not exist/i.test(error.message || "")) break;
   }
   alert("Reçeteye eklenemedi: " + (lastErr?.message || "bilinmeyen hata"));
 }
 
+// 2) Butonu bağla (delege + doğrudan) — modal sonradan açılsa da çalışır
 document.addEventListener("click", function (e) {
   const btn = e.target.closest && e.target.closest("#addRecipeItemBtn");
   if (btn) {
@@ -2134,6 +2298,7 @@ document.addEventListener("keydown", function (e) {
   }
 });
 
+// 3) Reçete Excel indir / yükle
 function exportRecipeExcel() {
   if (typeof XLSX === "undefined") { alert("Excel kütüphanesi yüklenemedi."); return; }
   if (!selectedRecipeProductId) { alert("Önce ürün reçetesini açın."); return; }
@@ -2188,6 +2353,7 @@ async function importRecipeExcel(event) {
   alert(`Excel yüklendi. Eklenen: ${ok}, atlanan: ${fail}`);
 }
 
+// 4) Inline onclick'ler için global erişim
 window.openRecipeModal = openRecipeModal;
 window.loadRecipeItemsForProduct = loadRecipeItemsForProduct;
 window.addRecipeItem = addRecipeItemSafe;
@@ -2203,11 +2369,13 @@ async function deleteIngredient(id) {
   if (!confirm(`'${name}' silinsin mi?\n\nBu malzeme reçetelerde kullanılıyorsa reçete satırları da silinecek. Bu işlem geri alınamaz.`)) return;
 
   try {
-    try { await client.from("recipe_items").delete().eq("ingredient_id", id); } catch (e) {}
+    // Önce reçetelerdeki bağlı satırları temizle (foreign key hatasını önler)
+    try { await client.from("recipe_items").delete().eq("ingredient_id", id); } catch (e) { /* tablo yoksa geç */ }
 
     const { error } = await client.from("ingredients").delete().eq("id", id);
     if (error) throw error;
 
+    // Düzenleme formunda bu malzeme açıksa formu sıfırla
     const editEl = document.getElementById("editIngId");
     if (editEl && String(editEl.value) === String(id) && typeof resetIngForm === "function") resetIngForm();
 
@@ -2230,10 +2398,11 @@ async function deleteProduct(id) {
   if (!confirm(`'${name}' silinsin mi?\n\nÜrünün reçetesi de silinecek. Bu işlem geri alınamaz.`)) return;
 
   try {
-    try { await client.from("recipe_items").delete().eq("product_id", id); } catch (e) {}
+    try { await client.from("recipe_items").delete().eq("product_id", id); } catch (e) { /* tablo yoksa geç */ }
 
     const { error } = await client.from("products").delete().eq("id", id);
     if (error) {
+      // Geçmiş satışlara bağlıysa silinemez -> pasife al
       if (String(error.message || "").toLowerCase().includes("foreign key") || error.code === "23503") {
         const passivate = confirm(`'${name}' geçmiş satışlarda kullanıldığı için silinemiyor.\n\nBunun yerine PASİF yapılsın mı? (Satış ekranında görünmez)`);
         if (passivate) {
@@ -2260,10 +2429,16 @@ async function deleteProduct(id) {
 }
 window.deleteProduct = deleteProduct;
 
+
+// Reçete renk durumu global erişim
 window.loadRecipeProductIds = loadRecipeProductIds;
 window.hasRecipe = hasRecipe;
 window.refreshRecipeBadges = refreshRecipeBadges;
 
+/* =========================================================
+   ŞİFRE DEĞİŞTİRME (GENEL AYARLAR) - e-posta kodu YOK
+   Mevcut şifre + yeni şifre ile doğrudan değiştirir.
+   ========================================================= */
 function mountPasswordSettings() {
   const page = document.getElementById("pageSettings");
   if (!page || document.getElementById("passwordSettingsCard")) return;
@@ -2343,12 +2518,14 @@ async function changeAppPassword() {
   btn.disabled = true;
   btn.textContent = "GÜNCELLENİYOR...";
   try {
+    // 1) Mevcut şifreyi doğrula
     const { error: signErr } = await client.auth.signInWithPassword({
       email: typeof AUTH_EMAIL !== "undefined" ? AUTH_EMAIL : "denizmazlumoglu@gmail.com",
       password: cur
     });
     if (signErr) { say("Mevcut şifre hatalı.", false); return; }
 
+    // 2) Yeni şifreyi kaydet
     const { error: updErr } = await client.auth.updateUser({ password: nw });
     if (updErr) { say("Şifre güncellenemedi: " + updErr.message, false); return; }
 
@@ -2367,9 +2544,16 @@ async function changeAppPassword() {
 window.mountPasswordSettings = mountPasswordSettings;
 window.changeAppPassword = changeAppPassword;
 
+/* =========================================================
+   KURYEYE GÖNDER (WhatsApp) - v8
+   İnternet siparişini AHK'daki mesaj formatıyla WhatsApp'a yollar.
+   Test modunda Nilay'ın numarasına, canlı modda KURYEMİX grubuna.
+   ========================================================= */
+
 const COURIER_CFG_KEY = "knpos_courier_cfg";
 const COURIER_SENT_KEY = "knpos_courier_sent";
-const COURIER_DEFAULT_MAP = "https://yandex.com.tr/navi?whatshere%5Bzoom%5D=18&whatshere%5Bpoint%5D=29.075271,40.969051";
+const COURIER_DEFAULT_MAP =
+  "https://yandex.com.tr/navi?whatshere%5Bzoom%5D=18&whatshere%5Bpoint%5D=29.075271,40.969051";
 
 function getCourierCfg() {
   let cfg = {};
@@ -2386,6 +2570,15 @@ function getCourierCfg() {
 
 function saveCourierCfg(cfg) {
   localStorage.setItem(COURIER_CFG_KEY, JSON.stringify(cfg));
+}
+
+function normalizePhoneForWa(raw) {
+  let d = String(raw || "").replace(/\D/g, "");
+  if (!d) return "";
+  if (d.startsWith("00")) d = d.slice(2);
+  if (d.startsWith("0")) d = "90" + d.slice(1);
+  if (d.length === 10) d = "90" + d;
+  return d;
 }
 
 function getCourierSentMap() {
@@ -2407,11 +2600,44 @@ function courierOrderCode(order) {
   return "KN-" + p(t.getHours()) + p(t.getMinutes()) + p(t.getSeconds());
 }
 
+// Adresi harita aramasi icin temizler: tekrar eden il/ilce, gereksiz etiketler,
+// telefon/posta kodu, noktalama yiginlari temizlenir.
+function cleanAddressForMap(raw) {
+  let a = String(raw || "")
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/[\r\n\t]+/g, ", ")
+    .replace(/\b(tel|telefon|gsm|cep|not|kapi ?kodu|kapı ?kodu|zil|kat|daire|blok|apt|apartman|site)\s*[:.]?\s*/gi, " ")
+    .replace(/\+?\d[\d\s()-]{8,}\d/g, " ")   // telefon numaralari
+    .replace(/\b\d{5}\b/g, " ")              // posta kodu
+    .replace(/[|;]+/g, ",")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // virgullu parcalara ayir, bosluklari ve tekrarlari at
+  const seen = new Set();
+  const parts = [];
+  a.split(",").forEach(p => {
+    const t = p.replace(/[^\wçğıöşüÇĞİÖŞÜ0-9\/. -]/g, " ").replace(/\s+/g, " ").trim();
+    if (!t || t.length < 2) return;
+    const key = t.toLocaleLowerCase("tr-TR");
+    if (seen.has(key)) return;
+    seen.add(key);
+    parts.push(t);
+  });
+
+  let out = parts.join(", ");
+  if (out && !/t[üu]rkiye/i.test(out)) out += ", Türkiye";
+  return out;
+}
+
 function courierMapLink() {
   const cfg = getCourierCfg();
+  // Kurye önce işletmeye geleceği için müşteri adresini değil,
+  // Genel Ayarlar'da kayıtlı sabit işletme konumunu gönder.
   return cfg.mapLink || COURIER_DEFAULT_MAP;
 }
 
+// AHK'daki mesajın birebir mantığı: başlık + konum + sipariş bilgisi
 function buildCourierMessage(order) {
   const cfg = getCourierCfg();
   const code = courierOrderCode(order);
@@ -2471,6 +2697,10 @@ async function copyCourierMessage(text) {
   }
 }
 
+/* ---- AHK BOT KOPRUSU ----
+   Mesaji Downloads klasorune knpos_kurye_*.txt olarak indirir.
+   KNPOS-Kurye-Bot.ahk bu klasoru izler, dosyayi okur, WhatsApp Desktop'ta
+   ilgili sohbeti acar, yapistirir ve Enter'a basar. Tam otomatik. */
 function dropCourierFileForAhk(chatName, message, orderId) {
   const payload = "CHAT=" + (chatName || "") + "\n---\n" + message;
   const blob = new Blob(["\ufeff" + payload], { type: "text/plain;charset=utf-8" });
@@ -2493,8 +2723,53 @@ function showCourierToast(text) {
     setTimeout(function(){ t.remove(); }, 3500);
   } catch (_) {}
 }
-
+function closeInternetOrderDetailModal() {
+  const m = document.getElementById("internetOrderDetailModal");
+  if (m) m.style.display = "none";
+}
+async function returnToInternetOrders() {
+  closeInternetOrderDetailModal();
+  if (typeof showPage === "function") showPage("internet");
+  else if (typeof loadInternetOrders === "function") await loadInternetOrders();
+}
 window.showCourierToast = showCourierToast;
+
+async function sendOrderToCourier(order) {
+  if (typeof order === "string") {
+    try { order = JSON.parse(decodeURIComponent(order)); } catch (_) { order = null; }
+  }
+  if (!order) { alert("Sipariş bilgisi okunamadı."); return; }
+
+  const cfg = getCourierCfg();
+  const message = buildCourierMessage(order);
+  const orderId = order.id || order.order_id || Date.now();
+
+  if (cfg.mode === "ahk") {
+    if (!cfg.chatName) {
+      alert("Otomatik gönderim için hedef sohbet adı gerekli.\nGenel Ayarlar → Kuryeye Gönder → \"WhatsApp Sohbet Adı\" alanını doldurun (örn: Nilay veya KURYEMİX).");
+      return;
+    }
+    try { await copyCourierMessage(message); } catch (_) {}
+    dropCourierFileForAhk(cfg.chatName, message, orderId);
+    markCourierSent(orderId);
+    if (typeof showCourierToast === "function") showCourierToast("Kuryeye gönderiliyor: " + cfg.chatName);
+    await returnToInternetOrders();
+    return;
+  }
+
+  // Güvenlik: Bu sürümde wa.me / WhatsApp Web yönlendirmesi kesinlikle yoktur.
+  // Eski localStorage ayarı "test" veya "group" olsa bile yalnızca AHK köprüsü kullanılır.
+  if (!cfg.chatName) {
+    alert("Otomatik gönderim için WhatsApp sohbet adı gerekli.\nGenel Ayarlar → Kuryeye Gönder alanından Nilay veya KURYEMİX yazıp kaydedin.");
+    return;
+  }
+  try { await copyCourierMessage(message); } catch (_) {}
+  dropCourierFileForAhk(cfg.chatName, message, orderId);
+  markCourierSent(orderId);
+  if (typeof showCourierToast === "function") showCourierToast("Kuryeye gönderiliyor: " + cfg.chatName);
+  await returnToInternetOrders();
+}
+window.sendOrderToCourier = sendOrderToCourier;
 window.buildCourierMessage = buildCourierMessage;
 
 function previewCourierMessage(order) {
@@ -2506,6 +2781,7 @@ function previewCourierMessage(order) {
 }
 window.previewCourierMessage = previewCourierMessage;
 
+/* ---- Genel Ayarlar: Kuryeye Gönder kartı ---- */
 function mountCourierSettings() {
   const page = document.getElementById("pageSettings");
   if (!page || document.getElementById("courierSettingsCard")) return;
@@ -2566,171 +2842,3 @@ window.mountCourierSettings = mountCourierSettings;
 document.addEventListener("DOMContentLoaded", function () {
   setTimeout(mountCourierSettings, 300);
 });
-
-function isSameLocalDay(a, b) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-
-function canCancelInternetOrder(order) {
-  if (!order || !order.created_at) return false;
-  const created = new Date(order.created_at);
-  if (Number.isNaN(created.getTime())) return false;
-  return isSameLocalDay(created, new Date());
-}
-
-async function quickCancelInternetOrder(orderId, orderNo, createdAt) {
-  if (!canCancelInternetOrder({ created_at: createdAt })) {
-    alert("Bu sipariş bugüne ait değil. Sadece aynı gün içindeki siparişler iptal edilebilir.");
-    return;
-  }
-  if (!confirm(`Sipariş #${orderNo} iptal edilsin mi?`)) return;
-
-  try {
-    const { data: existing, error: fetchError } = await client.from("orders").select("created_at").eq("id", orderId).single();
-    if (fetchError) throw fetchError;
-    if (!canCancelInternetOrder(existing)) {
-      alert("Bu sipariş bugüne ait değil. Sadece aynı gün içindeki siparişler iptal edilebilir.");
-      return;
-    }
-    const { error } = await client.from("orders").update({ status: "cancelled" }).eq("id", orderId);
-    if (error) throw error;
-    await loadInternetOrders();
-  } catch (err) {
-    alert("Sipariş iptal edilemedi: " + (err?.message || "Bilinmeyen hata"));
-  }
-}
-
-function normalizeProductName(value) {
-  return String(value || "")
-    .trim()
-    .toLocaleLowerCase("tr-TR")
-    .replace(/ı/g, "i")
-    .replace(/\s+/g, " ");
-}
-
-function getInternetProductName(p, seen = new Set()) {
-  if (p == null) return "";
-  if (typeof p === "string") return p.trim();
-  if (typeof p !== "object" || seen.has(p)) return "";
-  seen.add(p);
-
-  const isRealName = value => {
-    const text = String(value || "").trim();
-    return text && !["ürün", "urun", "product", "item"].includes(normalizeProductName(text));
-  };
-  const directKeys = [
-    "product_name", "productName", "urun_adi", "urunAdi", "ürün_adı",
-    "item_name", "itemName", "menu_name", "menuName", "name", "title",
-    "label", "description", "aciklama", "urun", "ürün"
-  ];
-  for (const k of directKeys) {
-    if (typeof p[k] === "string" && isRealName(p[k])) return p[k].trim();
-  }
-
-  for (const value of Object.values(p)) {
-    if (value && typeof value === "object") {
-      if (Array.isArray(value)) {
-        for (const entry of value) {
-          const nested = getInternetProductName(entry, seen);
-          if (nested) return nested;
-        }
-      } else {
-        const nested = getInternetProductName(value, seen);
-        if (nested) return nested;
-      }
-    }
-  }
-  for (const [k, v] of Object.entries(p)) {
-    if (typeof v === "string" && isRealName(v) && /(name|title|ad|isim|urun|ürün|product|item)/i.test(k)) return v.trim();
-  }
-  return "";
-}
-
-const INTERNET_SALE_NAMES_KEY = "knpos_internet_sale_product_names_v1";
-
-function getInternetSaleProductNames(saleId) {
-  try {
-    const all = JSON.parse(localStorage.getItem(INTERNET_SALE_NAMES_KEY) || "{}");
-    return Array.isArray(all[String(saleId)]) ? all[String(saleId)] : [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function saveInternetSaleProductNames(saleId, saleItems) {
-  try {
-    const all = JSON.parse(localStorage.getItem(INTERNET_SALE_NAMES_KEY) || "{}");
-    all[String(saleId)] = saleItems.map(item => String(item.product_name || "Ürün").trim());
-    localStorage.setItem(INTERNET_SALE_NAMES_KEY, JSON.stringify(all));
-  } catch (e) {
-    console.warn("İnternet siparişi ürün adları yerel olarak saklanamadı.");
-  }
-}
-
-function getInternetProductQty(p) {
-  const q = Number(p?.qty ?? p?.quantity ?? p?.adet ?? 1);
-  return Number.isFinite(q) && q > 0 ? q : 1;
-}
-
-function getInternetProductPrice(p) {
-  const val = Number(p?.price ?? p?.unit_price ?? p?.fiyat ?? 0);
-  return Number.isFinite(val) ? val : 0;
-}
-
-function parseInternetProducts(order) {
-  let prods = order?.products ?? order?.items ?? order?.order_items;
-  if (typeof prods === "string") {
-    try { prods = JSON.parse(prods); } catch (e) { prods = []; }
-  }
-  return Array.isArray(prods) ? prods : [];
-}
-
-async function buildSaleItemsFromInternetOrder(prods, saleId, fallbackTotal) {
-  const { data: productsData } = await client.from("products").select("id, name, price");
-  const byName = {};
-  (productsData || []).forEach(p => { byName[normalizeProductName(p.name)] = p; });
-
-  return prods.map(p => {
-    const name = getInternetProductName(p);
-    const match = byName[normalizeProductName(name)] || null;
-    const qty = getInternetProductQty(p);
-    const price = getInternetProductPrice(p) || Number(match?.price || 0) || Number(fallbackTotal || 0) / Math.max(prods.length, 1) / qty;
-    return {
-      sale_id: saleId,
-      product_id: match ? Number(match.id) : null,
-      product_name: name || (match ? match.name : "") || "Ürün",
-      quantity: qty,
-      unit_price: Number(price.toFixed ? price.toFixed(2) : price),
-      line_total: Number((qty * price).toFixed(2))
-    };
-  });
-}
-
-async function insertSaleItemsSafe(saleItems) {
-  if (!saleItems || saleItems.length === 0) return;
-
-  const nameColumns = ["product_name", "name", "title", "urun_adi", "description"];
-  for (const col of nameColumns) {
-    const rows = saleItems.map(({ product_name, ...rest }) => {
-      const row = { ...rest };
-      if (row.product_id == null) delete row.product_id;
-      row[col] = product_name;
-      return row;
-    });
-    const { error } = await client.from("sale_items").insert(rows);
-    if (!error) return;
-    if (!/column|schema cache|does not exist/i.test(error.message || "")) {
-      const retry = rows.map(r => ({ ...r, product_id: r.product_id == null ? 1 : r.product_id }));
-      const { error: e2 } = await client.from("sale_items").insert(retry);
-      if (!e2) return;
-      throw e2;
-    }
-  }
-
-  const bare = saleItems.map(({ product_name, ...rest }) => ({
-    ...rest,
-    product_id: rest.product_id == null ? 1 : rest.product_id
-  }));
-  const { error: err3 } = await client.from("sale_items").insert(bare);
-  if (err3) throw err3;
-}
