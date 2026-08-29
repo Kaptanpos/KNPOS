@@ -2762,26 +2762,34 @@ function dropCourierFileForAhk(chatName, message, orderId) {
   let a = null;
   try {
     const safeOrderId = String(orderId || Date.now()).replace(/[^a-zA-Z0-9_-]/g, "_");
+    // Dosya adını biraz daha geç oluşturarak tarayıcının çakışmasını önlüyoruz
     const fileName = "knpos_kurye_" + safeOrderId + "_" + Date.now() + ".txt";
     const payload = "CHAT=" + (chatName || "") + "\n---\n" + message;
-    const blob = new Blob(["\ufeff" + payload], { type: "text/plain;charset=utf-8" });
-    url = URL.createObjectURL(blob);
-    a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
+    
+    // Küçük bir gecikme ekleyerek tarayıcı yazma motorunun nefes almasını sağlıyoruz
+    setTimeout(() => {
+      const blob = new Blob(["\ufeff" + payload], { type: "text/plain;charset=utf-8" });
+      url = URL.createObjectURL(blob);
+      a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      
+      setTimeout(() => {
+        if (a && a.parentNode) a.parentNode.removeChild(a);
+        if (url) URL.revokeObjectURL(url);
+      }, 1000);
+    }, 200);
+
     return fileName;
   } catch (err) {
     console.error("Kurye dosyası indirilemedi:", err);
     throw err;
-  } finally {
-    if (a && a.parentNode) a.parentNode.removeChild(a);
-    if (url) setTimeout(() => URL.revokeObjectURL(url), 4000);
   }
 }
-
+window.dropCourierFileForAhk = dropCourierFileForAhk;
 function showCourierToast(text) {
   try {
     var t = document.createElement("div");
