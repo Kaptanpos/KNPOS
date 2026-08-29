@@ -2856,29 +2856,30 @@ async function sendOrderToCourier(order) {
   const message = buildCourierMessage(order);
 
   // 1) Mesajı panoya al ve AHK botunun izleyeceği Downloads dosyasını oluştur.
-  // Bot tarayıcıya geri bildirim veremediği için burada "gönderildi" değil,
-  // yalnızca "bot bekleniyor" durumu kaydedilir.
   await copyCourierMessage(message);
   let fileName = "";
   try {
     fileName = dropCourierFileForAhk(cfg.chatName, message, orderId);
-    markCourierQueued(orderId, fileName, cfg.chatName);
+    
+    // BUTON DÜZELTMESİ: Kuryeye gönderildiği an siparişi ve durumu doğrudan completed yapıyoruz
+    await client.from("orders").update({ status: "completed" }).eq("id", order.id);
+    order.status = "completed";
+
     if (typeof showCourierToast === "function") {
-      showCourierToast("Kurye dosyası indirildi — bot bekleniyor: " + fileName);
+      showCourierToast("Kurye dosyası indirildi ve sipariş kaydedildi: " + fileName);
     }
   } catch (err) {
     alert("Kurye dosyası indirilemedi. Mesaj panoya kopyalandı; WhatsApp'a elle yapıştırabilirsiniz.\n\n" + (err?.message || err));
     return;
   }
 
-  // 2) Aynı anda günlük satışlara kaydet
+  // 2) Aynı anda günlük satışlara kaydet ve arayüzü tazele
   if (order.status !== "completed") await saveInternetOrderAsSale(order);
+  try { await loadInternetOrders(); } catch (_) {}
 
   await returnToInternetOrders();
 }
 window.sendOrderToCourier = sendOrderToCourier;
-window.buildCourierMessage = buildCourierMessage;
-
 async function copyCourierOrderMessage(order) {
   if (typeof order === "string") {
     try { order = JSON.parse(decodeURIComponent(order)); } catch (_) { order = null; }
