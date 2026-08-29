@@ -1949,12 +1949,11 @@ function openInternetOrderDetail(order) {
   // Kuryeye gönder butonu (detay modalı) - gönderim + satış kaydı birlikte
   const courierBtnEl = document.getElementById("detCourierBtn");
   if (courierBtnEl) {
-    const alreadySent = typeof isCourierSent === "function" && isCourierSent(order.id || order.order_id);
-    const done = order.status === "completed" || alreadySent;
+    const courierState = typeof getCourierStatus === "function" ? getCourierStatus(order.id || order.order_id) : "";
     courierBtnEl.style.display = (order.status === "cancelled") ? "none" : "";
-    courierBtnEl.style.background = done ? "#16a34a" : "#25D366";
-    courierBtnEl.textContent = done ? "✅ KURYEYE GÖNDERİLDİ" : "🛵 KURYEYE GÖNDER";
-    courierBtnEl.disabled = !!done;
+    courierBtnEl.style.background = courierState === "queued" ? "#d97706" : "#25D366";
+    courierBtnEl.textContent = courierState === "queued" ? "🔁 TEKRAR KURYEYE GÖNDER" : "🛵 KURYEYE GÖNDER";
+    courierBtnEl.disabled = false;
     courierBtnEl.onclick = function () { sendOrderToCourier(order); };
   }
 
@@ -2107,8 +2106,12 @@ async function loadInternetOrders() {
       let actionButtons = `<button type="button" class="btn-primary" style="padding:5px 10px; font-size:11px;" onclick="openInternetOrderDetail(JSON.parse(decodeURIComponent('${encodedOrder}')))">🔍 Detay</button>`;
 
       if (orderStatus !== "cancelled") {
-        const sentBefore = (typeof isCourierSent === "function" && isCourierSent(order.id || order.order_id)) || orderStatus === "completed";
-        actionButtons += `<button type="button" ${sentBefore ? "disabled" : ""} style="padding:5px 10px; font-size:11px; border:0; border-radius:6px; cursor:${sentBefore ? "default" : "pointer"}; color:#fff; background:${sentBefore ? "#16a34a" : "#25D366"};" onclick="sendOrderToCourier('${encodedOrder}')">${sentBefore ? "✅ Gönderildi" : "🛵 Kurye"}</button>`;
+        const courierState = typeof getCourierStatus === "function" ? getCourierStatus(order.id || order.order_id) : "";
+        actionButtons += `<button type="button" style="padding:5px 10px; font-size:11px; border:0; border-radius:6px; cursor:pointer; color:#fff; background:${courierState === "queued" ? "#d97706" : "#25D366"};" onclick="sendOrderToCourier('${encodedOrder}')">${courierState === "queued" ? "🔁 Tekrar Gönder" : "🛵 Kurye"}</button>`;
+        if (courierState === "queued") {
+          actionButtons += `<button type="button" class="btn-secondary" style="padding:5px 10px; font-size:11px;" onclick="copyCourierOrderMessage('${encodedOrder}')">📋 Mesajı Kopyala</button>`;
+          actionButtons += '<span style="font-size:11px;color:#d97706;font-weight:bold;">Bot bekleniyor</span>';
+        }
       }
 
       if (orderStatus === "pending" || !order.status) {
@@ -2584,6 +2587,7 @@ window.changeAppPassword = changeAppPassword;
 
 const COURIER_CFG_KEY = "knpos_courier_cfg";
 const COURIER_SENT_KEY = "knpos_courier_sent";
+const COURIER_STATUS_KEY = "knpos_courier_status_v2";
 const COURIER_DEFAULT_MAP =
   "https://yandex.com.tr/navi?whatshere%5Bzoom%5D=18&whatshere%5Bpoint%5D=29.075271,40.969051";
 
@@ -2623,6 +2627,26 @@ function markCourierSent(orderId) {
 }
 function isCourierSent(orderId) {
   return Boolean(getCourierSentMap()[String(orderId)]);
+}
+
+function getCourierStatusMap() {
+  try { return JSON.parse(localStorage.getItem(COURIER_STATUS_KEY) || "{}") || {}; } catch (_) { return {}; }
+}
+
+function getCourierStatus(orderId) {
+  const entry = getCourierStatusMap()[String(orderId)];
+  return entry && entry.status ? entry.status : "";
+}
+
+function markCourierQueued(orderId, fileName, chatName) {
+  const statuses = getCourierStatusMap();
+  statuses[String(orderId)] = {
+    status: "queued",
+    fileName: fileName,
+    chatName: chatName,
+    createdAt: new Date().toISOString()
+  };
+  localStorage.setItem(COURIER_STATUS_KEY, JSON.stringify(statuses));
 }
 
 function courierOrderCode(order) {
@@ -2734,16 +2758,28 @@ async function copyCourierMessage(text) {
    KNPOS-Kurye-Bot.ahk bu klasoru izler, dosyayi okur, WhatsApp Desktop'ta
    ilgili sohbeti acar, yapistirir ve Enter'a basar. Tam otomatik. */
 function dropCourierFileForAhk(chatName, message, orderId) {
-  const payload = "CHAT=" + (chatName || "") + "\n---\n" + message;
-  const blob = new Blob(["\ufeff" + payload], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "knpos_kurye_" + (orderId || Date.now()) + "_" + Date.now() + ".txt";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  let url = "";
+  let a = null;
+  try {
+    const safeOrderId = String(orderId || Date.now()).replace(/[^a-zA-Z0-9_-]/g, "_");
+    const fileName = "knpos_kurye_" + safeOrderId + "_" + Date.now() + ".txt";
+    const payload = "CHAT=" + (chatName || "") + "\n---\n" + message;
+    const blob = new Blob(["\ufeff" + payload], { type: "text/plain;charset=utf-8" });
+    url = URL.createObjectURL(blob);
+    a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    return fileName;
+  } catch (err) {
+    console.error("Kurye dosyası indirilemedi:", err);
+    throw err;
+  } finally {
+    if (a && a.parentNode) a.parentNode.removeChild(a);
+    if (url) setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
 }
 
 function showCourierToast(text) {
@@ -2806,13 +2842,7 @@ async function sendOrderToCourier(order) {
 
   const orderId = order.id || order.order_id || Date.now();
 
-  // Mükerrer gönderim / mükerrer satış kaydı engeli
-  if ((typeof isCourierSent === "function" && isCourierSent(orderId)) || order.status === "completed") {
-    if (typeof showCourierToast === "function") showCourierToast("Bu sipariş zaten kuryeye gönderildi.");
-    return;
-  }
-
-  if (!currentCashSession) {
+  if (order.status !== "completed" && !currentCashSession) {
     alert("⚠️ Kasa kapalı! Siparişi kuryeye gönderip ciroya eklemek için önce kasayı açmalısınız.");
     return;
   }
@@ -2825,19 +2855,41 @@ async function sendOrderToCourier(order) {
 
   const message = buildCourierMessage(order);
 
-  // 1) WhatsApp'a gönder (AHK köprüsü - wa.me yönlendirmesi yoktur)
-  try { await copyCourierMessage(message); } catch (_) {}
-  dropCourierFileForAhk(cfg.chatName, message, orderId);
-  markCourierSent(orderId);
-  if (typeof showCourierToast === "function") showCourierToast("Kuryeye gönderiliyor: " + cfg.chatName);
+  // 1) Mesajı panoya al ve AHK botunun izleyeceği Downloads dosyasını oluştur.
+  // Bot tarayıcıya geri bildirim veremediği için burada "gönderildi" değil,
+  // yalnızca "bot bekleniyor" durumu kaydedilir.
+  await copyCourierMessage(message);
+  let fileName = "";
+  try {
+    fileName = dropCourierFileForAhk(cfg.chatName, message, orderId);
+    markCourierQueued(orderId, fileName, cfg.chatName);
+    if (typeof showCourierToast === "function") {
+      showCourierToast("Kurye dosyası indirildi — bot bekleniyor: " + fileName);
+    }
+  } catch (err) {
+    alert("Kurye dosyası indirilemedi. Mesaj panoya kopyalandı; WhatsApp'a elle yapıştırabilirsiniz.\n\n" + (err?.message || err));
+    return;
+  }
 
   // 2) Aynı anda günlük satışlara kaydet
-  await saveInternetOrderAsSale(order);
+  if (order.status !== "completed") await saveInternetOrderAsSale(order);
 
   await returnToInternetOrders();
 }
 window.sendOrderToCourier = sendOrderToCourier;
 window.buildCourierMessage = buildCourierMessage;
+
+async function copyCourierOrderMessage(order) {
+  if (typeof order === "string") {
+    try { order = JSON.parse(decodeURIComponent(order)); } catch (_) { order = null; }
+  }
+  if (!order) { alert("Sipariş bilgisi okunamadı."); return; }
+  const copied = await copyCourierMessage(buildCourierMessage(order));
+  if (typeof showCourierToast === "function") {
+    showCourierToast(copied ? "Kurye mesajı panoya kopyalandı." : "Mesaj kopyalanamadı.");
+  }
+}
+window.copyCourierOrderMessage = copyCourierOrderMessage;
 
 function previewCourierMessage(order) {
   if (typeof order === "string") {
