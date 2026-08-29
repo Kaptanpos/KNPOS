@@ -2842,6 +2842,7 @@ async function saveInternetOrderAsSale(order) {
 }
 window.saveInternetOrderAsSale = saveInternetOrderAsSale;
 
+
 async function sendOrderToCourier(order) {
   if (typeof order === "string") {
     try { order = JSON.parse(decodeURIComponent(order)); } catch (_) { order = null; }
@@ -2868,26 +2869,22 @@ async function sendOrderToCourier(order) {
   let fileName = "";
   try {
     fileName = dropCourierFileForAhk(cfg.chatName, message, orderId);
-    
-    // BUTON DÜZELTMESİ: Kuryeye gönderildiği an siparişi ve durumu doğrudan completed yapıyoruz
-    await client.from("orders").update({ status: "completed" }).eq("id", order.id);
-    order.status = "completed";
-
+    markCourierQueued(orderId, fileName, cfg.chatName);
     if (typeof showCourierToast === "function") {
-      showCourierToast("Kurye dosyası indirildi ve sipariş kaydedildi: " + fileName);
+      showCourierToast("Kurye dosyası indirildi — bot bekleniyor: " + fileName);
     }
   } catch (err) {
     alert("Kurye dosyası indirilemedi. Mesaj panoya kopyalandı; WhatsApp'a elle yapıştırabilirsiniz.\n\n" + (err?.message || err));
     return;
   }
 
-  // 2) Aynı anda günlük satışlara kaydet ve arayüzü tazele
+  // 2) Aynı anda günlük satışlara kaydet
   if (order.status !== "completed") await saveInternetOrderAsSale(order);
-  try { await loadInternetOrders(); } catch (_) {}
 
   await returnToInternetOrders();
 }
 window.sendOrderToCourier = sendOrderToCourier;
+
 async function copyCourierOrderMessage(order) {
   if (typeof order === "string") {
     try { order = JSON.parse(decodeURIComponent(order)); } catch (_) { order = null; }
