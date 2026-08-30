@@ -3023,4 +3023,39 @@ function markCourierQueued(orderId, fileName, chatName) {
 }
 window.markCourierQueued = markCourierQueued;
 
+function printTableReceipt() {
+  const tables = getTables();
+  const table = tables.find(t => t.id === selectedTableId);
+  if (!table || !table.orders || table.orders.length === 0) {
+    alert("Yazdırılacak ürün bulunamadı.");
+    return;
+  }
 
+  let printWindow = window.open('', '', 'height=600,width=400');
+  printWindow.document.write('<html><head><title>Adisyon - ' + table.name + '</title>');
+  printWindow.document.write('<style>body { font-family: monospace; font-size: 12px; padding: 10px; }</style>');
+  printWindow.document.write('</head><body>');
+  printWindow.document.write('<h2 style="text-align:center; margin:0;">KAPTAN NİLİ</h2>');
+  printWindow.document.write('<p style="text-align:center; margin:2px 0 10px 0;">Masa Adisyonu</p>');
+  printWindow.document.write('<hr style="border: 1px dashed #000;">');
+  printWindow.document.write('<b>Masa:</b> ' + table.name + '<br>');
+  printWindow.document.write('<b>Tarih:</b> ' + new Date().toLocaleString('tr-TR') + '<br>');
+  printWindow.document.write('<hr style="border: 1px dashed #000;">');
+  
+  table.orders.forEach(item => {
+    let lineTotal = item.price * item.quantity;
+    printWindow.document.write(item.name + '<br>');
+    printWindow.document.write(item.quantity + ' Adet x ' + formatMoney(item.price) + ' = ' + formatMoney(lineTotal) + '<br><br>');
+  });
+
+  printWindow.document.write('<hr style="border: 1px dashed #000;">');
+  printWindow.document.write('<h3 style="text-align:right;">TOPLAM: ' + formatMoney(table.total) + '</h3>');
+  printWindow.document.write('</body></html>');
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => {
+    printWindow.print();
+    printWindow.close();
+  }, 500);
+}
+window.printTableReceipt = printTableReceipt;
