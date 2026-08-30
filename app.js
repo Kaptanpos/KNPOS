@@ -2637,6 +2637,8 @@ function getCourierStatus(orderId) {
   const entry = getCourierStatusMap()[String(orderId)];
   return entry && entry.status ? entry.status : "";
 }
+
+// 6 saniye sonra ekrandaki "Bot bekleniyor" yazısını otomatik "Gönderildi" yapacak güvenli dokunuş
 function markCourierQueued(orderId, fileName, chatName) {
   const statuses = getCourierStatusMap();
   statuses[String(orderId)] = {
@@ -2647,7 +2649,6 @@ function markCourierQueued(orderId, fileName, chatName) {
   };
   localStorage.setItem(COURIER_STATUS_KEY, JSON.stringify(statuses));
 
-  // 6 saniye sonra tarayıcı ekranındaki durumu otomatik "gönderildi" olarak güncelle
   setTimeout(() => {
     const sMap = getCourierStatusMap();
     if (sMap[String(orderId)]) {
@@ -2657,6 +2658,8 @@ function markCourierQueued(orderId, fileName, chatName) {
     }
   }, 6000);
 }
+window.markCourierQueued = markCourierQueued;
+
 
 
 
@@ -2998,17 +3001,3 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // AHK botu mesajı atıp dosyayı .gonderildi yaptığında ekranı güncelleyen dinleyici
-setInterval(() => {
-  try {
-    // İnternet siparişleri sayfasındaysak ve "Bot bekleniyor" yazısı varsa listeyi tazele
-    const statusSpans = document.querySelectorAll("span");
-    statusSpans.forEach(span => {
-      if (span.textContent.trim() === "Bot bekleniyor") {
-        // Tabloyu sessizce güncelleyerek durumun değişmesini sağla
-        if (typeof loadInternetOrders === "function" && document.getElementById("pageInternet")?.style.display === "block") {
-          loadInternetOrders();
-        }
-      }
-    });
-  } catch (_) {}
-}, 3000);
