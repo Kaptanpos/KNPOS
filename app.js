@@ -2637,7 +2637,6 @@ function getCourierStatus(orderId) {
   const entry = getCourierStatusMap()[String(orderId)];
   return entry && entry.status ? entry.status : "";
 }
-
 function markCourierQueued(orderId, fileName, chatName) {
   const statuses = getCourierStatusMap();
   statuses[String(orderId)] = {
@@ -2647,7 +2646,21 @@ function markCourierQueued(orderId, fileName, chatName) {
     createdAt: new Date().toISOString()
   };
   localStorage.setItem(COURIER_STATUS_KEY, JSON.stringify(statuses));
+
+  // 6 saniye sonra tarayıcı ekranındaki durumu otomatik "gönderildi" olarak güncelle
+  setTimeout(() => {
+    const sMap = getCourierStatusMap();
+    if (sMap[String(orderId)]) {
+      sMap[String(orderId)].status = "sent";
+      localStorage.setItem(COURIER_STATUS_KEY, JSON.stringify(sMap));
+      if (typeof loadInternetOrders === "function") loadInternetOrders();
+    }
+  }, 6000);
 }
+
+
+
+
 
 // AHK botu dosyayı .gonderildi yaptığında POS ekranını otomatik güncelleyen akıllı dinleyici
 function checkCourierDeliveryStatus(orderId, fileName) {
