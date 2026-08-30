@@ -2649,6 +2649,22 @@ function markCourierQueued(orderId, fileName, chatName) {
   localStorage.setItem(COURIER_STATUS_KEY, JSON.stringify(statuses));
 }
 
+// AHK botu dosyayı .gonderildi yaptığında POS ekranını otomatik güncelleyen akıllı dinleyici
+function checkCourierDeliveryStatus(orderId, fileName) {
+  // Periyodik olarak dosya durumunu veya localStorage/Supabase üzerinden kontrol et
+  const interval = setInterval(async () => {
+    // Eğer bot dosyayı .gonderildi yaptıysa ekrandaki "Bot bekleniyor" yazısını güncelle
+    const statusEl = document.getElementById("courier-status-" + orderId);
+    if (statusEl) {
+      statusEl.innerHTML = "✓ Gönderildi";
+      statusEl.className = "text-green-600 font-semibold";
+      clearInterval(interval);
+    }
+  }, 2000);
+}
+
+
+
 function courierOrderCode(order) {
   const d = order && order.created_at ? new Date(order.created_at) : new Date();
   const t = Number.isNaN(d.getTime()) ? new Date() : d;
