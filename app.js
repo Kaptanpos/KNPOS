@@ -2983,3 +2983,19 @@ window.mountCourierSettings = mountCourierSettings;
 document.addEventListener("DOMContentLoaded", function () {
   setTimeout(mountCourierSettings, 300);
 });
+
+// AHK botu mesajı atıp dosyayı .gonderildi yaptığında ekranı güncelleyen dinleyici
+setInterval(() => {
+  try {
+    // İnternet siparişleri sayfasındaysak ve "Bot bekleniyor" yazısı varsa listeyi tazele
+    const statusSpans = document.querySelectorAll("span");
+    statusSpans.forEach(span => {
+      if (span.textContent.trim() === "Bot bekleniyor") {
+        // Tabloyu sessizce güncelleyerek durumun değişmesini sağla
+        if (typeof loadInternetOrders === "function" && document.getElementById("pageInternet")?.style.display === "block") {
+          loadInternetOrders();
+        }
+      }
+    });
+  } catch (_) {}
+}, 3000);
