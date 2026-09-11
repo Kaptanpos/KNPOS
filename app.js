@@ -3001,6 +3001,16 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // AHK botu mesajı atıp dosyayı .gonderildi yaptığında ekranı güncelleyen dinleyici
+
+setTimeout(() => {
+    const sMap = getCourierStatusMap();
+    if (sMap[String(orderId)]) {
+      sMap[String(orderId)].status = "sent";
+      localStorage.setItem(COURIER_STATUS_KEY, JSON.stringify(sMap));
+      if (typeof loadInternetOrders === "function") loadInternetOrders();
+    }
+  }, 6000);
+
 function markCourierQueued(orderId, fileName, chatName) {
   const statuses = getCourierStatusMap();
   statuses[String(orderId)] = {
@@ -3049,5 +3059,3 @@ function printTableReceipt() {
   }, 500);
 }
 window.printTableReceipt = printTableReceipt;
-
-
